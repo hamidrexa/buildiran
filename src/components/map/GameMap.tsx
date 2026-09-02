@@ -10,10 +10,19 @@
  *   import { GameMap } from '@/components/map/GameMap';
  */
 
+import React from 'react';
+import { Platform } from 'react-native';
+import type { GameMapProps } from '@/types/map.types';
+
 export type { GameMapProps } from '@/types/map.types';
 
-/**
- * Re-export the platform implementation.
- * The actual component is in GameMap.native.tsx / GameMap.web.tsx
- */
-export { default as GameMap } from './GameMap.native';
+export const GameMap: React.FC<GameMapProps> = (props) => {
+  if (Platform.OS === 'web') {
+    const GameMapWeb = require('./GameMap.web').default;
+    return <GameMapWeb {...props} />;
+  }
+  const GameMapNative = require('./GameMap.native').default;
+  return <GameMapNative {...props} />;
+};
+
+export default GameMap;

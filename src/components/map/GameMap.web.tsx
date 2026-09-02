@@ -6,6 +6,7 @@
  */
 
 import React, { useCallback } from 'react';
+import { StyleSheet } from 'react-native';
 import Map, {
   NavigationControl,
   ScaleControl,
@@ -53,8 +54,21 @@ export const GameMap: React.FC<GameMapProps> = ({
     [onRegionChange],
   );
 
+  const flatStyle = (style ? StyleSheet.flatten(style) : {}) as React.CSSProperties;
+
   return (
-    <div style={{ flex: 1, width: '100%', height: '100%', ...style }}>
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        ...flatStyle,
+      }}
+    >
       <Map
         initialViewState={{
           longitude: initialCenter.longitude,
