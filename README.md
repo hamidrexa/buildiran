@@ -1,56 +1,102 @@
-# Welcome to your Expo app 👋
+# بیلد ایران (BuildIran) 🏰🌍
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**یک بازی استراتژیک آنلاین مبتنی بر نقشه واقعی برای وب، اندروید و iOS با یک سورس‌کد مشترک (Expo + React Native).**
 
-## Get started
+---
 
-1. Install dependencies
+## 🌟 ساختار پروژه (Architecture)
 
-   ```bash
-   npm install
-   ```
+پروژه بر اساس استاندارد مدرن **Expo SDK 53+** و ساختار ماژولار زیر سازمان‌دهی شده است:
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+buildiran/
+├── src/
+│   ├── app/                        # مسیریابی بر پایه فایل (Expo Router)
+│   │   ├── _layout.tsx             # چیدمان ریشه (RTL فارسی، فونت‌ها، Safe Area)
+│   │   ├── index.tsx               # هدایت به نقشه اصلی بازی
+│   │   └── (game)/                 # تب‌های بازی
+│   │       ├── _layout.tsx         # ناوبری تب‌های پایین (نقشه، جدول، پروفایل)
+│   │       ├── index.tsx           # صفحه نقشه تمام‌صفحه و رابط HUD
+│   │       ├── leaderboard.tsx     # جدول برترین بازیکنان
+│   │       └── profile.tsx         # پروفایل و منابع بازیکن
+│   │
+│   ├── components/
+│   │   ├── ui/                     # کامپوننت‌های پایه رابط کاربری (Text, Button, Card, LoadingScreen)
+│   │   ├── map/                    # لایه نقشه چندسکویی (Adaptive Map)
+│   │   │   ├── GameMap.tsx         # رابط یکپارچه
+│   │   │   ├── GameMap.native.tsx  # رندرینگ موبایل با MapLibre (iOS / Android)
+│   │   │   └── GameMap.web.tsx     # رندرینگ وب با MapLibre GL
+│   │   └── game/                   # کامپوننت‌های بازی (HUD, BuildingMarker)
+│   │
+│   ├── store/                      # مدیریت حالت سراسری با Zustand
+│   │   ├── useGameStore.ts         # حالت جهان بازی (زمین‌ها، سازه‌ها، رویدادها)
+│   │   ├── useMapStore.ts          # موقعیت دید نقشه (Viewport, Zoom)
+│   │   └── usePlayerStore.ts       # منابع و اطلاعات پایدار بازیکن (Persisted)
+│   │
+│   ├── types/                      # تایپ‌های TypeScript
+│   │   ├── game.types.ts           # مدل‌های بازی، سازه‌ها، بازیکن، منابع
+│   │   └── map.types.ts            # تایپ‌های نقشه و نشانگرها
+│   │
+│   ├── theme/                      # سیستم طراحی تیره و طلایی لوکس (Tokens)
+│   ├── i18n/                       # ترجمه‌ها و متون فارسی راست‌چین (RTL)
+│   ├── lib/                        # کلاینت Supabase و ثابت‌ها
+│   └── utils/                      # محاسبات جغرافیایی (فاصله، ساخت شبکه کاشی‌ها)
+│
+├── assets/                         # آیکون‌ها و منابع گرافیکی
+├── app.json                        # پیکربندی کامل Expo و پلاگین‌ها
+├── eas.json                        # پیکربندی بیلد ابری EAS
+└── tsconfig.json                   # پیکربندی TypeScript و Path Aliases (@/*)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-### Other setup steps
+## 🗺️ سیستم نقشه چندسکویی (Cross-Platform Map)
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+این پروژه از **OpenStreetMap / OpenFreeMap** با وکتور تایل‌های کاملاً رایگان (بدون نیاز به API Key یا پرداخت هزینه) استفاده می‌کند:
 
-## Learn more
+* **در وب (Web):** از `maplibre-gl` و `react-map-gl` استفاده می‌شود.
+* **در موبایل (iOS & Android):** از `@maplibre/maplibre-react-native` استفاده می‌شود.
+* استفاده در کد کامپوننت‌ها بدون درگیر شدن با نوع پلتفرم صورت می‌گیرد:
+  ```tsx
+  import { GameMap } from '@/components/map/GameMap';
+  ```
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 🚀 نحوه اجرا (Getting Started)
 
-## Join the community
+### ۱. اجرای نسخه وب (Web)
+```bash
+npm run web
+```
+مرورگر باز شده و نقشه تعاملی و رابط بازی را نمایش می‌دهد.
 
-Join our community of developers creating universal apps.
+### ۲. اجرای نسخه اندروید (Android)
+```bash
+npm run android
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### ۳. اجرای نسخه iOS (iOS)
+```bash
+npm run ios
+```
+
+---
+
+## ⚙️ متغیرهای محیطی (Environment Variables)
+
+برای اتصال به پایگاه داده و سیستم آنلاین بی‌درنگ (Realtime)، فایل `.env.local` را بر اساس `.env.example` بسازید:
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+---
+
+## 🎮 گام‌های بعدی در توسعه بازی
+
+این فونداسیون آماده اضافه کردن منطق بازی است:
+1. پیاده‌سازی سیستم تصاحب زمین (Claim Land) با کسر سکه و منابع
+2. احداث و ارتقای ساختمان‌ها (خانه، مزرعه، بازار، پادگان)
+3. تبادل بی‌درنگ رویدادها بین بازیکنان در نقشه از طریق کانال‌های Realtime Supabase
+4. نبردها، اتحادها و تجارت بین بازیکنان
