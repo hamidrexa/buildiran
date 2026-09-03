@@ -3,15 +3,21 @@
  * Uses MapLibre React Native with OpenFreeMap vector tiles (no API key).
  *
  * Runs in Custom Dev Client or Prebuild (EAS Build / local native build).
+ *
+ * NOTE: This module is intentionally only required from the shared
+ * `GameMap.tsx` wrapper, which guards against loading it inside Expo Go
+ * (where `MLRNCameraModule` is not registered).
  */
 
 import React, { useRef, useCallback } from 'react';
-import { StyleSheet, View, NativeSyntheticEvent, Text } from 'react-native';
-import type {
-  CameraRef,
-  ViewStateChangeEvent,
-  PressEvent,
-  PressEventWithFeatures,
+import { StyleSheet, View, NativeSyntheticEvent } from 'react-native';
+import {
+  Map,
+  Camera,
+  type CameraRef,
+  type ViewStateChangeEvent,
+  type PressEvent,
+  type PressEventWithFeatures,
 } from '@maplibre/maplibre-react-native';
 import type { GameMapProps } from '@/types/map.types';
 import type { LatLng } from '@/types/game.types';
@@ -23,18 +29,6 @@ import {
   MAP_MAX_ZOOM,
 } from '@/lib/constants';
 
-type MapLibreModule = typeof import('@maplibre/maplibre-react-native');
-
-function loadMapLibre(): MapLibreModule | null {
-  try {
-    // MapLibre is unavailable in Expo Go, so load it only when the native binary provides it.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('@maplibre/maplibre-react-native') as MapLibreModule;
-  } catch {
-    return null;
-  }
-}
-
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
   initialZoom = MAP_DEFAULT_ZOOM,
@@ -43,7 +37,6 @@ export const GameMap: React.FC<GameMapProps> = ({
   style,
 }) => {
   const cameraRef = useRef<CameraRef>(null);
-  const mapLibre = loadMapLibre();
 
   const handlePress = useCallback(
     (event: NativeSyntheticEvent<PressEvent> | NativeSyntheticEvent<PressEventWithFeatures>) => {
@@ -64,22 +57,9 @@ export const GameMap: React.FC<GameMapProps> = ({
     [onRegionChange],
   );
 
-  if (!mapLibre) {
-    return (
-      <View style={[styles.container, styles.unavailable, style]}>
-        <Text style={styles.unavailableText}>
-          نقشه در نسخه آزمایشی موبایل در دسترس نیست. برای استفاده از نقشه، یک Development Build بسازید.
-        </Text>
-      </View>
-    );
-  }
-
-  const MapView = mapLibre.Map;
-  const CameraView = mapLibre.Camera;
-
   return (
     <View style={[styles.container, style]}>
-      <MapView
+      <Map
         style={styles.map}
         mapStyle={MAP_STYLE_URL}
         onPress={handlePress}
@@ -92,7 +72,7 @@ export const GameMap: React.FC<GameMapProps> = ({
         attribution
         logo={false}
       >
-        <CameraView
+        <Camera
           ref={cameraRef}
           initialViewState={{
             center: [initialCenter.longitude, initialCenter.latitude],
@@ -101,7 +81,7 @@ export const GameMap: React.FC<GameMapProps> = ({
           minZoom={MAP_MIN_ZOOM}
           maxZoom={MAP_MAX_ZOOM}
         />
-      </MapView>
+      </Map>
     </View>
   );
 };
@@ -112,15 +92,6 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
-  },
-  unavailable: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  unavailableText: {
-    color: '#FFFFFF',
-    textAlign: 'center',
   },
 });
 
