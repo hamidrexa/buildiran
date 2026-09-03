@@ -9,25 +9,25 @@
  * (where `MLRNCameraModule` is not registered).
  */
 
-import React, { useRef, useCallback } from 'react';
-import { StyleSheet, View, NativeSyntheticEvent } from 'react-native';
 import {
-  Map,
-  Camera,
-  type CameraRef,
-  type ViewStateChangeEvent,
-  type PressEvent,
-  type PressEventWithFeatures,
-} from '@maplibre/maplibre-react-native';
-import type { GameMapProps } from '@/types/map.types';
-import type { LatLng } from '@/types/game.types';
-import {
-  MAP_STYLE_URL,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
-  MAP_MIN_ZOOM,
   MAP_MAX_ZOOM,
-} from '@/lib/constants';
+  MAP_MIN_ZOOM,
+  MAP_STYLE_URL,
+} from "@/lib/constants";
+import type { LatLng } from "@/types/game.types";
+import type { GameMapProps } from "@/types/map.types";
+import {
+  Camera,
+  Map,
+  type CameraRef,
+  type PressEvent,
+  type PressEventWithFeatures,
+  type ViewStateChangeEvent,
+} from "@maplibre/maplibre-react-native";
+import React, { useCallback, useRef } from "react";
+import { NativeSyntheticEvent, StyleSheet, View } from "react-native";
 
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
@@ -39,7 +39,11 @@ export const GameMap: React.FC<GameMapProps> = ({
   const cameraRef = useRef<CameraRef>(null);
 
   const handlePress = useCallback(
-    (event: NativeSyntheticEvent<PressEvent> | NativeSyntheticEvent<PressEventWithFeatures>) => {
+    (
+      event:
+        | NativeSyntheticEvent<PressEvent>
+        | NativeSyntheticEvent<PressEventWithFeatures>,
+    ) => {
       if (!onMapPress) return;
       const [longitude, latitude] = event.nativeEvent.lngLat;
       onMapPress({ latitude, longitude });
@@ -50,7 +54,12 @@ export const GameMap: React.FC<GameMapProps> = ({
   const handleRegionDidChange = useCallback(
     (event: NativeSyntheticEvent<ViewStateChangeEvent>) => {
       if (!onRegionChange) return;
-      const { center: [longitude, latitude], zoom, bearing, pitch } = event.nativeEvent;
+      const {
+        center: [longitude, latitude],
+        zoom,
+        bearing,
+        pitch,
+      } = event.nativeEvent;
       const center: LatLng = { latitude, longitude };
       onRegionChange({ center, zoom, bearing, pitch });
     },

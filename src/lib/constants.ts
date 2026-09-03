@@ -4,10 +4,10 @@
 
 // ─── App Info ────────────────────────────────────────────────────────────────
 
-export const APP_NAME = 'بیلد ایران';
-export const APP_NAME_EN = 'BuildIran';
-export const APP_SCHEME = 'buildiran';
-export const APP_VERSION = '1.0.0';
+export const APP_NAME = "بیلد ایران";
+export const APP_NAME_EN = "BuildIran";
+export const APP_SCHEME = "buildiran";
+export const APP_VERSION = "1.0.0";
 
 // ─── Map Config ──────────────────────────────────────────────────────────────
 
@@ -25,11 +25,10 @@ export const MAP_MAX_ZOOM = 19;
  * OpenFreeMap vector tile style — completely free, no API key required.
  * Alternatives: 'https://demotiles.maplibre.org/style.json'
  */
-export const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+export const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
 /** Dark game map style — use for game mode */
-export const MAP_DARK_STYLE_URL =
-  'https://tiles.openfreemap.org/styles/dark';
+export const MAP_DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
 
 // ─── Game Config ─────────────────────────────────────────────────────────────
 
@@ -44,19 +43,19 @@ export const SYNC_INTERVAL_MS = 5000;
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 
-export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 export const SUPABASE_ANON_KEY =
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 // ─── Realtime Channels ────────────────────────────────────────────────────────
 
-export const CHANNEL_WORLD = 'world:events';
-export const CHANNEL_TILES = 'world:tiles';
+export const CHANNEL_WORLD = "world:events";
+export const CHANNEL_TILES = "world:tiles";
 
 // ─── Storage Keys ─────────────────────────────────────────────────────────────
 
-export const STORAGE_PLAYER_ID = 'buildiran:player_id';
-export const STORAGE_PLAYER_DATA = 'buildiran:player_data';
+export const STORAGE_PLAYER_ID = "buildiran:player_id";
+export const STORAGE_PLAYER_DATA = "buildiran:player_data";
 
 // ─── Animation ────────────────────────────────────────────────────────────────
 
