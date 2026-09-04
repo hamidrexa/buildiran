@@ -1,7 +1,7 @@
 /**
  * BuildIran — Modern Audio Engine
  * Cross-platform strategic game sound system:
- * - Native (iOS/Android): uses modern `expo-audio` (the official non-deprecated successor to `expo-av`)
+ * - Native (iOS/Android): uses the modern `expo-audio` module
  * - Web: uses Web Audio API synthesis (zero latency, zero network failure, zero deprecation) + HTML5 Audio
  */
 
