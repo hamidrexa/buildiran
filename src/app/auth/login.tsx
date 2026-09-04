@@ -36,6 +36,10 @@ import {
 } from '@/lib/effects';
 import { Text } from '@/components/ui/Text';
 import { GameAudio } from '@/lib/audio';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -126,6 +130,53 @@ export default function LoginScreen() {
     } catch (err: any) {
       GameAudio.playError();
       Alert.alert('خطا', 'ورود به عنوان مهمان ممکن نیست.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    buttonScale.pop();
+    setLoading(true);
+    try {
+      const redirectUrl = Linking.createURL('/auth/callback');
+
+      if (Platform.OS === 'web') {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectUrl,
+          },
+        });
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectUrl,
+            skipBrowserRedirect: true,
+          },
+        });
+        if (error) throw error;
+
+        if (data?.url) {
+          const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+          if (res.type === 'success' && res.url) {
+            const parsedUrl = Linking.parse(res.url);
+            const access_token = parsedUrl.queryParams?.access_token as string;
+            const refresh_token = parsedUrl.queryParams?.refresh_token as string;
+
+            if (access_token && refresh_token) {
+              await supabase.auth.setSession({ access_token, refresh_token });
+              await GameAudio.playTap();
+              router.replace('/(game)');
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      GameAudio.playError();
+      Alert.alert('خطای ورود با گوگل', err.message ?? 'مشکلی در ورود با گوگل پیش آمد.');
     } finally {
       setLoading(false);
     }
@@ -272,6 +323,17 @@ export default function LoginScreen() {
               <Text style={styles.dividerText}>یا</Text>
               <View style={styles.dividerLine} />
             </View>
+
+            {/* Google Sign-In Button */}
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={handleGoogleLogin}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="logo-google" size={18} color="#EA4335" />
+              <Text style={styles.googleBtnText}>ورود با حساب گوگل</Text>
+            </TouchableOpacity>
 
             {/* Guest Button */}
             <TouchableOpacity
@@ -463,6 +525,20 @@ const styles = StyleSheet.create({
   divider: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
   dividerText: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
+
+  // Google Button
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    paddingVertical: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  googleBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
 
   // Guest
   guestBtn: {

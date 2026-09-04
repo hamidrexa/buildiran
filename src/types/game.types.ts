@@ -158,7 +158,7 @@ export interface Player {
 export interface Asset {
   id: string;
   ownerId: string;
-  type: BuildingType;
+  type: BuildingType | string;
   latitude: number;
   longitude: number;
   tileId: string;
@@ -169,6 +169,8 @@ export interface Asset {
   askPrice: number | null;
   builtAt: string;
   upgradedAt: string | null;
+  ownerUsername?: string;
+  ownerAvatarColor?: string;
 }
 
 // ─── Asset Marketplace Listing ───────────────────────────────────────────────
