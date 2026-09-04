@@ -11,6 +11,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { Colors } from '@/theme';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Keep splash screen visible while loading initial state
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -45,6 +47,8 @@ export default function RootLayout() {
             animation: Platform.OS === 'ios' ? 'default' : 'fade',
           }}
         />
+        {Platform.OS === 'web' && <Analytics />}
+        {Platform.OS === 'web' && <SpeedInsights />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
