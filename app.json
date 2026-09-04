@@ -33,6 +33,22 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Vazirmatn-Black.ttf",
+            "./assets/fonts/Vazirmatn-Bold.ttf",
+            "./assets/fonts/Vazirmatn-ExtraBold.ttf",
+            "./assets/fonts/Vazirmatn-ExtraLight.ttf",
+            "./assets/fonts/Vazirmatn-Light.ttf",
+            "./assets/fonts/Vazirmatn-Medium.ttf",
+            "./assets/fonts/Vazirmatn-Regular.ttf",
+            "./assets/fonts/Vazirmatn-SemiBold.ttf",
+            "./assets/fonts/Vazirmatn-Thin.ttf"
+          ]
+        }
       ]
     ],
     "experiments": {
