@@ -9,6 +9,7 @@
  * (where `MLRNCameraModule` is not registered).
  */
 
+import { BuildingMarker } from "@/components/game/BuildingMarker";
 import {
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
@@ -18,7 +19,6 @@ import {
 } from "@/lib/constants";
 import type { LatLng } from "@/types/game.types";
 import type { GameMapProps } from "@/types/map.types";
-import { BuildingMarker } from "@/components/game/BuildingMarker";
 import {
   Camera,
   Map,
@@ -100,7 +100,9 @@ export const GameMap: React.FC<GameMapProps> = ({
 
         {/* On-Map Built Assets */}
         {assets.map((asset) => {
-          const isOwned = currentUserId ? asset.ownerId === currentUserId : false;
+          const isOwned = currentUserId
+            ? asset.ownerId === currentUserId
+            : false;
           const isSelected = selectedAssetId === asset.id;
 
           return (

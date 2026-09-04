@@ -3,9 +3,9 @@
  * Manages all on-map assets (buildings) with Supabase persistence.
  */
 
-import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
-import type { Asset, AssetListing, BuildingType } from '@/types/game.types';
+import { supabase } from "@/lib/supabase";
+import type { Asset, AssetListing, BuildingType } from "@/types/game.types";
+import { create } from "zustand";
 
 interface AssetState {
   assets: Record<string, Asset>;
@@ -36,17 +36,20 @@ interface AssetState {
 }
 
 // Cost and reward table per building type
-const BUILDING_CONFIG: Record<BuildingType, { cost: number; value: number; power: number }> = {
-  house:     { cost: 500,   value: 800,   power: 2  },
-  farm:      { cost: 800,   value: 1200,  power: 1  },
-  market:    { cost: 1500,  value: 2500,  power: 3  },
-  tower:     { cost: 3000,  value: 5000,  power: 15 },
-  warehouse: { cost: 1000,  value: 1800,  power: 2  },
-  barracks:  { cost: 4000,  value: 7000,  power: 20 },
-  shop:      { cost: 1200,  value: 2000,  power: 3  },
-  mall:      { cost: 5000,  value: 9000,  power: 8  },
-  villa:     { cost: 3500,  value: 6000,  power: 5  },
-  office:    { cost: 2500,  value: 4500,  power: 6  },
+const BUILDING_CONFIG: Record<
+  BuildingType,
+  { cost: number; value: number; power: number }
+> = {
+  house: { cost: 500, value: 800, power: 2 },
+  farm: { cost: 800, value: 1200, power: 1 },
+  market: { cost: 1500, value: 2500, power: 3 },
+  tower: { cost: 3000, value: 5000, power: 15 },
+  warehouse: { cost: 1000, value: 1800, power: 2 },
+  barracks: { cost: 4000, value: 7000, power: 20 },
+  shop: { cost: 1200, value: 2000, power: 3 },
+  mall: { cost: 5000, value: 9000, power: 8 },
+  villa: { cost: 3500, value: 6000, power: 5 },
+  office: { cost: 2500, value: 4500, power: 6 },
 };
 
 function dbRowToAsset(row: Record<string, any>): Asset {
@@ -65,7 +68,8 @@ function dbRowToAsset(row: Record<string, any>): Asset {
     builtAt: row.built_at,
     upgradedAt: row.upgraded_at ?? null,
     ownerUsername: row.owner?.username ?? row.profiles?.username ?? undefined,
-    ownerAvatarColor: row.owner?.avatar_color ?? row.profiles?.avatar_color ?? undefined,
+    ownerAvatarColor:
+      row.owner?.avatar_color ?? row.profiles?.avatar_color ?? undefined,
   };
 }
 
@@ -79,9 +83,9 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     set({ isLoadingAssets: true });
     try {
       const { data, error } = await supabase
-        .from('assets')
-        .select('*, owner:profiles(username, avatar_color)')
-        .eq('owner_id', userId);
+        .from("assets")
+        .select("*, owner:profiles(username, avatar_color)")
+        .eq("owner_id", userId);
       if (error) throw error;
       const map: Record<string, Asset> = {};
       (data ?? []).forEach((row) => {
@@ -89,7 +93,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       });
       set({ assets: map });
     } catch (err) {
-      console.warn('[AssetStore] fetchMyAssets error:', err);
+      console.warn("[AssetStore] fetchMyAssets error:", err);
     } finally {
       set({ isLoadingAssets: false });
     }
@@ -106,9 +110,9 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
 
       do {
         const { data, error } = await supabase
-          .from('assets')
-          .select('*, owner:profiles(username, avatar_color)')
-          .order('built_at', { ascending: false })
+          .from("assets")
+          .select("*, owner:profiles(username, avatar_color)")
+          .order("built_at", { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
         if (error) throw error;
 
@@ -121,7 +125,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
 
       set({ assets: map });
     } catch (err) {
-      console.warn('[AssetStore] fetchAllAssets error:', err);
+      console.warn("[AssetStore] fetchAllAssets error:", err);
     } finally {
       set({ isLoadingAssets: false });
     }
@@ -129,12 +133,15 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
 
   subscribeToAssets: () => {
     const channel = supabase
-      .channel('public:assets')
+      .channel("public:assets")
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'assets' },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "assets" },
         (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          if (
+            payload.eventType === "INSERT" ||
+            payload.eventType === "UPDATE"
+          ) {
             const updatedAsset = dbRowToAsset(payload.new);
             set((state) => ({
               assets: {
@@ -145,7 +152,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
                 },
               },
             }));
-          } else if (payload.eventType === 'DELETE') {
+          } else if (payload.eventType === "DELETE") {
             const deletedId = (payload.old as any)?.id;
             if (deletedId) {
               set((state) => {
@@ -155,7 +162,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
               });
             }
           }
-        }
+        },
       )
       .subscribe();
 
@@ -164,7 +171,15 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     };
   },
 
-  buildAsset: async ({ userId, type, latitude, longitude, tileId, marketValue, powerBonus }) => {
+  buildAsset: async ({
+    userId,
+    type,
+    latitude,
+    longitude,
+    tileId,
+    marketValue,
+    powerBonus,
+  }) => {
     const config = (BUILDING_CONFIG as any)[type] || {
       cost: 5000,
       value: marketValue ?? 6000,
@@ -172,7 +187,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     };
     try {
       const { data, error } = await supabase
-        .from('assets')
+        .from("assets")
         .insert({
           owner_id: userId,
           type,
@@ -193,15 +208,20 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       }));
 
       // Log game event
-      await supabase.from('game_events').insert({
+      await supabase.from("game_events").insert({
         player_id: userId,
-        type: 'building_built',
-        payload: { asset_id: asset.id, asset_type: type, lat: latitude, lng: longitude },
+        type: "building_built",
+        payload: {
+          asset_id: asset.id,
+          asset_type: type,
+          lat: latitude,
+          lng: longitude,
+        },
       });
 
       return asset;
     } catch (err) {
-      console.warn('[AssetStore] buildAsset error:', err);
+      console.warn("[AssetStore] buildAsset error:", err);
       return null;
     }
   },
@@ -215,26 +235,31 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       const newPower = asset.powerBonus + 5;
 
       const { error } = await supabase
-        .from('assets')
+        .from("assets")
         .update({
           level: newLevel,
           market_value: newValue,
           power_bonus: newPower,
           upgraded_at: new Date().toISOString(),
         })
-        .eq('id', assetId);
+        .eq("id", assetId);
 
       if (error) throw error;
 
       set((state) => ({
         assets: {
           ...state.assets,
-          [assetId]: { ...asset, level: newLevel, marketValue: newValue, powerBonus: newPower },
+          [assetId]: {
+            ...asset,
+            level: newLevel,
+            marketValue: newValue,
+            powerBonus: newPower,
+          },
         },
       }));
       return true;
     } catch (err) {
-      console.warn('[AssetStore] upgradeAsset error:', err);
+      console.warn("[AssetStore] upgradeAsset error:", err);
       return false;
     }
   },
@@ -245,17 +270,19 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     try {
       // Update asset
       const { error: assetError } = await supabase
-        .from('assets')
+        .from("assets")
         .update({ is_for_sale: true, ask_price: price })
-        .eq('id', assetId);
+        .eq("id", assetId);
       if (assetError) throw assetError;
 
       // Create listing
-      const { error: listError } = await supabase.from('asset_listings').insert({
-        asset_id: assetId,
-        seller_id: asset.ownerId,
-        price,
-      });
+      const { error: listError } = await supabase
+        .from("asset_listings")
+        .insert({
+          asset_id: assetId,
+          seller_id: asset.ownerId,
+          price,
+        });
       if (listError) throw listError;
 
       set((state) => ({
@@ -266,7 +293,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       }));
       return true;
     } catch (err) {
-      console.warn('[AssetStore] listForSale error:', err);
+      console.warn("[AssetStore] listForSale error:", err);
       return false;
     }
   },
@@ -276,15 +303,15 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     if (!asset) return false;
     try {
       await supabase
-        .from('assets')
+        .from("assets")
         .update({ is_for_sale: false, ask_price: null })
-        .eq('id', assetId);
+        .eq("id", assetId);
 
       await supabase
-        .from('asset_listings')
-        .update({ status: 'cancelled' })
-        .eq('asset_id', assetId)
-        .eq('status', 'active');
+        .from("asset_listings")
+        .update({ status: "cancelled" })
+        .eq("asset_id", assetId)
+        .eq("status", "active");
 
       set((state) => ({
         assets: {
@@ -294,7 +321,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       }));
       return true;
     } catch (err) {
-      console.warn('[AssetStore] cancelListing error:', err);
+      console.warn("[AssetStore] cancelListing error:", err);
       return false;
     }
   },
@@ -303,14 +330,16 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     set({ isLoadingListings: true });
     try {
       const { data, error } = await supabase
-        .from('asset_listings')
-        .select(`
+        .from("asset_listings")
+        .select(
+          `
           *,
           asset:assets(*),
           seller:profiles(username)
-        `)
-        .eq('status', 'active')
-        .order('listed_at', { ascending: false });
+        `,
+        )
+        .eq("status", "active")
+        .order("listed_at", { ascending: false });
 
       if (error) throw error;
 
@@ -324,12 +353,12 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
         listedAt: row.listed_at,
         soldAt: row.sold_at ?? null,
         asset: row.asset ? dbRowToAsset(row.asset) : undefined,
-        sellerUsername: row.seller?.username ?? 'ناشناس',
+        sellerUsername: row.seller?.username ?? "ناشناس",
       }));
 
       set({ listings });
     } catch (err) {
-      console.warn('[AssetStore] fetchListings error:', err);
+      console.warn("[AssetStore] fetchListings error:", err);
     } finally {
       set({ isLoadingListings: false });
     }
@@ -341,21 +370,29 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     try {
       // Transfer ownership
       await supabase
-        .from('assets')
+        .from("assets")
         .update({ owner_id: buyerId, is_for_sale: false, ask_price: null })
-        .eq('id', listing.assetId);
+        .eq("id", listing.assetId);
 
       // Mark listing as sold
       await supabase
-        .from('asset_listings')
-        .update({ status: 'sold', buyer_id: buyerId, sold_at: new Date().toISOString() })
-        .eq('id', listingId);
+        .from("asset_listings")
+        .update({
+          status: "sold",
+          buyer_id: buyerId,
+          sold_at: new Date().toISOString(),
+        })
+        .eq("id", listingId);
 
       // Log event
-      await supabase.from('game_events').insert({
+      await supabase.from("game_events").insert({
         player_id: buyerId,
-        type: 'asset_sold',
-        payload: { listing_id: listingId, asset_id: listing.assetId, price: listing.price },
+        type: "asset_sold",
+        payload: {
+          listing_id: listingId,
+          asset_id: listing.assetId,
+          price: listing.price,
+        },
       });
 
       // Remove from listing UI
@@ -364,7 +401,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       }));
       return true;
     } catch (err) {
-      console.warn('[AssetStore] buyAsset error:', err);
+      console.warn("[AssetStore] buyAsset error:", err);
       return false;
     }
   },
