@@ -102,12 +102,37 @@ export default function RegisterScreen() {
         }
       }
 
-      await GameAudio.playLevelUp();
-      Alert.alert(
-        '🎉 ثبت نام موفق!',
-        'به بیلد ایران خوش آمدید. اکنون می‌توانید وارد شوید.',
-        [{ text: 'ورود', onPress: () => router.replace('/auth/login' as any) }]
-      );
+      // 3. Auto-login after successful registration
+      try {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        });
+        
+        if (signInError) {
+          console.warn('[Register] Auto-login failed:', signInError.message);
+          // Fallback to redirect to login page if auto-login fails
+          await GameAudio.playLevelUp();
+          Alert.alert(
+            '🎉 ثبت نام موفق!',
+            'به بیلد ایران خوش آمدید. اکنون می‌توانید وارد شوید.',
+            [{ text: 'ورود', onPress: () => router.replace('/auth/login' as any) }]
+          );
+        } else {
+          // Auto-login successful - redirect to game
+          await GameAudio.playLevelUp();
+          router.replace('/(game)');
+        }
+      } catch (loginErr: any) {
+        console.warn('[Register] Auto-login error:', loginErr.message);
+        // Fallback to redirect to login page if auto-login fails
+        await GameAudio.playLevelUp();
+        Alert.alert(
+          '🎉 ثبت نام موفق!',
+          'به بیلد ایران خوش آمدید. اکنون می‌توانید وارد شوید.',
+          [{ text: 'ورود', onPress: () => router.replace('/auth/login' as any) }]
+        );
+      }
     } catch (err: any) {
       GameAudio.playError();
       formShake.shake();
