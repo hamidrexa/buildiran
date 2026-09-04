@@ -105,13 +105,13 @@ export const MAP_DARK_STYLE = {
 } as const;
 
 /** Default active map style */
-export const MAP_STYLE = MAP_STREET_STYLE;
+export const MAP_STYLE = MAP_OSM_STYLE;
 
 /** Backward-compatibility aliases */
-export const MAP_STYLE_URL = MAP_STREET_STYLE;
+export const MAP_STYLE_URL = MAP_OSM_STYLE;
 export const MAP_DARK_STYLE_URL = MAP_DARK_STYLE;
-export const MAP_OPENFREEMAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
-
+export const MAP_OPENFREEMAP_STYLE_URL =
+  "https://tiles.openfreemap.org/styles/liberty";
 
 // ─── Game Config ─────────────────────────────────────────────────────────────
 
