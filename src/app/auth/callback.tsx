@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
-import * as Linking from 'expo-linking';
-import { supabase } from '@/lib/supabase';
+import { supabase } from "@/lib/supabase";
+import * as Linking from "expo-linking";
+import { router } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 export default function AuthCallback() {
   useEffect(() => {
@@ -17,7 +17,7 @@ export default function AuthCallback() {
           await supabase.auth.setSession({ access_token, refresh_token });
         }
       }
-      router.replace('/(game)');
+      router.replace("/(game)");
     };
 
     handleUrl();
@@ -33,8 +33,8 @@ export default function AuthCallback() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#080C1A',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#080C1A",
   },
 });

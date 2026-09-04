@@ -4,56 +4,65 @@
  * glow effects, and Supabase email/password authentication.
  */
 
-import React, { useState, useRef } from 'react';
+import { Text } from "@/components/ui/Text";
+import { GameAudio } from "@/lib/audio";
 import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  useFloatIn,
+  useGlowPulse,
+  useParticle,
+  useScalePop,
+  useShake,
+} from "@/lib/effects";
+import { supabase } from "@/lib/supabase";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Linking from "expo-linking";
+import { router } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import React, { useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
-  FadeInUp,
-  ZoomIn,
-} from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '@/lib/supabase';
-import {
-  useGlowPulse,
-  useFloatIn,
-  useScalePop,
-  useShake,
-  useParticle,
-} from '@/lib/effects';
-import { Text } from '@/components/ui/Text';
-import { GameAudio } from '@/lib/audio';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+  FadeInUp
+} from "react-native-reanimated";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 // ─── Particle ──────────────────────────────────────────────────────────────
 
-const Particle: React.FC<{ index: number; x: number; size: number; color: string }> = ({
-  index, x, size, color
-}) => {
+const Particle: React.FC<{
+  index: number;
+  x: number;
+  size: number;
+  color: string;
+}> = ({ index, x, size, color }) => {
   const { style } = useParticle(index);
   return (
     <Animated.View
       style={[
         particleStyles.particle,
-        { left: x, bottom: 0, width: size, height: size, backgroundColor: color, borderRadius: size / 2 },
+        {
+          left: x,
+          bottom: 0,
+          width: size,
+          height: size,
+          backgroundColor: color,
+          borderRadius: size / 2,
+        },
         style,
       ]}
     />
@@ -66,14 +75,14 @@ const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
   index: i,
   x: Math.floor(Math.random() * (SCREEN_W - 10)),
   size: Math.floor(2 + Math.random() * 6),
-  color: ['#6C63FF', '#FF6B6B', '#FFD93D', '#4ECDC4', '#A78BFA'][i % 5],
+  color: ["#6C63FF", "#FF6B6B", "#FFD93D", "#4ECDC4", "#A78BFA"][i % 5],
 }));
 
 // ─── Main Login Screen ────────────────────────────────────────────────────────
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -103,16 +112,16 @@ export default function LoginScreen() {
       if (error) throw error;
 
       await GameAudio.playTap();
-      router.replace('/(game)');
+      router.replace("/(game)");
     } catch (err: any) {
       GameAudio.playError();
       formShake.shake();
       Alert.alert(
-        'خطای ورود',
-        err.message === 'Invalid login credentials'
-          ? 'ایمیل یا رمز عبور اشتباه است.'
-          : err.message ?? 'خطایی رخ داد. دوباره تلاش کنید.',
-        [{ text: 'باشه', style: 'default' }]
+        "خطای ورود",
+        err.message === "Invalid login credentials"
+          ? "ایمیل یا رمز عبور اشتباه است."
+          : (err.message ?? "خطایی رخ داد. دوباره تلاش کنید."),
+        [{ text: "باشه", style: "default" }],
       );
     } finally {
       setLoading(false);
@@ -126,10 +135,10 @@ export default function LoginScreen() {
       const { error } = await supabase.auth.signInAnonymously();
       if (error) throw error;
       await GameAudio.playTap();
-      router.replace('/(game)');
+      router.replace("/(game)");
     } catch (err: any) {
       GameAudio.playError();
-      Alert.alert('خطا', 'ورود به عنوان مهمان ممکن نیست.');
+      Alert.alert("خطا", "ورود به عنوان مهمان ممکن نیست.");
     } finally {
       setLoading(false);
     }
@@ -139,11 +148,11 @@ export default function LoginScreen() {
     buttonScale.pop();
     setLoading(true);
     try {
-      const redirectUrl = Linking.createURL('/auth/callback');
+      const redirectUrl = Linking.createURL("/auth/callback");
 
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
+          provider: "google",
           options: {
             redirectTo: redirectUrl,
           },
@@ -151,7 +160,7 @@ export default function LoginScreen() {
         if (error) throw error;
       } else {
         const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
+          provider: "google",
           options: {
             redirectTo: redirectUrl,
             skipBrowserRedirect: true,
@@ -160,23 +169,30 @@ export default function LoginScreen() {
         if (error) throw error;
 
         if (data?.url) {
-          const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-          if (res.type === 'success' && res.url) {
+          const res = await WebBrowser.openAuthSessionAsync(
+            data.url,
+            redirectUrl,
+          );
+          if (res.type === "success" && res.url) {
             const parsedUrl = Linking.parse(res.url);
             const access_token = parsedUrl.queryParams?.access_token as string;
-            const refresh_token = parsedUrl.queryParams?.refresh_token as string;
+            const refresh_token = parsedUrl.queryParams
+              ?.refresh_token as string;
 
             if (access_token && refresh_token) {
               await supabase.auth.setSession({ access_token, refresh_token });
               await GameAudio.playTap();
-              router.replace('/(game)');
+              router.replace("/(game)");
             }
           }
         }
       }
     } catch (err: any) {
       GameAudio.playError();
-      Alert.alert('خطای ورود با گوگل', err.message ?? 'مشکلی در ورود با گوگل پیش آمد.');
+      Alert.alert(
+        "خطای ورود با گوگل",
+        err.message ?? "مشکلی در ورود با گوگل پیش آمد.",
+      );
     } finally {
       setLoading(false);
     }
@@ -186,7 +202,7 @@ export default function LoginScreen() {
     <View style={styles.root}>
       {/* Background gradient */}
       <LinearGradient
-        colors={['#080C1A', '#0D1533', '#110A2E']}
+        colors={["#080C1A", "#0D1533", "#110A2E"]}
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -204,7 +220,7 @@ export default function LoginScreen() {
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -212,10 +228,13 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Logo Section */}
-          <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.logoSection}>
+          <Animated.View
+            entering={FadeInDown.duration(600).springify()}
+            style={styles.logoSection}
+          >
             <Animated.View style={[styles.logoRing, logoGlow.style]}>
               <LinearGradient
-                colors={['#6C63FF', '#A78BFA', '#EC4899']}
+                colors={["#6C63FF", "#A78BFA", "#EC4899"]}
                 style={styles.logoGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -231,9 +250,11 @@ export default function LoginScreen() {
           </Animated.View>
 
           {/* Form Card */}
-          <Animated.View style={[styles.card, formFloat.style, formShake.style]}>
+          <Animated.View
+            style={[styles.card, formFloat.style, formShake.style]}
+          >
             <LinearGradient
-              colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)']}
+              colors={["rgba(255,255,255,0.08)", "rgba(255,255,255,0.03)"]}
               style={styles.cardGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -243,7 +264,12 @@ export default function LoginScreen() {
 
             {/* Email Field */}
             <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={18} color="#6C63FF" style={styles.inputIcon} />
+              <Ionicons
+                name="mail-outline"
+                size={18}
+                color="#6C63FF"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="ایمیل"
@@ -266,7 +292,7 @@ export default function LoginScreen() {
                 style={styles.inputIcon}
               >
                 <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
                   size={18}
                   color="#6C63FF"
                 />
@@ -288,7 +314,7 @@ export default function LoginScreen() {
 
             {/* Forgot Password */}
             <TouchableOpacity
-              onPress={() => router.push('/auth/forgot-password' as any)}
+              onPress={() => router.push("/auth/forgot-password" as any)}
               style={styles.forgotBtn}
             >
               <Text style={styles.forgotText}>رمز عبور را فراموش کردید؟</Text>
@@ -303,7 +329,7 @@ export default function LoginScreen() {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={['#6C63FF', '#A78BFA']}
+                  colors={["#6C63FF", "#A78BFA"]}
                   style={styles.loginBtnGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -311,7 +337,7 @@ export default function LoginScreen() {
                   {loading ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={styles.loginBtnText}>⚔️  وارد شوید</Text>
+                    <Text style={styles.loginBtnText}>⚔️ وارد شوید</Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
@@ -342,12 +368,14 @@ export default function LoginScreen() {
               disabled={loading}
               activeOpacity={0.75}
             >
-              <Text style={styles.guestBtnText}>🎭  ورود به عنوان مهمان</Text>
+              <Text style={styles.guestBtnText}>🎭 ورود به عنوان مهمان</Text>
             </TouchableOpacity>
 
             {/* Register Link */}
             <View style={styles.registerRow}>
-              <TouchableOpacity onPress={() => router.push('/auth/register' as any)}>
+              <TouchableOpacity
+                onPress={() => router.push("/auth/register" as any)}
+              >
                 <Text style={styles.registerLink}>ثبت نام کنید</Text>
               </TouchableOpacity>
               <Text style={styles.registerPrompt}>حساب ندارید؟ </Text>
@@ -356,7 +384,9 @@ export default function LoginScreen() {
 
           {/* Footer */}
           <Animated.View entering={FadeIn.delay(800)} style={styles.footer}>
-            <Text style={styles.footerText}>© 2026 BuildIran · تمام حقوق محفوظ است</Text>
+            <Text style={styles.footerText}>
+              © 2026 BuildIran · تمام حقوق محفوظ است
+            </Text>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -367,12 +397,12 @@ export default function LoginScreen() {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#080C1A' },
+  root: { flex: 1, backgroundColor: "#080C1A" },
   flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 24,
     paddingVertical: 48,
     gap: 28,
@@ -380,42 +410,42 @@ const styles = StyleSheet.create({
 
   // Orbs
   orb: {
-    position: 'absolute',
+    position: "absolute",
     borderRadius: 999,
     opacity: 0.18,
   },
   orbTopLeft: {
     width: 280,
     height: 280,
-    backgroundColor: '#6C63FF',
+    backgroundColor: "#6C63FF",
     top: -80,
     left: -80,
   },
   orbBottomRight: {
     width: 240,
     height: 240,
-    backgroundColor: '#EC4899',
+    backgroundColor: "#EC4899",
     bottom: -60,
     right: -60,
   },
   orbCenter: {
     width: 180,
     height: 180,
-    backgroundColor: '#FFD93D',
-    top: '40%',
-    left: '25%',
+    backgroundColor: "#FFD93D",
+    top: "40%",
+    left: "25%",
     opacity: 0.08,
   },
 
   // Logo
-  logoSection: { alignItems: 'center', gap: 16 },
+  logoSection: { alignItems: "center", gap: 16 },
   logoRing: {
     width: 100,
     height: 100,
     borderRadius: 50,
     borderWidth: 2,
-    borderColor: 'rgba(108, 99, 255, 0.6)',
-    shadowColor: '#6C63FF',
+    borderColor: "rgba(108, 99, 255, 0.6)",
+    shadowColor: "#6C63FF",
     shadowRadius: 24,
     shadowOpacity: 0.9,
     shadowOffset: { width: 0, height: 0 },
@@ -424,40 +454,40 @@ const styles = StyleSheet.create({
   logoGradient: {
     flex: 1,
     borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoEmoji: { fontSize: 48 },
   appName: {
     fontSize: 32,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontWeight: "900",
+    color: "#FFFFFF",
+    textAlign: "center",
     letterSpacing: 1,
-    textShadowColor: '#6C63FF',
+    textShadowColor: "#6C63FF",
     textShadowRadius: 12,
     textShadowOffset: { width: 0, height: 0 },
   },
   tagline: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.55)',
-    textAlign: 'center',
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "center",
     marginTop: 4,
     letterSpacing: 0.5,
   },
 
   // Card
   card: {
-    width: '100%',
+    width: "100%",
     maxWidth: 420,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(108, 99, 255, 0.25)',
+    borderColor: "rgba(108, 99, 255, 0.25)",
     padding: 28,
     gap: 14,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    shadowColor: '#6C63FF',
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    shadowColor: "#6C63FF",
     shadowRadius: 30,
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 8 },
@@ -468,42 +498,42 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: "#FFFFFF",
+    textAlign: "center",
     marginBottom: 6,
   },
 
   // Input
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.07)",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(108, 99, 255, 0.3)',
+    borderColor: "rgba(108, 99, 255, 0.3)",
     paddingHorizontal: 14,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+    paddingVertical: Platform.OS === "ios" ? 14 : 10,
     gap: 10,
   },
-  inputIcon: { width: 24, alignItems: 'center' },
+  inputIcon: { width: 24, alignItems: "center" },
   input: {
     flex: 1,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 15,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
   },
 
   // Forgot
-  forgotBtn: { alignSelf: 'flex-start' },
-  forgotText: { color: '#A78BFA', fontSize: 13 },
+  forgotBtn: { alignSelf: "flex-start" },
+  forgotText: { color: "#A78BFA", fontSize: 13 },
 
   // Login Button
   loginBtn: {
     borderRadius: 14,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginTop: 4,
-    shadowColor: '#6C63FF',
+    shadowColor: "#6C63FF",
     shadowRadius: 16,
     shadowOpacity: 0.7,
     shadowOffset: { width: 0, height: 4 },
@@ -511,68 +541,72 @@ const styles = StyleSheet.create({
   },
   loginBtnGradient: {
     paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   loginBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.5,
   },
 
   // Divider
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
-  dividerText: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
+  divider: { flexDirection: "row", alignItems: "center", gap: 10 },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  dividerText: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
 
   // Google Button
   googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: "rgba(255,255,255,0.25)",
     paddingVertical: 14,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
-  googleBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  googleBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
 
   // Guest
   guestBtn: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: "rgba(255,255,255,0.2)",
     paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
-  guestBtnText: { color: 'rgba(255,255,255,0.7)', fontSize: 15 },
+  guestBtnText: { color: "rgba(255,255,255,0.7)", fontSize: 15 },
 
   // Register
   registerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 4,
   },
-  registerPrompt: { color: 'rgba(255,255,255,0.45)', fontSize: 14 },
+  registerPrompt: { color: "rgba(255,255,255,0.45)", fontSize: 14 },
   registerLink: {
-    color: '#A78BFA',
+    color: "#A78BFA",
     fontSize: 14,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
 
   // Footer
-  footer: { alignItems: 'center' },
-  footerText: { color: 'rgba(255,255,255,0.2)', fontSize: 11 },
+  footer: { alignItems: "center" },
+  footerText: { color: "rgba(255,255,255,0.2)", fontSize: 11 },
 });
 
 const particleStyles = StyleSheet.create({
   particle: {
-    position: 'absolute',
+    position: "absolute",
   },
 });
