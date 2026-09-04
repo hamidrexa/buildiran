@@ -132,13 +132,39 @@ export default function LoginScreen() {
     buttonScale.pop();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInAnonymously();
+      const { data, error } = await supabase.auth.signInAnonymously({
+        options: {
+          data: {
+            username: `guest_${Math.random().toString(36).slice(2, 8)}`,
+          },
+        },
+      });
       if (error) throw error;
+
+      const user = data.user;
+      if (!user) throw new Error("Guest session was not created.");
+
+      // The database trigger normally creates this row, but provisioning it
+      // here also supports projects where the trigger has not been deployed.
+      const username = user.user_metadata?.username ?? `guest_${user.id.slice(0, 8)}`;
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          username,
+          avatar_color: "#6C63FF",
+        },
+        { onConflict: "id", ignoreDuplicates: true },
+      );
+      if (profileError) throw profileError;
+
       await GameAudio.playTap();
       router.replace("/(game)");
     } catch (err: any) {
       GameAudio.playError();
-      Alert.alert("خطا", "ورود به عنوان مهمان ممکن نیست.");
+      Alert.alert(
+        "خطای ورود مهمان",
+        err.message ?? "ورود به عنوان مهمان ممکن نیست.",
+      );
     } finally {
       setLoading(false);
     }
@@ -181,6 +207,30 @@ export default function LoginScreen() {
 
             if (access_token && refresh_token) {
               await supabase.auth.setSession({ access_token, refresh_token });
+              
+              // Check and create profile if needed
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const { data: profile } = await supabase
+                  .from("profiles")
+                  .select("id")
+                  .eq("id", user.id)
+                  .single();
+                
+                if (!profile) {
+                  // Create profile for new Google user
+                  const username = user.user_metadata?.full_name ||
+                                  user.user_metadata?.name ||
+                                  user.email?.split("@")[0] ||
+                                  `player_${user.id.slice(0, 8)}`;
+                  await supabase.from("profiles").insert({
+                    id: user.id,
+                    username: username,
+                    avatar_color: "#6C63FF",
+                  });
+                }
+              }
+              
               await GameAudio.playTap();
               router.replace("/(game)");
             }
