@@ -8,12 +8,16 @@ import { View, StyleSheet, Text } from 'react-native';
 import { Colors, Radii } from '@/theme';
 import type { Building } from '@/types/game.types';
 
-const BUILDING_EMOJIS: Record<Building['type'], string> = {
+const BUILDING_EMOJIS: Record<string, string> = {
   house: '🏠',
+  villa: '🏡',
+  shop: '🏪',
+  mall: '🏬',
+  market: '🏦',
+  office: '🏢',
   farm: '🌾',
-  market: '🏪',
-  tower: '🗼',
   warehouse: '🏭',
+  tower: '🗼',
   barracks: '⚔️',
 };
 
@@ -26,7 +30,7 @@ export const BuildingMarker: React.FC<Props> = ({
   building,
   isOwned = false,
 }) => {
-  const emoji = BUILDING_EMOJIS[building.type];
+  const emoji = BUILDING_EMOJIS[building.type] || '🏛️';
 
   return (
     <View style={[styles.marker, isOwned ? styles.owned : styles.enemy]}>

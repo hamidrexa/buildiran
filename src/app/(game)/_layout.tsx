@@ -1,6 +1,7 @@
 /**
  * BuildIran — Game Tab Layout
- * Bottom tab navigation: نقشه (Map) | جدول (Leaderboard) | پروفایل (Profile)
+ * Bottom tab navigation:
+ * نقشه (Map) | دارایی‌ها (Assets) | بازار (Market) | جدول (Leaderboard) | پروفایل (Profile)
  */
 
 import { Tabs } from 'expo-router';
@@ -14,10 +15,11 @@ export default function GameLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: Colors.brand.primary,
-        tabBarInactiveTintColor: Colors.text.muted,
+        tabBarActiveTintColor: '#A78BFA',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.35)',
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
+        tabBarBackground: () => null,
       }}
     >
       <Tabs.Screen
@@ -30,9 +32,27 @@ export default function GameLayout() {
         }}
       />
       <Tabs.Screen
+        name="assets"
+        options={{
+          title: 'دارایی‌ها',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="business" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="marketplace"
+        options={{
+          title: 'بازار',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="storefront" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="leaderboard"
         options={{
-          title: 'جدول امتیازات',
+          title: 'جدول',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="trophy" size={size} color={color} />
           ),
@@ -53,16 +73,16 @@ export default function GameLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: Colors.bg.secondary,
-    borderTopColor: Colors.border.subtle,
+    backgroundColor: 'rgba(8,12,26,0.96)',
+    borderTopColor: 'rgba(108,99,255,0.2)',
     borderTopWidth: 1,
-    height: 62,
-    paddingBottom: 8,
-    paddingTop: 4,
+    height: 66,
+    paddingBottom: 10,
+    paddingTop: 6,
   },
   tabLabel: {
-    fontFamily: Typography.fonts.persian,
-    fontSize: Typography.sizes.xs,
+    fontSize: 10,
+    fontWeight: '600',
   },
   tabItem: {
     paddingTop: 2,

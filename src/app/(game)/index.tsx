@@ -1,55 +1,64 @@
 /**
  * BuildIran — Main Map Screen
- * The core game screen: full-screen map with HUD overlay.
+ * Core game screen: full-screen map + HUD overlay + BuildModal.
+ * Now integrated with Supabase auth and asset system.
  */
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 import { GameMap } from '@/components/map/GameMap';
 import { HUD } from '@/components/game/HUD';
+import { BuildModal } from '@/components/game/BuildModal';
 import { useGameStore } from '@/store/useGameStore';
 import { useMapStore } from '@/store/useMapStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { useAssetStore } from '@/store/useAssetStore';
 import type { LatLng } from '@/types/game.types';
 import { tileIdFromCoordinate } from '@/utils/geo';
+import { supabase } from '@/lib/supabase';
+import { GameAudio } from '@/lib/audio';
 
 export default function MapScreen() {
   const selectTile = useGameStore((s) => s.selectTile);
   const setViewport = useMapStore((s) => s.setViewport);
-  const player = usePlayerStore((s) => s.player);
-  const setPlayer = usePlayerStore((s) => s.setPlayer);
+  const syncFromSupabase = usePlayerStore((s) => s.syncFromSupabase);
+  const fetchAllAssets = useAssetStore((s) => s.fetchAllAssets);
 
-  // Initialize a mock player profile if none exists
+  const [buildModalVisible, setBuildModalVisible] = useState(false);
+  const [tappedCoordinate, setTappedCoordinate] = useState<LatLng | null>(null);
+
+  // ─── Auth check + player/asset load ──────────────────────────────────────
   useEffect(() => {
-    if (!player) {
-      setPlayer({
-        id: 'player_guest',
-        username: 'فرمانده',
-        avatarUrl: null,
-        level: 1,
-        experience: 250,
-        resources: {
-          gold: 1500,
-          food: 800,
-          wood: 600,
-          stone: 350,
-          population: 25,
-        },
-        ownedTileIds: [],
-        buildingIds: [],
-        score: 100,
-        rank: 99,
-        status: 'online',
-        joinedAt: new Date().toISOString(),
-        lastSeenAt: new Date().toISOString(),
-      });
-    }
-  }, [player, setPlayer]);
+    let mounted = true;
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+
+      if (!session) {
+        // Not authenticated — redirect to login
+        router.replace('/auth/login' as any);
+        return;
+      }
+
+      // Load real player data from Supabase
+      await syncFromSupabase(session.user.id);
+      // Load all map assets
+      await fetchAllAssets();
+    });
+
+    return () => { mounted = false; };
+  }, [syncFromSupabase, fetchAllAssets]);
+
+  // ─── Map Interactions ─────────────────────────────────────────────────────
 
   const handleMapPress = useCallback(
     (coordinate: LatLng) => {
       const tileId = tileIdFromCoordinate(coordinate);
       selectTile(tileId);
+      setTappedCoordinate(coordinate);
+      setBuildModalVisible(true);
+      GameAudio.playTap();
     },
     [selectTile],
   );
@@ -60,6 +69,10 @@ export default function MapScreen() {
     },
     [setViewport],
   );
+
+  const handleBuildModalClose = useCallback(() => {
+    setBuildModalVisible(false);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -72,6 +85,13 @@ export default function MapScreen() {
 
       {/* Game HUD overlay */}
       <HUD />
+
+      {/* Build modal — opens on map tap */}
+      <BuildModal
+        visible={buildModalVisible}
+        coordinate={tappedCoordinate}
+        onClose={handleBuildModalClose}
+      />
     </View>
   );
 }
