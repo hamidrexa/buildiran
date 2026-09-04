@@ -11,24 +11,107 @@ export const APP_VERSION = "1.0.0";
 
 // ─── Map Config ──────────────────────────────────────────────────────────────
 
-/** Default center: Tehran, Iran */
+/** Default center: Tehran, Iran (Valiasr / Enghelab) */
 export const MAP_DEFAULT_CENTER = {
   latitude: 35.6892,
   longitude: 51.389,
 } as const;
 
-export const MAP_DEFAULT_ZOOM = 10;
+/** Street-level zoom so streets, alleys, and building plots are immediately visible */
+export const MAP_DEFAULT_ZOOM = 15;
 export const MAP_MIN_ZOOM = 4;
 export const MAP_MAX_ZOOM = 19;
 
 /**
- * OpenFreeMap vector tile style — completely free, no API key required.
- * Alternatives: 'https://demotiles.maplibre.org/style.json'
+ * High-detail street map style (CartoDB Voyager / OpenStreetMap raster tiles).
+ * Renders high-contrast streets, alleys, avenues, and clear Persian/English labels.
  */
-export const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+export const MAP_STREET_STYLE = {
+  version: 8,
+  name: "BuildIran Streets",
+  sources: {
+    "carto-voyager": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+      ],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors, © CARTO",
+    },
+  },
+  layers: [
+    {
+      id: "carto-voyager-layer",
+      type: "raster",
+      source: "carto-voyager",
+      minzoom: 0,
+      maxzoom: 20,
+    },
+  ],
+} as const;
 
-/** Dark game map style — use for game mode */
-export const MAP_DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
+/** Standard OpenStreetMap raster style */
+export const MAP_OSM_STYLE = {
+  version: 8,
+  name: "OpenStreetMap",
+  sources: {
+    osm: {
+      type: "raster",
+      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors",
+    },
+  },
+  layers: [
+    {
+      id: "osm-layer",
+      type: "raster",
+      source: "osm",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+} as const;
+
+/** High-contrast dark street map style for night/game mode */
+export const MAP_DARK_STYLE = {
+  version: 8,
+  name: "BuildIran Dark Streets",
+  sources: {
+    "carto-dark": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+      ],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors, © CARTO",
+    },
+  },
+  layers: [
+    {
+      id: "carto-dark-layer",
+      type: "raster",
+      source: "carto-dark",
+      minzoom: 0,
+      maxzoom: 20,
+    },
+  ],
+} as const;
+
+/** Default active map style */
+export const MAP_STYLE = MAP_STREET_STYLE;
+
+/** Backward-compatibility aliases */
+export const MAP_STYLE_URL = MAP_STREET_STYLE;
+export const MAP_DARK_STYLE_URL = MAP_DARK_STYLE;
+export const MAP_OPENFREEMAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+
 
 // ─── Game Config ─────────────────────────────────────────────────────────────
 

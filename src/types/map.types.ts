@@ -33,7 +33,7 @@ export interface MapRegion {
 
 // ─── Map Style ───────────────────────────────────────────────────────────────
 
-export type MapStyleMode = 'dark' | 'light' | 'satellite';
+export type MapStyleMode = 'streets' | 'dark' | 'osm' | 'liberty';
 
 // ─── Map Camera ──────────────────────────────────────────────────────────────
 
@@ -61,9 +61,12 @@ export interface GameMapProps {
   initialCenter?: LatLng;
   /** Initial zoom level */
   initialZoom?: number;
+  /** Custom map style specification object or URL */
+  mapStyle?: string | object;
   /** Called when user taps/clicks a coordinate on the map */
   onMapPress?: (coordinate: LatLng) => void;
   /** Called when viewport changes */
   onRegionChange?: (viewport: MapViewport) => void;
   style?: object;
 }
+

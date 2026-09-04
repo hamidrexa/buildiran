@@ -14,7 +14,7 @@ import {
   MAP_DEFAULT_ZOOM,
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
-  MAP_STYLE_URL,
+  MAP_STYLE,
 } from "@/lib/constants";
 import type { LatLng } from "@/types/game.types";
 import type { GameMapProps } from "@/types/map.types";
@@ -32,6 +32,7 @@ import { NativeSyntheticEvent, StyleSheet, View } from "react-native";
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
   initialZoom = MAP_DEFAULT_ZOOM,
+  mapStyle = MAP_STYLE,
   onMapPress,
   onRegionChange,
   style,
@@ -70,7 +71,7 @@ export const GameMap: React.FC<GameMapProps> = ({
     <View style={[styles.container, style]}>
       <Map
         style={styles.map}
-        mapStyle={MAP_STYLE_URL}
+        mapStyle={mapStyle as any}
         onPress={handlePress}
         onRegionDidChange={handleRegionDidChange}
         compass

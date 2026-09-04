@@ -17,7 +17,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type { GameMapProps } from '@/types/map.types';
 import {
-  MAP_STYLE_URL,
+  MAP_STYLE,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
   MAP_MIN_ZOOM,
@@ -27,6 +27,7 @@ import {
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
   initialZoom = MAP_DEFAULT_ZOOM,
+  mapStyle = MAP_STYLE,
   onMapPress,
   onRegionChange,
   style,
@@ -75,7 +76,7 @@ export const GameMap: React.FC<GameMapProps> = ({
           latitude: initialCenter.latitude,
           zoom: initialZoom,
         }}
-        mapStyle={MAP_STYLE_URL}
+        mapStyle={mapStyle as any}
         minZoom={MAP_MIN_ZOOM}
         maxZoom={MAP_MAX_ZOOM}
         onClick={handleClick}
