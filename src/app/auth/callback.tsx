@@ -10,12 +10,12 @@ export default function AuthCallback() {
       try {
         // For web, use window.location.href; for native, use Linking
         let url = await Linking.getInitialURL();
-        
+
         // Fallback for web: use window.location.search
-        if (!url && typeof window !== 'undefined' && window.location.search) {
+        if (!url && typeof window !== "undefined" && window.location.search) {
           url = window.location.href;
         }
-        
+
         if (!url) {
           router.replace("/auth/login");
           return;
@@ -25,11 +25,16 @@ export default function AuthCallback() {
         const access_token = parsed.queryParams?.access_token as string;
         const refresh_token = parsed.queryParams?.refresh_token as string;
         const error = parsed.queryParams?.error as string;
-        const error_description = parsed.queryParams?.error_description as string;
+        const error_description = parsed.queryParams
+          ?.error_description as string;
 
         // Check for OAuth error
         if (error) {
-          console.error("[AuthCallback] OAuth error:", error, error_description);
+          console.error(
+            "[AuthCallback] OAuth error:",
+            error,
+            error_description,
+          );
           Alert.alert("خطا", error_description || "ورود با گوگل ناموفق بود");
           router.replace("/auth/login");
           return;
@@ -54,7 +59,9 @@ export default function AuthCallback() {
         }
 
         // Verify user exists
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           console.error("[AuthCallback] No user after session set");
           router.replace("/auth/login");
@@ -71,11 +78,14 @@ export default function AuthCallback() {
         if (profileError || !profile) {
           console.log("[AuthCallback] Creating profile for new user");
           // Create profile for new Google user
-          const username = user.user_metadata?.full_name ||
-                          user.user_metadata?.name ||
-                          user.email?.split("@")[0] ||
-                          `player_${user.id.slice(0, 8)}`;
-          const avatar_color = user.user_metadata?.avatar_url ? "#6C63FF" : "#EC4899";
+          const username =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email?.split("@")[0] ||
+            `player_${user.id.slice(0, 8)}`;
+          const avatar_color = user.user_metadata?.avatar_url
+            ? "#6C63FF"
+            : "#EC4899";
 
           const { error: insertError } = await supabase
             .from("profiles")
@@ -86,7 +96,10 @@ export default function AuthCallback() {
             });
 
           if (insertError) {
-            console.error("[AuthCallback] Profile creation error:", insertError.message);
+            console.error(
+              "[AuthCallback] Profile creation error:",
+              insertError.message,
+            );
             // Continue anyway, profile might be created by trigger
           }
         }

@@ -7,11 +7,11 @@
 import { Text } from "@/components/ui/Text";
 import { GameAudio } from "@/lib/audio";
 import {
-  useFloatIn,
-  useGlowPulse,
-  useParticle,
-  useScalePop,
-  useShake,
+    useFloatIn,
+    useGlowPulse,
+    useParticle,
+    useScalePop,
+    useShake,
 } from "@/lib/effects";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,21 +21,21 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
 } from "react-native-reanimated";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -146,7 +146,8 @@ export default function LoginScreen() {
 
       // The database trigger normally creates this row, but provisioning it
       // here also supports projects where the trigger has not been deployed.
-      const username = user.user_metadata?.username ?? `guest_${user.id.slice(0, 8)}`;
+      const username =
+        user.user_metadata?.username ?? `guest_${user.id.slice(0, 8)}`;
       const { error: profileError } = await supabase.from("profiles").upsert(
         {
           id: user.id,
@@ -207,22 +208,25 @@ export default function LoginScreen() {
 
             if (access_token && refresh_token) {
               await supabase.auth.setSession({ access_token, refresh_token });
-              
+
               // Check and create profile if needed
-              const { data: { user } } = await supabase.auth.getUser();
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
               if (user) {
                 const { data: profile } = await supabase
                   .from("profiles")
                   .select("id")
                   .eq("id", user.id)
                   .single();
-                
+
                 if (!profile) {
                   // Create profile for new Google user
-                  const username = user.user_metadata?.full_name ||
-                                  user.user_metadata?.name ||
-                                  user.email?.split("@")[0] ||
-                                  `player_${user.id.slice(0, 8)}`;
+                  const username =
+                    user.user_metadata?.full_name ||
+                    user.user_metadata?.name ||
+                    user.email?.split("@")[0] ||
+                    `player_${user.id.slice(0, 8)}`;
                   await supabase.from("profiles").insert({
                     id: user.id,
                     username: username,
@@ -230,7 +234,7 @@ export default function LoginScreen() {
                   });
                 }
               }
-              
+
               await GameAudio.playTap();
               router.replace("/(game)");
             }
