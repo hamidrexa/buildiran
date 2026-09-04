@@ -2,7 +2,7 @@
  * BuildIran — Map TypeScript Types
  */
 
-import type { LatLng } from './game.types';
+import type { Asset, LatLng } from './game.types';
 
 // ─── Viewport ────────────────────────────────────────────────────────────────
 
@@ -67,6 +67,14 @@ export interface GameMapProps {
   onMapPress?: (coordinate: LatLng) => void;
   /** Called when viewport changes */
   onRegionChange?: (viewport: MapViewport) => void;
+  /** Built assets to display on the map */
+  assets?: Asset[];
+  /** Current user ID to determine building ownership */
+  currentUserId?: string | null;
+  /** Currently selected asset ID */
+  selectedAssetId?: string | null;
+  /** Called when user taps/clicks an asset marker */
+  onAssetPress?: (asset: Asset) => void;
   style?: object;
 }
 

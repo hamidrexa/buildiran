@@ -1,13 +1,7 @@
-/**
- * BuildIran — GameMap (Web)
- * Uses react-map-gl (MapLibre) with OpenFreeMap vector tiles (no API key).
- *
- * Requires: npm install react-map-gl maplibre-gl
- */
-
 import React, { useCallback } from 'react';
 import { StyleSheet } from 'react-native';
 import Map, {
+  Marker,
   NavigationControl,
   ScaleControl,
   type MapMouseEvent,
@@ -16,6 +10,7 @@ import Map, {
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type { GameMapProps } from '@/types/map.types';
+import { BuildingMarker } from '@/components/game/BuildingMarker';
 import {
   MAP_STYLE,
   MAP_DEFAULT_CENTER,
@@ -30,6 +25,10 @@ export const GameMap: React.FC<GameMapProps> = ({
   mapStyle = MAP_STYLE,
   onMapPress,
   onRegionChange,
+  assets = [],
+  currentUserId,
+  selectedAssetId,
+  onAssetPress,
   style,
 }) => {
   const handleClick = useCallback(
@@ -86,6 +85,31 @@ export const GameMap: React.FC<GameMapProps> = ({
       >
         <NavigationControl position="top-left" />
         <ScaleControl position="bottom-left" unit="metric" />
+
+        {/* On-Map Built Assets */}
+        {assets.map((asset) => {
+          const isOwned = currentUserId ? asset.ownerId === currentUserId : false;
+          const isSelected = selectedAssetId === asset.id;
+
+          return (
+            <Marker
+              key={asset.id}
+              longitude={asset.longitude}
+              latitude={asset.latitude}
+              anchor="bottom"
+              onClick={(e) => {
+                e.originalEvent.stopPropagation();
+                onAssetPress?.(asset);
+              }}
+            >
+              <BuildingMarker
+                asset={asset}
+                isOwned={isOwned}
+                isSelected={isSelected}
+              />
+            </Marker>
+          );
+        })}
       </Map>
     </div>
   );

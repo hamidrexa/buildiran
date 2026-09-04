@@ -18,9 +18,11 @@ import {
 } from "@/lib/constants";
 import type { LatLng } from "@/types/game.types";
 import type { GameMapProps } from "@/types/map.types";
+import { BuildingMarker } from "@/components/game/BuildingMarker";
 import {
   Camera,
   Map,
+  Marker,
   type CameraRef,
   type PressEvent,
   type PressEventWithFeatures,
@@ -35,6 +37,10 @@ export const GameMap: React.FC<GameMapProps> = ({
   mapStyle = MAP_STYLE,
   onMapPress,
   onRegionChange,
+  assets = [],
+  currentUserId,
+  selectedAssetId,
+  onAssetPress,
   style,
 }) => {
   const cameraRef = useRef<CameraRef>(null);
@@ -91,6 +97,29 @@ export const GameMap: React.FC<GameMapProps> = ({
           minZoom={MAP_MIN_ZOOM}
           maxZoom={MAP_MAX_ZOOM}
         />
+
+        {/* On-Map Built Assets */}
+        {assets.map((asset) => {
+          const isOwned = currentUserId ? asset.ownerId === currentUserId : false;
+          const isSelected = selectedAssetId === asset.id;
+
+          return (
+            <Marker
+              key={asset.id}
+              id={asset.id}
+              lngLat={[asset.longitude, asset.latitude]}
+              anchor="bottom"
+              selected={isSelected}
+              onPress={() => onAssetPress?.(asset)}
+            >
+              <BuildingMarker
+                asset={asset}
+                isOwned={isOwned}
+                isSelected={isSelected}
+              />
+            </Marker>
+          );
+        })}
       </Map>
     </View>
   );

@@ -16,9 +16,10 @@ interface AssetState {
   // ─── Asset Actions ────────────────────────────────────────────────────────
   fetchMyAssets: (userId: string) => Promise<void>;
   fetchAllAssets: () => Promise<void>;
+  subscribeToAssets: () => () => void;
   buildAsset: (params: {
     userId: string;
-    type: BuildingType;
+    type: BuildingType | string;
     latitude: number;
     longitude: number;
     tileId: string;
@@ -63,6 +64,8 @@ function dbRowToAsset(row: Record<string, any>): Asset {
     askPrice: row.ask_price ?? null,
     builtAt: row.built_at,
     upgradedAt: row.upgraded_at ?? null,
+    ownerUsername: row.owner?.username ?? row.profiles?.username ?? undefined,
+    ownerAvatarColor: row.owner?.avatar_color ?? row.profiles?.avatar_color ?? undefined,
   };
 }
 
@@ -77,7 +80,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('assets')
-        .select('*')
+        .select('*, owner:profiles(username, avatar_color)')
         .eq('owner_id', userId);
       if (error) throw error;
       const map: Record<string, Asset> = {};
@@ -95,22 +98,70 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
   fetchAllAssets: async () => {
     set({ isLoadingAssets: true });
     try {
-      const { data, error } = await supabase
-        .from('assets')
-        .select('*')
-        .order('built_at', { ascending: false })
-        .limit(200);
-      if (error) throw error;
       const map: Record<string, Asset> = {};
-      (data ?? []).forEach((row) => {
-        map[row.id] = dbRowToAsset(row);
-      });
+
+      const pageSize = 1000;
+      let page = 0;
+      let fetchedCount = 0;
+
+      do {
+        const { data, error } = await supabase
+          .from('assets')
+          .select('*, owner:profiles(username, avatar_color)')
+          .order('built_at', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        if (error) throw error;
+
+        (data ?? []).forEach((row) => {
+          map[row.id] = dbRowToAsset(row);
+        });
+        fetchedCount = data?.length ?? 0;
+        page += 1;
+      } while (fetchedCount === pageSize);
+
       set({ assets: map });
     } catch (err) {
       console.warn('[AssetStore] fetchAllAssets error:', err);
     } finally {
       set({ isLoadingAssets: false });
     }
+  },
+
+  subscribeToAssets: () => {
+    const channel = supabase
+      .channel('public:assets')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'assets' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const updatedAsset = dbRowToAsset(payload.new);
+            set((state) => ({
+              assets: {
+                ...state.assets,
+                [updatedAsset.id]: {
+                  ...state.assets[updatedAsset.id],
+                  ...updatedAsset,
+                },
+              },
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any)?.id;
+            if (deletedId) {
+              set((state) => {
+                const next = { ...state.assets };
+                delete next[deletedId];
+                return { assets: next };
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   buildAsset: async ({ userId, type, latitude, longitude, tileId, marketValue, powerBonus }) => {
