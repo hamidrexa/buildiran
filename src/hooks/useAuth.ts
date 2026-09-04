@@ -3,17 +3,18 @@
  * Listens to Supabase auth state, fetches/upserts player profile.
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { Session } from '@supabase/supabase-js';
-import type { Player } from '@/types/game.types';
+import { supabase } from "@/lib/supabase";
+import { usePlayerStore } from "@/store/usePlayerStore";
+import type { Player } from "@/types/game.types";
+import type { Session } from "@supabase/supabase-js";
+import { useCallback, useEffect, useState } from "react";
 
 function dbProfileToPlayer(row: Record<string, any>): Player {
   return {
     id: row.id,
-    username: row.username ?? 'بازیکن',
+    username: row.username ?? "بازیکن",
     avatarUrl: row.avatar_url ?? null,
-    avatarColor: row.avatar_color ?? '#6C63FF',
+    avatarColor: row.avatar_color ?? "#6C63FF",
     level: row.level ?? 1,
     experience: row.experience ?? 0,
     cash: row.cash ?? 5000,
@@ -32,7 +33,7 @@ function dbProfileToPlayer(row: Record<string, any>): Player {
     buildingIds: [],
     score: row.score ?? 0,
     rank: row.rank ?? 9999,
-    status: row.status ?? 'online',
+    status: row.status ?? "online",
     joinedAt: row.joined_at ?? new Date().toISOString(),
     lastSeenAt: row.last_seen_at ?? new Date().toISOString(),
   };
@@ -45,13 +46,13 @@ export function useAuth() {
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
       .single();
 
     if (error) {
-      console.warn('[useAuth] fetchProfile error:', error.message);
+      console.warn("[useAuth] fetchProfile error:", error.message);
       return null;
     }
     return data ? dbProfileToPlayer(data) : null;
@@ -85,7 +86,7 @@ export function useAuth() {
           setProfile(null);
         }
         setLoading(false);
-      }
+      },
     );
 
     return () => {
@@ -96,6 +97,7 @@ export function useAuth() {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    usePlayerStore.getState().clearPlayer(); // add this line
   }, []);
 
   return { session, profile, loading, refreshProfile, signOut };

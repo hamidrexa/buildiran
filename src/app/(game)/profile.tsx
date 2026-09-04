@@ -1,11 +1,13 @@
 /**
- * BuildIran — Player Profile Screen
+ * BuildIran — Player Profile Screen (redesigned)
+ * Two clear concerns: Game (stats/resources) and Account (auth/security).
  */
 
 import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
 import t from "@/i18n";
+import { showAlert, showConfirm } from "@/lib/alert";
 import { GameAudio } from "@/lib/audio";
 import { supabase } from "@/lib/supabase";
 import { usePlayerStore } from "@/store/usePlayerStore";
@@ -16,45 +18,44 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const lang = t();
-
 WebBrowser.maybeCompleteAuthSession();
+
+type Tab = "game" | "account";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const player = usePlayerStore((s) => s.player);
   const { session, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<Tab>("game");
 
   const isGoogleUser =
     session?.user?.app_metadata?.provider === "google" ||
     session?.user?.app_metadata?.providers?.includes("google");
 
-  const handleLogout = async () => {
-    Alert.alert("خروج از حساب", "آیا می‌خواهید از حساب کاربری خود خارج شوید؟", [
-      { text: "انصراف", style: "cancel" },
-      {
-        text: "خروج",
-        style: "destructive",
-        onPress: async () => {
-          setLoading(true);
-          GameAudio.playTap();
-          await signOut();
-          router.replace("/auth/login" as any);
-          setLoading(false);
-        },
+  const handleLogout = () => {
+    showConfirm(
+      "خروج از حساب",
+      "آیا می‌خواهید از حساب کاربری خود خارج شوید؟",
+      async () => {
+        setLoading(true);
+        GameAudio.playTap();
+        await signOut();
+        router.replace("/auth/login" as any);
+        setLoading(false);
       },
-    ]);
+      { confirmText: "خروج", destructive: true },
+    );
   };
 
   const handleLinkGoogle = async () => {
@@ -81,24 +82,21 @@ export default function ProfileScreen() {
             const refresh_token = parsed.queryParams?.refresh_token as string;
             if (access_token && refresh_token) {
               await supabase.auth.setSession({ access_token, refresh_token });
-              Alert.alert("✅", "حساب گوگل با موفقیت متصل شد.");
+              showAlert("✅", "حساب گوگل با موفقیت متصل شد.");
             }
           }
         }
+      } else {
+        showAlert(
+          "خطا",
+          "پاسخی از سرویس گوگل دریافت نشد. لطفاً دوباره تلاش کنید.",
+        );
       }
     } catch (err: any) {
-      Alert.alert("خطا", err.message ?? "مشکلی در اتصال گوگل پیش آمد.");
+      showAlert("خطا", err.message ?? "مشکلی در اتصال گوگل پیش آمد.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSetPassword = () => {
-    router.push("/auth/forgot-password" as any);
-  };
-
-  const handleForgotPassword = () => {
-    router.push("/auth/forgot-password" as any);
   };
 
   if (!player) {
@@ -112,15 +110,9 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + Spacing.xl },
-      ]}
-    >
-      {/* Avatar & Name */}
-      <View style={styles.header}>
+    <View style={styles.container}>
+      {/* Header — always visible */}
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <View style={styles.avatar}>
           <Text variant="heading" weight="bold" color="brand" center>
             {player.username.charAt(0).toUpperCase()}
@@ -132,232 +124,277 @@ export default function ProfileScreen() {
         <Text variant="caption" color="secondary">
           {lang.player.level} {player.level} · {lang.player.rank} #{player.rank}
         </Text>
-      </View>
 
-      {/* ─── Account Section ─── */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons
-            name="person-circle-outline"
-            size={20}
-            color={Colors.brand.primary}
-          />
-          <Text variant="label" weight="semibold">
-            حساب کاربری
-          </Text>
-        </View>
-
-        <Card style={styles.card}>
-          {/* Email */}
-          <View style={styles.accountRow}>
-            <Ionicons
-              name="mail-outline"
-              size={18}
-              color={Colors.text.secondary}
-            />
-            <Text variant="body" color="secondary">
-              {session?.user?.email ?? "نامشخص"}
-            </Text>
-          </View>
-
-          {/* Google Status */}
-          <View style={styles.accountRow}>
-            <Ionicons
-              name={isGoogleUser ? "checkmark-circle" : "link-outline"}
-              size={18}
-              color={isGoogleUser ? Colors.success : Colors.text.secondary}
-            />
-            <Text variant="body" color="secondary">
-              {isGoogleUser ? "حساب گوگل متصل شده" : "حساب گوگل متصل نیست"}
-            </Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* Link Google Button */}
-          {!isGoogleUser && (
-            <TouchableOpacity
-              style={styles.accountBtn}
-              onPress={handleLinkGoogle}
-              disabled={loading}
-            >
-              <View style={styles.accountBtnContent}>
-                <Ionicons name="logo-google" size={20} color="#EA4335" />
-                <Text variant="body" weight="medium">
-                  اتصال حساب گوگل
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={Colors.text.muted}
-              />
-            </TouchableOpacity>
-          )}
-
-          {/* Set Password (Google users) */}
-          {isGoogleUser && (
-            <TouchableOpacity
-              style={styles.accountBtn}
-              onPress={handleSetPassword}
-              disabled={loading}
-            >
-              <View style={styles.accountBtnContent}>
-                <Ionicons
-                  name="key-outline"
-                  size={20}
-                  color={Colors.brand.primary}
-                />
-                <Text variant="body" weight="medium">
-                  تنظیم رمز عبور
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={Colors.text.muted}
-              />
-            </TouchableOpacity>
-          )}
-
-          {/* Forgot Password (non-Google users) */}
-          {!isGoogleUser && (
-            <TouchableOpacity
-              style={styles.accountBtn}
-              onPress={handleForgotPassword}
-              disabled={loading}
-            >
-              <View style={styles.accountBtnContent}>
-                <Ionicons
-                  name="refresh-outline"
-                  size={20}
-                  color={Colors.brand.primary}
-                />
-                <Text variant="body" weight="medium">
-                  فراموشی رمز عبور
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={Colors.text.muted}
-              />
-            </TouchableOpacity>
-          )}
-
-          {/* Logout Button */}
+        {/* Segmented control — the actual "separate concerns" split */}
+        <View style={styles.tabBar}>
           <TouchableOpacity
-            style={[styles.accountBtn, styles.logoutBtn]}
-            onPress={handleLogout}
-            disabled={loading}
+            style={[styles.tabBtn, tab === "game" && styles.tabBtnActive]}
+            onPress={() => {
+              setTab("game");
+              GameAudio.playTap();
+            }}
           >
-            {loading ? (
-              <ActivityIndicator size="small" color={Colors.error} />
-            ) : (
-              <View style={styles.accountBtnContent}>
-                <Ionicons
-                  name="log-out-outline"
-                  size={20}
-                  color={Colors.error}
+            <Ionicons
+              name="game-controller-outline"
+              size={16}
+              color={tab === "game" ? "#0D0F14" : Colors.text.secondary}
+            />
+            <Text
+              style={[
+                styles.tabBtnText,
+                tab === "game" && styles.tabBtnTextActive,
+              ]}
+            >
+              بازی
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabBtn, tab === "account" && styles.tabBtnActive]}
+            onPress={() => {
+              setTab("account");
+              GameAudio.playTap();
+            }}
+          >
+            <Ionicons
+              name="person-circle-outline"
+              size={16}
+              color={tab === "account" ? "#0D0F14" : Colors.text.secondary}
+            />
+            <Text
+              style={[
+                styles.tabBtnText,
+                tab === "account" && styles.tabBtnTextActive,
+              ]}
+            >
+              حساب کاربری
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        {tab === "game" ? (
+          <>
+            <Card style={styles.card}>
+              <Text variant="label" color="secondary">
+                {lang.player.experience}
+              </Text>
+              <View style={styles.xpBarBg}>
+                <View
+                  style={[
+                    styles.xpBarFill,
+                    {
+                      width: `${Math.min((player.experience % 1000) / 10, 100)}%`,
+                    },
+                  ]}
                 />
-                <Text variant="body" weight="medium" color={Colors.error}>
-                  خروج از حساب
+              </View>
+              <Text variant="caption" color="muted">
+                {player.experience.toLocaleString("fa-IR")} XP
+              </Text>
+            </Card>
+
+            <Card style={styles.card}>
+              <Text variant="label" color="secondary" style={styles.cardTitle}>
+                آمار قدرت
+              </Text>
+              <View style={styles.statGrid}>
+                <StatChip icon="⚔️" label="قدرت" value={player.power} />
+                <StatChip
+                  icon="💰"
+                  label="ثروت"
+                  value={Math.min(player.wealth, 999999)}
+                />
+                <StatChip icon="🔥" label="فعالیت" value={player.activity} />
+                <StatChip icon="⭐" label="محبوبیت" value={player.popularity} />
+              </View>
+            </Card>
+
+            <Card style={styles.card}>
+              <Text variant="label" color="secondary" style={styles.cardTitle}>
+                {lang.hud.resources}
+              </Text>
+              <View style={styles.resourceGrid}>
+                <ResourceRow
+                  icon="🪙"
+                  label={lang.resources.gold}
+                  value={player.resources.gold}
+                />
+                <ResourceRow
+                  icon="🌾"
+                  label={lang.resources.food}
+                  value={player.resources.food}
+                />
+                <ResourceRow
+                  icon="🪵"
+                  label={lang.resources.wood}
+                  value={player.resources.wood}
+                />
+                <ResourceRow
+                  icon="🪨"
+                  label={lang.resources.stone}
+                  value={player.resources.stone}
+                />
+                <ResourceRow
+                  icon="👥"
+                  label={lang.resources.population}
+                  value={player.resources.population}
+                />
+              </View>
+            </Card>
+
+            <Card style={styles.card}>
+              <Text variant="label" color="secondary" style={styles.cardTitle}>
+                خلاصه پیشرفت
+              </Text>
+              <StatRow
+                label={lang.player.territory}
+                value={`${player.ownedTileIds.length} قطعه`}
+              />
+              <StatRow
+                label={lang.player.buildings}
+                value={`${player.buildingIds.length} سازه`}
+              />
+              <StatRow
+                label="امتیاز کل"
+                value={player.score.toLocaleString("fa-IR")}
+              />
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card style={styles.card}>
+              <View style={styles.accountRow}>
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={Colors.text.secondary}
+                />
+                <Text variant="body" color="secondary">
+                  {session?.user?.email ?? "نامشخص"}
                 </Text>
               </View>
-            )}
-          </TouchableOpacity>
-        </Card>
-      </View>
+              <View style={styles.accountRow}>
+                <Ionicons
+                  name={isGoogleUser ? "checkmark-circle" : "link-outline"}
+                  size={18}
+                  color={
+                    isGoogleUser
+                      ? Colors.semantic.success
+                      : Colors.text.secondary
+                  }
+                />
+                <Text variant="body" color="secondary">
+                  {isGoogleUser ? "حساب گوگل متصل شده" : "حساب گوگل متصل نیست"}
+                </Text>
+              </View>
 
-      {/* ─── Game Section ─── */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons
-            name="game-controller-outline"
-            size={20}
-            color={Colors.brand.primary}
-          />
-          <Text variant="label" weight="semibold">
-            بازی
-          </Text>
-        </View>
+              <View style={styles.divider} />
 
-        {/* XP Bar */}
-        <Card style={styles.card}>
-          <Text variant="label" color="secondary">
-            {lang.player.experience}
-          </Text>
-          <View style={styles.xpBarBg}>
-            <View
-              style={[
-                styles.xpBarFill,
-                { width: `${Math.min((player.experience % 1000) / 10, 100)}%` },
-              ]}
-            />
-          </View>
-          <Text variant="caption" color="muted">
-            {player.experience.toLocaleString("fa-IR")} XP
-          </Text>
-        </Card>
+              {!isGoogleUser && (
+                <TouchableOpacity
+                  style={styles.accountBtn}
+                  onPress={handleLinkGoogle}
+                  disabled={loading}
+                >
+                  <View style={styles.accountBtnContent}>
+                    <Ionicons name="logo-google" size={20} color="#EA4335" />
+                    <Text variant="body" weight="medium">
+                      اتصال حساب گوگل
+                    </Text>
+                  </View>
+                  {loading ? (
+                    <ActivityIndicator size="small" color={Colors.text.muted} />
+                  ) : (
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={Colors.text.muted}
+                    />
+                  )}
+                </TouchableOpacity>
+              )}
 
-        {/* Resources */}
-        <Card style={styles.card}>
-          <Text variant="label" color="secondary" style={styles.cardTitle}>
-            {lang.hud.resources}
-          </Text>
-          <View style={styles.resourceGrid}>
-            <ResourceRow
-              icon="🪙"
-              label={lang.resources.gold}
-              value={player.resources.gold}
-            />
-            <ResourceRow
-              icon="🌾"
-              label={lang.resources.food}
-              value={player.resources.food}
-            />
-            <ResourceRow
-              icon="🪵"
-              label={lang.resources.wood}
-              value={player.resources.wood}
-            />
-            <ResourceRow
-              icon="🪨"
-              label={lang.resources.stone}
-              value={player.resources.stone}
-            />
-            <ResourceRow
-              icon="👥"
-              label={lang.resources.population}
-              value={player.resources.population}
-            />
-          </View>
-        </Card>
+              <TouchableOpacity
+                style={styles.accountBtn}
+                onPress={() => router.push("/auth/forgot-password" as any)}
+                disabled={loading}
+              >
+                <View style={styles.accountBtnContent}>
+                  <Ionicons
+                    name={isGoogleUser ? "key-outline" : "refresh-outline"}
+                    size={20}
+                    color={Colors.brand.primary}
+                  />
+                  <Text variant="body" weight="medium">
+                    {isGoogleUser ? "تنظیم رمز عبور" : "فراموشی رمز عبور"}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={Colors.text.muted}
+                />
+              </TouchableOpacity>
 
-        {/* Stats */}
-        <Card style={styles.card}>
-          <Text variant="label" color="secondary" style={styles.cardTitle}>
-            آمار بازی
-          </Text>
-          <StatRow
-            label={lang.player.territory}
-            value={`${player.ownedTileIds.length} قطعه`}
-          />
-          <StatRow
-            label={lang.player.buildings}
-            value={`${player.buildingIds.length} سازه`}
-          />
-          <StatRow
-            label="امتیاز کل"
-            value={player.score.toLocaleString("fa-IR")}
-          />
-        </Card>
-      </View>
-    </ScrollView>
+              <TouchableOpacity
+                style={[styles.accountBtn, styles.logoutBtn]}
+                onPress={handleLogout}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={Colors.semantic.error}
+                  />
+                ) : (
+                  <View style={styles.accountBtnContent}>
+                    <Ionicons
+                      name="log-out-outline"
+                      size={20}
+                      color={Colors.semantic.error}
+                    />
+                    <Text
+                      variant="body"
+                      weight="medium"
+                      style={{ color: Colors.semantic.error }}
+                    >
+                      خروج از حساب
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </Card>
+
+            <Card style={styles.card}>
+              <StatRow
+                label="تاریخ عضویت"
+                value={
+                  player.joinedAt
+                    ? new Date(player.joinedAt).toLocaleDateString("fa-IR")
+                    : "—"
+                }
+              />
+              <StatRow
+                label="وضعیت"
+                value={
+                  player.status === "in_game"
+                    ? "در حال بازی"
+                    : player.status === "online"
+                      ? lang.player.online
+                      : lang.player.offline
+                }
+              />
+            </Card>
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
 
 const ResourceRow: React.FC<{ icon: string; label: string; value: number }> = ({
   icon,
@@ -389,6 +426,18 @@ const StatRow: React.FC<{ label: string; value: string }> = ({
   </View>
 );
 
+const StatChip: React.FC<{ icon: string; label: string; value: number }> = ({
+  icon,
+  label,
+  value,
+}) => (
+  <View style={chipStyles.chip}>
+    <Text style={chipStyles.icon}>{icon}</Text>
+    <Text style={chipStyles.value}>{value.toLocaleString("fa-IR")}</Text>
+    <Text style={chipStyles.label}>{label}</Text>
+  </View>
+);
+
 const rowStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
@@ -400,6 +449,20 @@ const rowStyles = StyleSheet.create({
   },
   labelGroup: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
   icon: { fontSize: 16 },
+});
+
+const chipStyles = StyleSheet.create({
+  chip: {
+    flexBasis: "48%",
+    backgroundColor: Colors.bg.tertiary,
+    borderRadius: Radii.md,
+    padding: Spacing.sm,
+    alignItems: "center",
+    gap: 2,
+  },
+  icon: { fontSize: 18 },
+  value: { color: Colors.text.primary, fontWeight: "800", fontSize: 15 },
+  label: { color: Colors.text.muted, fontSize: 11 },
 });
 
 const styles = StyleSheet.create({
@@ -415,7 +478,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: Colors.bg.primary,
   },
-  header: { alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.md },
+  header: {
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.subtle,
+  },
   avatar: {
     width: 80,
     height: 80,
@@ -426,9 +495,36 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.brand.primary,
   },
+
+  tabBar: {
+    flexDirection: "row",
+    backgroundColor: Colors.bg.tertiary,
+    borderRadius: Radii.full,
+    padding: 4,
+    marginTop: Spacing.sm,
+    gap: 4,
+  },
+  tabBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: Radii.full,
+  },
+  tabBtnActive: { backgroundColor: Colors.brand.primary },
+  tabBtnText: { color: Colors.text.secondary, fontSize: 13, fontWeight: "700" },
+  tabBtnTextActive: { color: "#0D0F14" },
+
   card: { gap: Spacing.sm },
   cardTitle: { marginBottom: Spacing.xs },
   resourceGrid: { gap: Spacing.sm },
+  statGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    justifyContent: "space-between",
+  },
   xpBarBg: {
     height: 6,
     backgroundColor: Colors.bg.tertiary,
@@ -442,16 +538,6 @@ const styles = StyleSheet.create({
     borderRadius: Radii.full,
   },
 
-  // Section styles
-  section: { gap: Spacing.sm },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.xs,
-    paddingHorizontal: Spacing.xs,
-  },
-
-  // Account section
   accountRow: {
     flexDirection: "row",
     alignItems: "center",

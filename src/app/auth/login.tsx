@@ -1,17 +1,16 @@
 /**
- * BuildIran — Login Screen
- * Dazzling strategic-game login with animated particles, glassmorphism,
- * glow effects, and Supabase email/password authentication.
+ * BuildIran — Login Screen (redesigned)
  */
 
 import { Text } from "@/components/ui/Text";
+import { showAlert } from "@/lib/alert";
 import { GameAudio } from "@/lib/audio";
 import {
-    useFloatIn,
-    useGlowPulse,
-    useParticle,
-    useScalePop,
-    useShake,
+  useFloatIn,
+  useGlowPulse,
+  useParticle,
+  useScalePop,
+  useShake,
 } from "@/lib/effects";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,28 +20,26 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeInUp,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
-
-// ─── Particle ──────────────────────────────────────────────────────────────
 
 const Particle: React.FC<{
   index: number;
@@ -69,8 +66,6 @@ const Particle: React.FC<{
   );
 };
 
-// ─── Pre-generate stable particle data ───────────────────────────────────────
-
 const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
   index: i,
   x: Math.floor(Math.random() * (SCREEN_W - 10)),
@@ -78,18 +73,20 @@ const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
   color: ["#6C63FF", "#FF6B6B", "#FFD93D", "#4ECDC4", "#A78BFA"][i % 5],
 }));
 
-// ─── Main Login Screen ────────────────────────────────────────────────────────
-
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState<"email" | "password" | null>(
+    null,
+  );
 
   const passwordRef = useRef<TextInput>(null);
 
   const logoGlow = useGlowPulse(0.6, 1.0);
-  const formFloat = useFloatIn(200);
+  const formFloat = useFloatIn(150);
   const buttonScale = useScalePop();
   const formShake = useShake();
 
@@ -99,29 +96,24 @@ export default function LoginScreen() {
       GameAudio.playError();
       return;
     }
-
     buttonScale.pop();
     setLoading(true);
-
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
-
       if (error) throw error;
-
       await GameAudio.playTap();
       router.replace("/(game)");
     } catch (err: any) {
       GameAudio.playError();
       formShake.shake();
-      Alert.alert(
+      showAlert(
         "خطای ورود",
         err.message === "Invalid login credentials"
           ? "ایمیل یا رمز عبور اشتباه است."
           : (err.message ?? "خطایی رخ داد. دوباره تلاش کنید."),
-        [{ text: "باشه", style: "default" }],
       );
     } finally {
       setLoading(false);
@@ -134,35 +126,26 @@ export default function LoginScreen() {
     try {
       const { data, error } = await supabase.auth.signInAnonymously({
         options: {
-          data: {
-            username: `guest_${Math.random().toString(36).slice(2, 8)}`,
-          },
+          data: { username: `guest_${Math.random().toString(36).slice(2, 8)}` },
         },
       });
       if (error) throw error;
-
       const user = data.user;
       if (!user) throw new Error("Guest session was not created.");
-
-      // The database trigger normally creates this row, but provisioning it
-      // here also supports projects where the trigger has not been deployed.
       const username =
         user.user_metadata?.username ?? `guest_${user.id.slice(0, 8)}`;
-      const { error: profileError } = await supabase.from("profiles").upsert(
-        {
-          id: user.id,
-          username,
-          avatar_color: "#6C63FF",
-        },
-        { onConflict: "id", ignoreDuplicates: true },
-      );
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(
+          { id: user.id, username, avatar_color: "#6C63FF" },
+          { onConflict: "id", ignoreDuplicates: true },
+        );
       if (profileError) throw profileError;
-
       await GameAudio.playTap();
       router.replace("/(game)");
     } catch (err: any) {
       GameAudio.playError();
-      Alert.alert(
+      showAlert(
         "خطای ورود مهمان",
         err.message ?? "ورود به عنوان مهمان ممکن نیست.",
       );
@@ -176,25 +159,18 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const redirectUrl = Linking.createURL("/auth/callback");
-
       if (Platform.OS === "web") {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: {
-            redirectTo: redirectUrl,
-          },
+          options: { redirectTo: redirectUrl },
         });
         if (error) throw error;
       } else {
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: {
-            redirectTo: redirectUrl,
-            skipBrowserRedirect: true,
-          },
+          options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
         });
         if (error) throw error;
-
         if (data?.url) {
           const res = await WebBrowser.openAuthSessionAsync(
             data.url,
@@ -205,11 +181,8 @@ export default function LoginScreen() {
             const access_token = parsedUrl.queryParams?.access_token as string;
             const refresh_token = parsedUrl.queryParams
               ?.refresh_token as string;
-
             if (access_token && refresh_token) {
               await supabase.auth.setSession({ access_token, refresh_token });
-
-              // Check and create profile if needed
               const {
                 data: { user },
               } = await supabase.auth.getUser();
@@ -219,9 +192,7 @@ export default function LoginScreen() {
                   .select("id")
                   .eq("id", user.id)
                   .single();
-
                 if (!profile) {
-                  // Create profile for new Google user
                   const username =
                     user.user_metadata?.full_name ||
                     user.user_metadata?.name ||
@@ -229,12 +200,11 @@ export default function LoginScreen() {
                     `player_${user.id.slice(0, 8)}`;
                   await supabase.from("profiles").insert({
                     id: user.id,
-                    username: username,
+                    username,
                     avatar_color: "#6C63FF",
                   });
                 }
               }
-
               await GameAudio.playTap();
               router.replace("/(game)");
             }
@@ -243,7 +213,7 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       GameAudio.playError();
-      Alert.alert(
+      showAlert(
         "خطای ورود با گوگل",
         err.message ?? "مشکلی در ورود با گوگل پیش آمد.",
       );
@@ -254,34 +224,49 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Background gradient */}
       <LinearGradient
         colors={["#080C1A", "#0D1533", "#110A2E"]}
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-
-      {/* Radial glow orbs */}
       <View style={[styles.orb, styles.orbTopLeft]} />
       <View style={[styles.orb, styles.orbBottomRight]} />
       <View style={[styles.orb, styles.orbCenter]} />
-
-      {/* Floating particles */}
       {PARTICLES.map((p) => (
         <Particle key={p.index} {...p} />
       ))}
+
+      {/* Always-visible register CTA — new users see this immediately, no scrolling */}
+      <Animated.View
+        entering={FadeIn.duration(400)}
+        style={[styles.registerBar, { top: insets.top + 10 }]}
+      >
+        <Text style={styles.registerBarText}>حساب ندارید؟</Text>
+        <TouchableOpacity
+          style={styles.registerBarBtn}
+          onPress={() => {
+            GameAudio.playTap();
+            router.push("/auth/register" as any);
+          }}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.registerBarBtnText}>🚀 ثبت‌نام رایگان</Text>
+        </TouchableOpacity>
+      </Animated.View>
 
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 64 },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo Section */}
           <Animated.View
             entering={FadeInDown.duration(600).springify()}
             style={styles.logoSection}
@@ -296,85 +281,98 @@ export default function LoginScreen() {
                 <Text style={styles.logoEmoji}>🏰</Text>
               </LinearGradient>
             </Animated.View>
-
             <Animated.View entering={FadeInUp.delay(200).duration(600)}>
               <Text style={styles.appName}>بیلد ایران</Text>
               <Text style={styles.tagline}>قلمرو خود را بسازید</Text>
             </Animated.View>
           </Animated.View>
 
-          {/* Form Card */}
           <Animated.View
             style={[styles.card, formFloat.style, formShake.style]}
           >
             <LinearGradient
               colors={["rgba(255,255,255,0.08)", "rgba(255,255,255,0.03)"]}
-              style={styles.cardGradient}
+              style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             />
-
             <Text style={styles.cardTitle}>ورود به بازی</Text>
 
-            {/* Email Field */}
-            <View style={styles.inputWrapper}>
-              <Ionicons
-                name="mail-outline"
-                size={18}
-                color="#6C63FF"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="ایمیل"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                returnKeyType="next"
-                onSubmitEditing={() => passwordRef.current?.focus()}
-                textAlign="right"
-              />
-            </View>
-
-            {/* Password Field */}
-            <View style={styles.inputWrapper}>
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.inputIcon}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>ایمیل</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === "email" && styles.inputWrapperFocused,
+                ]}
               >
                 <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  name="mail-outline"
                   size={18}
                   color="#6C63FF"
+                  style={styles.inputIcon}
                 />
-              </TouchableOpacity>
-              <TextInput
-                ref={passwordRef}
-                style={styles.input}
-                placeholder="رمز عبور"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoComplete="password"
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-                textAlign="right"
-              />
+                <TextInput
+                  style={styles.input}
+                  placeholder="you@example.com"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setFocusedField("email")}
+                  onBlur={() => setFocusedField(null)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  textAlign="right"
+                />
+              </View>
             </View>
 
-            {/* Forgot Password */}
-            <TouchableOpacity
-              onPress={() => router.push("/auth/forgot-password" as any)}
-              style={styles.forgotBtn}
-            >
-              <Text style={styles.forgotText}>رمز عبور را فراموش کردید؟</Text>
-            </TouchableOpacity>
+            <View style={styles.fieldGroup}>
+              <View style={styles.fieldLabelRow}>
+                <TouchableOpacity
+                  onPress={() => router.push("/auth/forgot-password" as any)}
+                >
+                  <Text style={styles.forgotText}>فراموشی رمز؟</Text>
+                </TouchableOpacity>
+                <Text style={styles.fieldLabel}>رمز عبور</Text>
+              </View>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === "password" && styles.inputWrapperFocused,
+                ]}
+              >
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.inputIcon}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={18}
+                    color="#6C63FF"
+                  />
+                </TouchableOpacity>
+                <TextInput
+                  ref={passwordRef}
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setFocusedField("password")}
+                  onBlur={() => setFocusedField(null)}
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                  textAlign="right"
+                />
+              </View>
+            </View>
 
-            {/* Login Button */}
             <Animated.View style={buttonScale.style}>
               <TouchableOpacity
                 style={styles.loginBtn}
@@ -397,14 +395,12 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* Divider */}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>یا</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Google Sign-In Button */}
             <TouchableOpacity
               style={styles.googleBtn}
               onPress={handleGoogleLogin}
@@ -415,17 +411,6 @@ export default function LoginScreen() {
               <Text style={styles.googleBtnText}>ورود با حساب گوگل</Text>
             </TouchableOpacity>
 
-            {/* Guest Button */}
-            <TouchableOpacity
-              style={styles.guestBtn}
-              onPress={handleGuestLogin}
-              disabled={loading}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.guestBtnText}>🎭 ورود به عنوان مهمان</Text>
-            </TouchableOpacity>
-
-            {/* Register Link */}
             <View style={styles.registerRow}>
               <TouchableOpacity
                 onPress={() => router.push("/auth/register" as any)}
@@ -436,7 +421,6 @@ export default function LoginScreen() {
             </View>
           </Animated.View>
 
-          {/* Footer */}
           <Animated.View entering={FadeIn.delay(800)} style={styles.footer}>
             <Text style={styles.footerText}>
               © 2026 BuildIran · تمام حقوق محفوظ است
@@ -448,26 +432,41 @@ export default function LoginScreen() {
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#080C1A" },
+  root: { flex: 1, backgroundColor: "#080C1A", overflow: "hidden" }, // <-- fixes whitespace/scroll bug
   flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingVertical: 48,
-    gap: 28,
+    paddingBottom: 40,
+    gap: 24,
   },
 
-  // Orbs
-  orb: {
+  registerBar: {
     position: "absolute",
-    borderRadius: 999,
-    opacity: 0.18,
+    left: 16,
+    right: 16,
+    zIndex: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 10,
   },
+  registerBarText: { color: "rgba(255,255,255,0.5)", fontSize: 12 },
+  registerBarBtn: {
+    borderRadius: 999,
+    overflow: "hidden",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "rgba(236,72,153,0.18)",
+    borderWidth: 1,
+    borderColor: "#EC4899",
+  },
+  registerBarBtnText: { color: "#F9A8D4", fontSize: 13, fontWeight: "800" },
+
+  orb: { position: "absolute", borderRadius: 999, opacity: 0.18 },
   orbTopLeft: {
     width: 280,
     height: 280,
@@ -491,12 +490,11 @@ const styles = StyleSheet.create({
     opacity: 0.08,
   },
 
-  // Logo
   logoSection: { alignItems: "center", gap: 16 },
   logoRing: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     borderWidth: 2,
     borderColor: "rgba(108, 99, 255, 0.6)",
     shadowColor: "#6C63FF",
@@ -507,13 +505,13 @@ const styles = StyleSheet.create({
   },
   logoGradient: {
     flex: 1,
-    borderRadius: 50,
+    borderRadius: 44,
     alignItems: "center",
     justifyContent: "center",
   },
-  logoEmoji: { fontSize: 48 },
+  logoEmoji: { fontSize: 42 },
   appName: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "900",
     color: "#FFFFFF",
     textAlign: "center",
@@ -523,22 +521,20 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
   },
   tagline: {
-    fontSize: 14,
+    fontSize: 13,
     color: "rgba(255,255,255,0.55)",
     textAlign: "center",
     marginTop: 4,
-    letterSpacing: 0.5,
   },
 
-  // Card
   card: {
     width: "100%",
     maxWidth: 420,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: "rgba(108, 99, 255, 0.25)",
-    padding: 28,
-    gap: 14,
+    padding: 24,
+    gap: 12,
     overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.05)",
     shadowColor: "#6C63FF",
@@ -547,28 +543,42 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 10,
   },
-  cardGradient: {
-    ...StyleSheet.absoluteFill,
-  },
   cardTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
     color: "#FFFFFF",
     textAlign: "center",
     marginBottom: 6,
   },
 
-  // Input
+  fieldGroup: { gap: 6 },
+  fieldLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "right",
+  },
+  fieldLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  forgotText: { color: "#A78BFA", fontSize: 12 },
+
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(108, 99, 255, 0.3)",
+    borderWidth: 1.5,
+    borderColor: "rgba(108, 99, 255, 0.25)",
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === "ios" ? 14 : 10,
     gap: 10,
+  },
+  inputWrapperFocused: {
+    borderColor: "#8B5CF6",
+    backgroundColor: "rgba(108,99,255,0.1)",
   },
   inputIcon: { width: 24, alignItems: "center" },
   input: {
@@ -578,15 +588,10 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
   },
 
-  // Forgot
-  forgotBtn: { alignSelf: "flex-start" },
-  forgotText: { color: "#A78BFA", fontSize: 13 },
-
-  // Login Button
   loginBtn: {
     borderRadius: 14,
     overflow: "hidden",
-    marginTop: 4,
+    marginTop: 6,
     shadowColor: "#6C63FF",
     shadowRadius: 16,
     shadowOpacity: 0.7,
@@ -605,8 +610,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // Divider
-  divider: { flexDirection: "row", alignItems: "center", gap: 10 },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 4,
+  },
   dividerLine: {
     flex: 1,
     height: 1,
@@ -614,7 +623,6 @@ const styles = StyleSheet.create({
   },
   dividerText: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
 
-  // Google Button
   googleBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -628,7 +636,6 @@ const styles = StyleSheet.create({
   },
   googleBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
 
-  // Guest
   guestBtn: {
     borderRadius: 14,
     borderWidth: 1,
@@ -639,7 +646,6 @@ const styles = StyleSheet.create({
   },
   guestBtnText: { color: "rgba(255,255,255,0.7)", fontSize: 15 },
 
-  // Register
   registerRow: {
     flexDirection: "row",
     justifyContent: "center",
@@ -654,13 +660,10 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 
-  // Footer
   footer: { alignItems: "center" },
   footerText: { color: "rgba(255,255,255,0.2)", fontSize: 11 },
 });
 
 const particleStyles = StyleSheet.create({
-  particle: {
-    position: "absolute",
-  },
+  particle: { position: "absolute" },
 });

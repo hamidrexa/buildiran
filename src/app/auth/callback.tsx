@@ -1,123 +1,87 @@
+import { Text } from "@/components/ui/Text";
 import { supabase } from "@/lib/supabase";
-import * as Linking from "expo-linking";
 import { router } from "expo-router";
-import { useEffect } from "react";
-import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 export default function AuthCallback() {
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   useEffect(() => {
-    const handleUrl = async () => {
-      try {
-        // For web, use window.location.href; for native, use Linking
-        let url = await Linking.getInitialURL();
+    let mounted = true;
+    let settled = false;
 
-        // Fallback for web: use window.location.search
-        if (!url && typeof window !== "undefined" && window.location.search) {
-          url = window.location.href;
-        }
+    const ensureProfile = async (user: any) => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", user.id)
+        .single();
 
-        if (!url) {
-          router.replace("/auth/login");
-          return;
-        }
-
-        const parsed = Linking.parse(url);
-        const access_token = parsed.queryParams?.access_token as string;
-        const refresh_token = parsed.queryParams?.refresh_token as string;
-        const error = parsed.queryParams?.error as string;
-        const error_description = parsed.queryParams
-          ?.error_description as string;
-
-        // Check for OAuth error
-        if (error) {
-          console.error(
-            "[AuthCallback] OAuth error:",
-            error,
-            error_description,
-          );
-          Alert.alert("خطا", error_description || "ورود با گوگل ناموفق بود");
-          router.replace("/auth/login");
-          return;
-        }
-
-        if (!access_token || !refresh_token) {
-          console.error("[AuthCallback] Missing tokens in URL");
-          router.replace("/auth/login");
-          return;
-        }
-
-        // Set the session
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token,
-          refresh_token,
-        });
-
-        if (sessionError) {
-          console.error("[AuthCallback] Session error:", sessionError.message);
-          router.replace("/auth/login");
-          return;
-        }
-
-        // Verify user exists
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
-          console.error("[AuthCallback] No user after session set");
-          router.replace("/auth/login");
-          return;
-        }
-
-        // Check if profile exists, if not create one
-        const { data: profile, error: profileError } = await supabase
+      if (!profile) {
+        const username =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.email?.split("@")[0] ||
+          `player_${user.id.slice(0, 8)}`;
+        await supabase
           .from("profiles")
-          .select("id")
-          .eq("id", user.id)
-          .single();
-
-        if (profileError || !profile) {
-          console.log("[AuthCallback] Creating profile for new user");
-          // Create profile for new Google user
-          const username =
-            user.user_metadata?.full_name ||
-            user.user_metadata?.name ||
-            user.email?.split("@")[0] ||
-            `player_${user.id.slice(0, 8)}`;
-          const avatar_color = user.user_metadata?.avatar_url
-            ? "#6C63FF"
-            : "#EC4899";
-
-          const { error: insertError } = await supabase
-            .from("profiles")
-            .insert({
-              id: user.id,
-              username: username,
-              avatar_color: avatar_color,
-            });
-
-          if (insertError) {
-            console.error(
-              "[AuthCallback] Profile creation error:",
-              insertError.message,
-            );
-            // Continue anyway, profile might be created by trigger
-          }
-        }
-
-        // Success - redirect to game
-        router.replace("/(game)");
-      } catch (err: any) {
-        console.error("[AuthCallback] Unexpected error:", err.message);
-        router.replace("/auth/login");
+          .upsert(
+            { id: user.id, username, avatar_color: "#6C63FF" },
+            { onConflict: "id", ignoreDuplicates: true },
+          );
       }
     };
 
-    handleUrl();
+    const finish = async (session: any) => {
+      if (settled || !mounted) return;
+      settled = true;
+      try {
+        if (session?.user) await ensureProfile(session.user);
+      } catch (err) {
+        console.warn("[AuthCallback] profile ensure error:", err);
+      }
+      router.replace("/(game)");
+    };
+
+    // supabase.auth already parses tokens from the URL itself
+    // (see `detectSessionInUrl` in lib/supabase.ts) — we just wait for it,
+    // instead of re-parsing the URL ourselves (tokens live in the hash
+    // fragment, not queryParams, which was the source of the 404/stuck bug).
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) finish(session);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (
+          session &&
+          ["SIGNED_IN", "TOKEN_REFRESHED", "INITIAL_SESSION"].includes(event)
+        ) {
+          finish(session);
+        }
+      },
+    );
+
+    const timeout = setTimeout(() => {
+      if (!settled && mounted) {
+        settled = true;
+        setErrorMsg("ورود ناموفق بود. لطفاً دوباره تلاش کنید.");
+        setTimeout(() => router.replace("/auth/login"), 1500);
+      }
+    }, 8000);
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#6C63FF" />
+      <Text style={styles.text}>{errorMsg ?? "در حال ورود به بازی..."}</Text>
     </View>
   );
 }
@@ -128,5 +92,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#080C1A",
+    gap: 16,
   },
+  text: { color: "rgba(255,255,255,0.6)", fontSize: 13 },
 });
