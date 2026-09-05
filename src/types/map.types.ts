@@ -54,6 +54,16 @@ export interface TileCoord {
   z: number;
 }
 
+// ─── Building Zone Overlay (5m Rule) ──────────────────────────────────────────
+
+export interface BuildingZoneOverlay {
+  center: LatLng;
+  radiusMeters: number;
+  status: 'checking' | 'valid' | 'invalid';
+  distanceToStreet?: number;
+  streetName?: string;
+}
+
 // ─── Game Map Props ───────────────────────────────────────────────────────────
 
 export interface GameMapProps {
@@ -75,6 +85,10 @@ export interface GameMapProps {
   selectedAssetId?: string | null;
   /** Called when user taps/clicks an asset marker */
   onAssetPress?: (asset: Asset) => void;
+  /** Active 5-meter building zone overlay */
+  buildingZone?: BuildingZoneOverlay | null;
+  /** Imperative camera fly-to target */
+  flyToTarget?: { center: LatLng; zoom: number; duration?: number } | null;
   style?: object;
 }
 

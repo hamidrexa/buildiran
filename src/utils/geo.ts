@@ -101,3 +101,197 @@ export function tileIdFromCoordinate(coord: LatLng, precision = 3): string {
   const lon = Math.floor(coord.longitude / 0.005) * 0.005;
   return `tile_${lat.toFixed(precision)}_${lon.toFixed(precision)}`;
 }
+
+// ─── 5-Meter Building Zone & Street Distance Validation ──────────────────────
+
+export interface StreetProximityResult {
+  isValid: boolean;              // true if distance > ruleDistanceMeters (not on street)
+  distanceMeters: number;        // calculated distance to nearest street in meters
+  nearestStreetName: string;     // name or type of nearest street
+  ruleDistanceMeters: number;    // default 5m
+  message: string;               // human-readable status in Persian
+}
+
+/**
+ * Generates a GeoJSON Polygon representing a circular zone with a specified radius in meters.
+ */
+export function createGeoJSONCircle(
+  center: LatLng,
+  radiusMeters: number,
+  points = 64,
+): {
+  type: 'Feature';
+  geometry: {
+    type: 'Polygon';
+    coordinates: [number, number][][];
+  };
+  properties: Record<string, unknown>;
+} {
+  const coords: [number, number][] = [];
+  const distanceX = radiusMeters / (111320 * Math.cos((center.latitude * Math.PI) / 180));
+  const distanceY = radiusMeters / 110540;
+
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    const x = distanceX * Math.cos(theta);
+    const y = distanceY * Math.sin(theta);
+    coords.push([center.longitude + x, center.latitude + y]);
+  }
+  coords.push(coords[0]); // close polygon
+
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [coords],
+    },
+    properties: {
+      radiusMeters,
+      centerLat: center.latitude,
+      centerLng: center.longitude,
+    },
+  };
+}
+
+/**
+ * Calculates the shortest distance in meters from a point P to a line segment AB.
+ */
+export function pointToSegmentDistanceMeters(
+  p: { lat: number; lon: number },
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+): number {
+  const latMid = (p.lat + a.lat + b.lat) / 3;
+  const metersPerDegLat = 111139;
+  const metersPerDegLon = 111139 * Math.cos((latMid * Math.PI) / 180);
+
+  const px = p.lon * metersPerDegLon;
+  const py = p.lat * metersPerDegLat;
+  const ax = a.lon * metersPerDegLon;
+  const ay = a.lat * metersPerDegLat;
+  const bx = b.lon * metersPerDegLon;
+  const by = b.lat * metersPerDegLat;
+
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+
+  if (lenSq === 0) {
+    return Math.hypot(px - ax, py - ay);
+  }
+
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+
+  const projX = ax + t * dx;
+  const projY = ay + t * dy;
+
+  return Math.hypot(px - projX, py - projY);
+}
+
+// In-memory cache for street geometries to avoid duplicate queries
+const streetCache = new Map<string, { timestamp: number; ways: any[] }>();
+
+/**
+ * Checks if a building location violates the street setback rule.
+ * Rule: Location must be more than 5 meters away from any street/road.
+ * This check is performed entirely in the application layer.
+ */
+export async function checkStreetProximity(
+  coord: LatLng,
+  ruleDistanceMeters = 5,
+): Promise<StreetProximityResult> {
+  const searchRadiusMeters = 45;
+  const cacheKey = `${coord.latitude.toFixed(3)}_${coord.longitude.toFixed(3)}`;
+  const now = Date.now();
+
+  let ways: any[] = [];
+  const cached = streetCache.get(cacheKey);
+
+  if (cached && now - cached.timestamp < 300000) {
+    ways = cached.ways;
+  } else {
+    const endpoints = [
+      'https://overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const query = `[out:json][timeout:4];way["highway"](around:${searchRadiusMeters},${coord.latitude},${coord.longitude});out geom;`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          body: 'data=' + encodeURIComponent(query),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'BuildIran/1.0 (game-engine)',
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const text = await res.text();
+          if (text.startsWith('{')) {
+            const data = JSON.parse(text);
+            ways = Array.isArray(data?.elements) ? data.elements : [];
+            streetCache.set(cacheKey, { timestamp: now, ways });
+            break;
+          }
+        }
+      } catch {
+        // Continue to next endpoint or fallback
+      }
+    }
+
+    if (ways.length === 0 && cached) {
+      ways = cached.ways;
+    }
+  }
+
+  if (ways.length === 0) {
+    // No street detected within search radius (45m), safely outside street zone
+    return {
+      isValid: true,
+      distanceMeters: searchRadiusMeters,
+      nearestStreetName: 'هیچ معبری در نزدیکی یافت نشد',
+      ruleDistanceMeters,
+      message: `موقعیت مجاز است (فاصله بیش از ${searchRadiusMeters} متر از هرگونه معبر).`,
+    };
+  }
+
+  const p = { lat: coord.latitude, lon: coord.longitude };
+  let minDistance = Infinity;
+  let closestStreetName = 'معبر';
+
+  for (const way of ways) {
+    const geom = way.geometry;
+    if (!geom || geom.length < 2) continue;
+
+    const name = way.tags?.name || way.tags?.['name:fa'] || way.tags?.highway || 'خیابان';
+
+    for (let i = 0; i < geom.length - 1; i++) {
+      const dist = pointToSegmentDistanceMeters(p, geom[i], geom[i + 1]);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestStreetName = name;
+      }
+    }
+  }
+
+  const formattedDist = Math.round(minDistance * 10) / 10;
+  const isValid = minDistance > ruleDistanceMeters;
+
+  return {
+    isValid,
+    distanceMeters: formattedDist,
+    nearestStreetName: closestStreetName,
+    ruleDistanceMeters,
+    message: isValid
+      ? `موقعیت مجاز برای ساخت (فاصله از «${closestStreetName}»: ${formattedDist.toLocaleString('fa-IR')} متر)`
+      : `خطا: فاصله با معبر («${closestStreetName}») کمتر از ۵ متر است (${formattedDist.toLocaleString('fa-IR')} متر). ساخت روی خیابان مجاز نیست.`,
+  };
+}

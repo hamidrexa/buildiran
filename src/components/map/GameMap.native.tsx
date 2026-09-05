@@ -19,8 +19,11 @@ import {
 } from "@/lib/constants";
 import type { LatLng } from "@/types/game.types";
 import type { GameMapProps } from "@/types/map.types";
+import { createGeoJSONCircle } from "@/utils/geo";
 import {
   Camera,
+  GeoJSONSource,
+  Layer,
   Map,
   Marker,
   type CameraRef,
@@ -28,8 +31,8 @@ import {
   type PressEventWithFeatures,
   type ViewStateChangeEvent,
 } from "@maplibre/maplibre-react-native";
-import React, { useCallback, useRef } from "react";
-import { NativeSyntheticEvent, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { NativeSyntheticEvent, StyleSheet, Text, View } from "react-native";
 
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
@@ -41,9 +44,22 @@ export const GameMap: React.FC<GameMapProps> = ({
   currentUserId,
   selectedAssetId,
   onAssetPress,
+  buildingZone,
+  flyToTarget,
   style,
 }) => {
   const cameraRef = useRef<CameraRef>(null);
+
+  // Imperative fly-to camera control
+  useEffect(() => {
+    if (flyToTarget && cameraRef.current) {
+      cameraRef.current.flyTo({
+        center: [flyToTarget.center.longitude, flyToTarget.center.latitude],
+        zoom: flyToTarget.zoom,
+        duration: flyToTarget.duration ?? 900,
+      });
+    }
+  }, [flyToTarget]);
 
   const handlePress = useCallback(
     (
@@ -73,6 +89,19 @@ export const GameMap: React.FC<GameMapProps> = ({
     [onRegionChange],
   );
 
+  // GeoJSON 5-meter circle
+  const circleGeoJSON = useMemo(() => {
+    if (!buildingZone) return null;
+    return createGeoJSONCircle(buildingZone.center, buildingZone.radiusMeters, 64);
+  }, [buildingZone]);
+
+  const zoneColor = useMemo(() => {
+    if (!buildingZone) return '#6C63FF';
+    if (buildingZone.status === 'valid') return '#10B981';
+    if (buildingZone.status === 'invalid') return '#EF4444';
+    return '#F59E0B';
+  }, [buildingZone]);
+
   return (
     <View style={[styles.container, style]}>
       <Map
@@ -97,6 +126,46 @@ export const GameMap: React.FC<GameMapProps> = ({
           minZoom={MAP_MIN_ZOOM}
           maxZoom={MAP_MAX_ZOOM}
         />
+
+        {/* 5-Meter Building Zone Overlay */}
+        {circleGeoJSON && (
+          <GeoJSONSource id="building-zone-source" data={circleGeoJSON as any}>
+            <Layer
+              id="building-zone-fill"
+              type="fill"
+              style={{
+                fillColor: zoneColor,
+                fillOpacity: 0.32,
+              } as any}
+            />
+            <Layer
+              id="building-zone-line"
+              type="line"
+              style={{
+                lineColor: zoneColor,
+                lineWidth: 3,
+              } as any}
+            />
+          </GeoJSONSource>
+        )}
+
+        {/* Center Target Marker for Building Zone */}
+        {buildingZone && (
+          <Marker
+            id="building-zone-marker"
+            lngLat={[buildingZone.center.longitude, buildingZone.center.latitude]}
+            anchor="center"
+          >
+            <View style={styles.zoneMarkerContainer}>
+              <View style={[styles.zoneBadge, { borderColor: zoneColor }]}>
+                <Text style={styles.zoneBadgeText}>
+                  {buildingZone.status === 'valid' ? '✅' : buildingZone.status === 'invalid' ? '🚫' : '⏳'} شعاع ۵ متر
+                </Text>
+              </View>
+              <View style={[styles.zoneCenterDot, { backgroundColor: zoneColor }]} />
+            </View>
+          </Marker>
+        )}
 
         {/* On-Map Built Assets */}
         {assets.map((asset) => {
@@ -133,6 +202,29 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  zoneMarkerContainer: {
+    alignItems: 'center',
+  },
+  zoneBadge: {
+    backgroundColor: 'rgba(8, 12, 26, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 4,
+  },
+  zoneBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  zoneCenterDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
 });
 

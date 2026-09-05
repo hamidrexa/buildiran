@@ -13,12 +13,13 @@ import { useAssetStore } from '@/store/useAssetStore';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import type { BuildingType, CustomBuildingType, LatLng } from '@/types/game.types';
-import { tileIdFromCoordinate } from '@/utils/geo';
+import { tileIdFromCoordinate, type StreetProximityResult } from '@/utils/geo';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   ScrollView,
@@ -60,10 +61,11 @@ const STANDARD_BUILDINGS: BuildingDef[] = [
 interface BuildModalProps {
   visible: boolean;
   coordinate: LatLng | null;
+  proximityResult?: StreetProximityResult | null;
   onClose: () => void;
 }
 
-export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
+export function BuildModal({ visible, coordinate, proximityResult, onClose }: BuildModalProps) {
   const [selectedItem, setSelectedItem] = useState<{
     type: string;
     label: string;
@@ -115,6 +117,16 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
   const handleBuild = useCallback(async () => {
     if (!selectedItem || !coordinate || !player) return;
 
+    // Strict application-layer validation: Location must not be within 5m of any street
+    if (proximityResult && !proximityResult.isValid) {
+      GameAudio.playError();
+      Alert.alert(
+        'عدم امکان احداث ملک',
+        proximityResult.message || 'ساخت روی معابر و خیابان‌ها (یا فاصله کمتر از ۵ متر) مجاز نیست.'
+      );
+      return;
+    }
+
     if (player.cash < selectedItem.cost) {
       GameAudio.playError();
       return;
@@ -162,7 +174,7 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
     } finally {
       setBuilding(false);
     }
-  }, [selectedItem, coordinate, player, buildAsset, updateCash, incrementScore, onClose, pop]);
+  }, [selectedItem, coordinate, player, proximityResult, buildAsset, updateCash, incrementScore, onClose, pop]);
 
   const handleClose = useCallback(() => {
     setSelectedItem(null);
@@ -202,12 +214,19 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
               <>
                 {/* Header */}
                 <View style={styles.header}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text variant="heading" weight="bold" color="primary">📍 انتخاب سازه برای ساخت</Text>
-                    <Text variant="caption" color="secondary">
-                      {currentNeighborhood ? `محله ${currentNeighborhood.nameFa} | ` : ''}
-                      {coordinate.latitude.toFixed(4)}°, {coordinate.longitude.toFixed(4)}°
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                      <Text variant="caption" color="secondary">
+                        {currentNeighborhood ? `محله ${currentNeighborhood.nameFa} | ` : ''}
+                        {coordinate.latitude.toFixed(4)}°, {coordinate.longitude.toFixed(4)}°
+                      </Text>
+                      {proximityResult?.isValid && (
+                        <View style={styles.verifiedBadge}>
+                          <Text style={styles.verifiedBadgeText}>✅ حریم ۵ متر معابر رعایت شده</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                   <View style={styles.cashBadge}>
                     <Text variant="body" weight="semibold" color="inverse">💰 {(player?.cash ?? 0).toLocaleString('fa-IR')}</Text>
@@ -421,6 +440,19 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,211,0,0.3)',
   },
   cashText: { color: '#FFD700', fontWeight: '700', fontSize: 13 },
+  verifiedBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#10B981',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  verifiedBadgeText: {
+    color: '#34D399',
+    fontSize: 10,
+    fontWeight: '700',
+  },
 
   scrollArea: { maxHeight: SCREEN_H * 0.4 },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 12 },
