@@ -83,6 +83,7 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 10,
     fontWeight: '600',
+    fontFamily: 'VazirmatnMedium',
   },
   tabItem: {
     paddingTop: 2,

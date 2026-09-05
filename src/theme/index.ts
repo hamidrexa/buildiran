@@ -68,6 +68,15 @@ export const Typography = {
     latin: 'Inter',
     mono: 'SpaceMono',
   },
+  
+  // Font family mappings with weights for React Native
+  fontFamilies: {
+    regular: 'Vazirmatn',
+    medium: 'VazirmatnMedium', 
+    semibold: 'Vazirmatn-SemiBold',
+    bold: 'VazirmatnBold',
+    extrabold: 'Vazirmatn-ExtraBold',
+  },
 
   // Font sizes (sp)
   sizes: {

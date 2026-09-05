@@ -14,30 +14,28 @@ import { useEffect, useState } from "react";
 import { I18nManager, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useFonts } from 'expo-font';
 
 // Keep splash screen visible while loading initial state
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
-  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [fontsLoaded] = useFonts({
+    Vazirmatn: require("../../assets/fonts/Vazirmatn-Regular.ttf"),
+    VazirmatnMedium: require("../../assets/fonts/Vazirmatn-Medium.ttf"),
+    "Vazirmatn-SemiBold": require("../../assets/fonts/Vazirmatn-SemiBold.ttf"),
+    VazirmatnBold: require("../../assets/fonts/Vazirmatn-Bold.ttf"),
+    "Vazirmatn-ExtraBold": require("../../assets/fonts/Vazirmatn-ExtraBold.ttf"),
+  });
 
   useEffect(() => {
     async function prepare() {
       try {
-        // Load fonts
-        await Font.loadAsync({
-          Vazirmatn: require("../assets/fonts/Vazirmatn-Regular.ttf"),
-          VazirmatnBold: require("../assets/fonts/Vazirmatn-Bold.ttf"),
-          VazirmatnMedium: require("../assets/fonts/Vazirmatn-Medium.ttf"),
-        });
-        
         // Force RTL for Persian language
         if (!I18nManager.isRTL) {
           I18nManager.allowRTL(true);
           I18nManager.forceRTL(true);
         }
-        
-        setFontsLoaded(true);
       } catch (e) {
         console.warn("RTL initialization error:", e);
       } finally {
@@ -45,8 +43,10 @@ export default function RootLayout() {
       }
     }
 
-    prepare();
-  }, []);
+    if (fontsLoaded) {
+      prepare();
+    }
+  }, [fontsLoaded]);
 
   if (!fontsLoaded) {
     return null;

@@ -35,6 +35,15 @@ const colorMap: Record<TextColor, string> = {
   inverse: Colors.text.inverse,
 };
 
+// Map weight to specific font family names that match the loaded fonts
+const weightToFontFamily: Record<TextWeight, string> = {
+  regular: 'Vazirmatn',
+  medium: 'VazirmatnMedium',
+  semibold: 'Vazirmatn-SemiBold',
+  bold: 'VazirmatnBold',
+  extrabold: 'Vazirmatn-ExtraBold',
+};
+
 export const Text: React.FC<Props> = ({
   variant = 'body',
   weight = 'regular',
@@ -47,9 +56,13 @@ export const Text: React.FC<Props> = ({
   return (
     <RNText
       style={[
-        styles.base,
+        {
+          fontFamily: weightToFontFamily[weight],
+          writingDirection: 'rtl',
+          textAlign: 'right',
+          color: Colors.text.primary,
+        },
         variantStyles[variant],
-        { fontWeight: Typography.weights[weight] },
         { color: colorMap[color] },
         center && styles.center,
         style,

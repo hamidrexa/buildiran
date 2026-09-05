@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: "#FFFFFF",
     fontSize: 15,
-    fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
+    fontFamily: "VazirmatnMedium",
   },
 
   loginBtn: {
