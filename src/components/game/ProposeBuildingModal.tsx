@@ -4,26 +4,25 @@
  * The proposal is saved to Supabase and routed to neighborhood editors for revision.
  */
 
-import React, { useState } from 'react';
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  Modal,
-  Dimensions,
-  Alert,
-} from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { Text } from '@/components/ui/Text';
+import { GameAudio } from '@/lib/audio';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { GameAudio } from '@/lib/audio';
 import type { BuildingCategory } from '@/types/game.types';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -146,9 +145,9 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
 
           {submitted ? (
             <View style={styles.successContainer}>
-              <Text style={styles.successEmoji}>📜✨</Text>
-              <Text style={styles.successTitle}>طرح سازه با موفقیت ثبت شد!</Text>
-              <Text style={styles.successSub}>
+              <Text variant="display" color="brand" center>📜✨</Text>
+              <Text variant="heading" weight="bold" color="primary" center>طرح سازه با موفقیت ثبت شد!</Text>
+              <Text variant="body" color="secondary" center>
                 طرح برای ویرایشگران محله «{currentNeighborhood?.nameFa ?? 'منتخب'}» ارسال شد. به محض تأیید، روی نقشه قابل ساخت خواهد بود.
               </Text>
             </View>
@@ -157,16 +156,16 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
-                  <Text style={styles.headerEmoji}>📐</Text>
-                  <Text style={styles.title}>پیشنهاد نوع سازه جدید</Text>
+                  <Text variant="display" color="brand">📐</Text>
+                  <Text variant="heading" weight="bold" color="primary">پیشنهاد نوع سازه جدید</Text>
                 </View>
-                <Text style={styles.subtitle}>
+                <Text variant="body" color="secondary">
                   طرح ساختمانی دلخواه خود را در محله «{currentNeighborhood?.nameFa}» طراحی کنید تا توسط ویرایشگران محله بازبینی شود.
                 </Text>
               </View>
 
               {/* Emoji Selector */}
-              <Text style={styles.label}>آیکون / نماد سازه:</Text>
+              <Text variant="label" color="secondary">آیکون / نماد سازه:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiRow}>
                 {EMOJIS.map((emoji) => (
                   <TouchableOpacity
@@ -177,13 +176,13 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
                       GameAudio.playTap();
                     }}
                   >
-                    <Text style={styles.emojiText}>{emoji}</Text>
+                    <Text variant="body" color="primary">{emoji}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
               {/* Persian Name */}
-              <Text style={styles.label}>نام فارسی سازه: *</Text>
+              <Text variant="label" color="secondary">نام فارسی سازه: *</Text>
               <TextInput
                 style={styles.input}
                 value={nameFa}
@@ -193,7 +192,7 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
               />
 
               {/* Category */}
-              <Text style={styles.label}>دسته‌بندی:</Text>
+              <Text variant="label" color="secondary">دسته‌بندی:</Text>
               <View style={styles.catGrid}>
                 {CATEGORIES.map((c) => {
                   const active = category === c.key;
@@ -206,14 +205,14 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
                         GameAudio.playTap();
                       }}
                     >
-                      <Text style={styles.catText}>{c.emoji} {c.label}</Text>
+                      <Text variant="body" color={active ? 'inverse' : 'primary'}>{c.emoji} {c.label}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
 
               {/* Description */}
-              <Text style={styles.label}>توضیحات و کارکرد: *</Text>
+              <Text variant="label" color="secondary">توضیحات و کارکرد: *</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={descriptionFa}
@@ -227,7 +226,7 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
               {/* Stats Row */}
               <View style={styles.statsRow}>
                 <View style={styles.statCol}>
-                  <Text style={styles.labelSmall}>هزینه ساخت (💰):</Text>
+                  <Text variant="caption" color="secondary">هزینه ساخت (💰):</Text>
                   <TextInput
                     style={styles.statInput}
                     value={baseCost}
@@ -238,7 +237,7 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
                   />
                 </View>
                 <View style={styles.statCol}>
-                  <Text style={styles.labelSmall}>پاداش قدرت (⚔️):</Text>
+                  <Text variant="caption" color="secondary">پاداش قدرت (⚔️):</Text>
                   <TextInput
                     style={styles.statInput}
                     value={powerBonus}
@@ -249,7 +248,7 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
                   />
                 </View>
                 <View style={styles.statCol}>
-                  <Text style={styles.labelSmall}>درآمد ساعتی (🪙):</Text>
+                  <Text variant="caption" color="secondary">درآمد ساعتی (🪙):</Text>
                   <TextInput
                     style={styles.statInput}
                     value={incomeRate}
@@ -262,7 +261,7 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
               </View>
 
               {/* Custom Feature */}
-              <Text style={styles.label}>ویژگی یا تنظیمات ویژه (Special Setting):</Text>
+              <Text variant="label" color="secondary">ویژگی یا تنظیمات ویژه (Special Setting):</Text>
               <TextInput
                 style={styles.input}
                 value={customFeature}
@@ -287,7 +286,7 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
                   {submitting ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.submitText}>🚀  ارسال طرح برای ویرایشگران محله</Text>
+                    <Text weight="semibold" color="inverse">🚀  ارسال طرح برای ویرایشگران محله</Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>

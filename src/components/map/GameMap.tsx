@@ -10,10 +10,11 @@
  *   import { GameMap } from '@/components/map/GameMap';
  */
 
+import { Text } from '@/components/ui/Text';
+import type { GameMapProps } from '@/types/map.types';
 import Constants from 'expo-constants';
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import type { GameMapProps } from '@/types/map.types';
+import { Platform, StyleSheet, View } from 'react-native';
 
 export type { GameMapProps } from '@/types/map.types';
 
@@ -32,7 +33,7 @@ function isExpoGo(): boolean {
 
 const MapUnavailable: React.FC = () => (
   <View style={fallbackStyles.container}>
-    <Text style={fallbackStyles.text}>
+    <Text variant="body" color="primary" center>
       نقشه در نسخه آزمایشی موبایل در دسترس نیست. برای استفاده از نقشه، یک
       Development Build بسازید.
     </Text>
@@ -46,12 +47,6 @@ const fallbackStyles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     backgroundColor: '#0B0B0B',
-  },
-  text: {
-    color: '#FFFFFF',
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 22,
   },
 });
 

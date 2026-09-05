@@ -13,15 +13,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -201,10 +201,10 @@ export default function RegisterScreen() {
               <Ionicons name="arrow-back" size={22} color="#A78BFA" />
             </TouchableOpacity>
             <View style={styles.headerLogo}>
-              <Text style={styles.headerEmoji}>⚔️</Text>
+              <Text variant="display" color="brand">⚔️</Text>
             </View>
-            <Text style={styles.headerTitle}>ثبت نام فرمانده</Text>
-            <Text style={styles.headerSub}>به قلمرو بیلد ایران بپیوندید</Text>
+            <Text variant="heading" weight="bold" color="primary">ثبت نام فرمانده</Text>
+            <Text variant="body" color="secondary">به قلمرو بیلد ایران بپیوندید</Text>
           </Animated.View>
 
           {/* Form */}
@@ -220,7 +220,7 @@ export default function RegisterScreen() {
 
             {/* Avatar Color Picker */}
             <View style={styles.colorSection}>
-              <Text style={styles.colorLabel}>رنگ فرمانده شما</Text>
+              <Text variant="label" color="secondary">رنگ فرمانده شما</Text>
               <View style={styles.colorPreview}>
                 <LinearGradient
                   colors={[selectedColor, selectedColor + "88"]}
@@ -228,7 +228,7 @@ export default function RegisterScreen() {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Text style={styles.avatarLetter}>
+                  <Text variant="heading" weight="bold" color="inverse">
                     {username ? username.charAt(0).toUpperCase() : "?"}
                   </Text>
                 </LinearGradient>
@@ -354,7 +354,7 @@ export default function RegisterScreen() {
                   {loading ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={styles.registerBtnText}>
+                    <Text weight="semibold" color="inverse">
                       🏰 ایجاد فرماندهی
                     </Text>
                   )}
@@ -367,9 +367,9 @@ export default function RegisterScreen() {
               <TouchableOpacity
                 onPress={() => router.replace("/auth/login" as any)}
               >
-                <Text style={styles.loginLink}>وارد شوید</Text>
+                <Text variant="body" weight="medium" color="brand">وارد شوید</Text>
               </TouchableOpacity>
-              <Text style={styles.loginPrompt}>حساب دارید؟ </Text>
+              <Text variant="body" color="secondary">حساب دارید؟ </Text>
             </View>
           </Animated.View>
         </ScrollView>

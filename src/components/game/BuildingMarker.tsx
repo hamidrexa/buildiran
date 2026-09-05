@@ -3,13 +3,13 @@
  * Map overlay marker showing a building/asset on a coordinate tile.
  */
 
+import { Text } from '@/components/ui/Text';
 import { Radii } from "@/theme";
 import type { Asset, Building } from "@/types/game.types";
 import React from "react";
 import {
     Platform,
     StyleSheet,
-    Text,
     TouchableOpacity,
     View,
 } from "react-native";
@@ -57,7 +57,7 @@ export const BuildingMarker: React.FC<Props> = ({
           isForSale && styles.saleMarker,
         ]}
       >
-        <Text style={styles.emoji}>{emoji}</Text>
+        <Text variant="body" color="primary">{emoji}</Text>
 
         {/* Level badge */}
         {level > 1 && (
@@ -67,14 +67,14 @@ export const BuildingMarker: React.FC<Props> = ({
               isOwned ? styles.levelOwned : styles.levelOther,
             ]}
           >
-            <Text style={styles.level}>{level}</Text>
+            <Text variant="caption" weight="bold" color="inverse">{level}</Text>
           </View>
         )}
 
         {/* For sale badge */}
         {isForSale && (
           <View style={styles.saleBadge}>
-            <Text style={styles.saleText}>💰</Text>
+            <Text variant="caption" color="inverse">💰</Text>
           </View>
         )}
       </View>

@@ -4,18 +4,18 @@
  * + Neighborhood indicator & Neighborhood Editor Panel trigger for high-power players.
  */
 
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import Animated from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { Text } from '@/components/ui/Text';
-import { usePlayerStore } from '@/store/usePlayerStore';
+import { GameAudio } from '@/lib/audio';
+import { useStatBarFill } from '@/lib/effects';
 import { useGameStore } from '@/store/useGameStore';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
-import { useStatBarFill } from '@/lib/effects';
-import { GameAudio } from '@/lib/audio';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import React, { useState } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NeighborhoodEditorModal } from './NeighborhoodEditorModal';
 
 // ─── 4-Factor Stat Bar ────────────────────────────────────────────────────────
@@ -33,11 +33,11 @@ const StatBar: React.FC<{
 
   return (
     <View style={statStyles.statRow}>
-      <Text style={statStyles.statIcon}>{icon}</Text>
+      <Text variant="body" color="primary">{icon}</Text>
       <View style={statStyles.statBarBg}>
         <Animated.View style={[statStyles.statBarFill, { backgroundColor: color }, barStyle]} />
       </View>
-      <Text style={statStyles.statValue}>{value.toLocaleString('fa-IR')}</Text>
+      <Text variant="caption" color="primary">{value.toLocaleString('fa-IR')}</Text>
     </View>
   );
 };
@@ -50,8 +50,8 @@ const ResourceChip: React.FC<{ icon: string; value: number; color?: string }> = 
   color = '#FFFFFF',
 }) => (
   <View style={chipStyles.chip}>
-    <Text style={chipStyles.icon}>{icon}</Text>
-    <Text style={[chipStyles.value, { color }]}>{value.toLocaleString('fa-IR')}</Text>
+    <Text variant="body" color="primary">{icon}</Text>
+    <Text variant="caption" color="primary">{value.toLocaleString('fa-IR')}</Text>
   </View>
 );
 
@@ -93,13 +93,13 @@ export const HUD: React.FC = () => {
             }}
           >
             <View style={[styles.avatar, { backgroundColor: player.avatarColor ?? '#6C63FF' }]}>
-              <Text style={styles.avatarText}>
+              <Text variant="heading" weight="bold" color="inverse">
                 {player.username.charAt(0).toUpperCase()}
               </Text>
             </View>
             <View style={styles.playerInfo}>
-              <Text style={styles.playerName} numberOfLines={1}>{player.username}</Text>
-              <Text style={styles.playerLevel}>سطح {player.level.toLocaleString('fa-IR')}</Text>
+              <Text variant="body" weight="semibold" color="primary" numberOfLines={1}>{player.username}</Text>
+              <Text variant="caption" color="secondary">سطح {player.level.toLocaleString('fa-IR')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -121,7 +121,7 @@ export const HUD: React.FC = () => {
           }}
           activeOpacity={0.8}
         >
-          <Text style={styles.neighborhoodText}>
+          <Text variant="body" color="primary">
             📍 {currentNeighborhood?.nameFa ?? 'محله بازی'}
           </Text>
         </TouchableOpacity>
@@ -141,7 +141,7 @@ export const HUD: React.FC = () => {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.editorPillText}>🎖️ ویرایشگر محله</Text>
+              <Text variant="body" weight="semibold" color="inverse">🎖️ ویرایشگر محله</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -167,14 +167,14 @@ export const HUD: React.FC = () => {
             colors={['rgba(8,12,26,0.95)', 'rgba(13,21,51,0.9)']}
             style={styles.tilePanelInner}
           >
-            <Text style={styles.tileStatus}>
+            <Text variant="body" color="primary">
               {selectedTile.status === 'available'
                 ? '🟢 زمین آزاد — ضربه بزنید تا بسازید'
                 : selectedTile.status === 'owned'
                 ? '🟡 قلمرو شما'
                 : '🔴 قلمرو بازیکن دیگر'}
             </Text>
-            <Text style={styles.tileId} numberOfLines={1}>{selectedTile.id}</Text>
+            <Text variant="caption" color="secondary" numberOfLines={1}>{selectedTile.id}</Text>
           </LinearGradient>
         </View>
       )}

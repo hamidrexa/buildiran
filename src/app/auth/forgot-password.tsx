@@ -11,14 +11,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -81,8 +81,8 @@ export default function ForgotPasswordScreen() {
             >
               <Ionicons name="arrow-back" size={22} color="#A78BFA" />
             </TouchableOpacity>
-            <Text style={styles.title}>بازیابی رمز عبور</Text>
-            <Text style={styles.subtitle}>
+            <Text variant="heading" weight="bold" color="primary">بازیابی رمز عبور</Text>
+            <Text variant="body" color="secondary">
               {sent
                 ? "لینک بازیابی به ایمیل شما ارسال شد."
                 : "ایمیل خود را وارد کنید تا لینک بازیابی ارسال شود."}
@@ -97,9 +97,9 @@ export default function ForgotPasswordScreen() {
 
             {sent ? (
               <View style={styles.sentBox}>
-                <Text style={styles.sentIcon}>📬</Text>
-                <Text style={styles.sentTitle}>ایمیل ارسال شد!</Text>
-                <Text style={styles.sentBody}>
+                <Text variant="display" color="brand">📬</Text>
+                <Text variant="heading" weight="bold" color="primary">ایمیل ارسال شد!</Text>
+                <Text variant="body" color="secondary">
                   لینک بازیابی به {email} ارسال شد. صندوق ورودی خود را بررسی
                   کنید.
                 </Text>
@@ -107,7 +107,7 @@ export default function ForgotPasswordScreen() {
                   onPress={() => router.replace("/auth/login" as any)}
                   style={styles.returnBtn}
                 >
-                  <Text style={styles.returnBtnText}>بازگشت به ورود</Text>
+                  <Text weight="semibold" color="inverse">بازگشت به ورود</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -148,7 +148,7 @@ export default function ForgotPasswordScreen() {
                       {loading ? (
                         <ActivityIndicator color="#fff" size="small" />
                       ) : (
-                        <Text style={styles.sendBtnText}>
+                        <Text weight="semibold" color="inverse">
                           📧 ارسال لینک بازیابی
                         </Text>
                       )}

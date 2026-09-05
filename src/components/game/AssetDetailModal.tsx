@@ -223,25 +223,25 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                   { borderColor: isOwned ? "#10B981" : "#6366F1" },
                 ]}
               >
-                <Text style={styles.emoji}>{buildingInfo.emoji}</Text>
+                <Text variant="display" color="brand">{buildingInfo.emoji}</Text>
               </View>
               <View style={styles.titleCol}>
                 <View style={styles.titleRow}>
-                  <Text style={styles.title}>{buildingInfo.label}</Text>
+                  <Text variant="heading" weight="bold" color="primary">{buildingInfo.label}</Text>
                   <View
                     style={[
                       styles.badge,
                       isOwned ? styles.badgeOwned : styles.badgeOther,
                     ]}
                   >
-                    <Text style={styles.badgeText}>
+                    <Text variant="caption" weight="medium" color={isOwned ? 'inverse' : 'primary'}>
                       {isOwned
                         ? "مالک: شما"
                         : `مالک: ${asset.ownerUsername || "ناشناس"}`}
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.desc}>{buildingInfo.desc}</Text>
+                <Text variant="body" color="secondary">{buildingInfo.desc}</Text>
               </View>
             </View>
 
@@ -253,20 +253,20 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
-              <Text style={styles.statLabel}>سطح سازه</Text>
-              <Text style={styles.statVal}>⭐ {asset.level}</Text>
+              <Text variant="caption" color="secondary">سطح سازه</Text>
+              <Text variant="body" weight="medium" color="primary">⭐ {asset.level}</Text>
             </View>
 
             <View style={styles.statCard}>
-              <Text style={styles.statLabel}>ارزش بازار</Text>
-              <Text style={styles.statVal}>
+              <Text variant="caption" color="secondary">ارزش بازار</Text>
+              <Text variant="body" weight="medium" color="primary">
                 💰 {asset.marketValue.toLocaleString("fa-IR")}
               </Text>
             </View>
 
             <View style={styles.statCard}>
-              <Text style={styles.statLabel}>قدرت اثر</Text>
-              <Text style={styles.statVal}>⚡ +{asset.powerBonus}</Text>
+              <Text variant="caption" color="secondary">قدرت اثر</Text>
+              <Text variant="body" weight="medium" color="primary">⚡ +{asset.powerBonus}</Text>
             </View>
           </View>
 
@@ -277,7 +277,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               size={14}
               color={Colors.text.muted}
             />
-            <Text style={styles.coordText}>
+            <Text variant="caption" color="secondary">
               مختصات: {asset.latitude.toFixed(4)}, {asset.longitude.toFixed(4)}
             </Text>
           </View>
@@ -301,7 +301,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                           size={18}
                           color="#FFFFFF"
                         />
-                        <Text style={styles.btnText}>
+                        <Text weight="semibold" color="inverse">
                           ارتقاء به سطح {asset.level + 1} (
                           {upgradeCost.toLocaleString("fa-IR")} 💰)
                         </Text>
@@ -319,7 +319,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         size={18}
                         color="#FFFFFF"
                       />
-                      <Text style={styles.btnText}>فروش</Text>
+                      <Text weight="semibold" color="inverse">فروش</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
@@ -332,7 +332,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         size={18}
                         color="#FFFFFF"
                       />
-                      <Text style={styles.btnText}>
+                      <Text weight="semibold" color="inverse">
                         لغو فروش ({asset.askPrice?.toLocaleString("fa-IR")} 💰)
                       </Text>
                     </TouchableOpacity>
@@ -354,7 +354,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       onPress={handleListForSale}
                       disabled={loading}
                     >
-                      <Text style={styles.confirmSellText}>ثبت در بازار</Text>
+                      <Text weight="semibold" color="inverse">ثبت در بازار</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -376,7 +376,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                           size={18}
                           color="#FFFFFF"
                         />
-                        <Text style={styles.btnText}>
+                        <Text weight="semibold" color="inverse">
                           خرید این سازه به قیمت{" "}
                           {priceToBuy.toLocaleString("fa-IR")} 💰
                         </Text>
@@ -390,7 +390,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       size={18}
                       color="#6366F1"
                     />
-                    <Text style={styles.notForSaleText}>
+                    <Text variant="body" color="secondary">
                       این سازه متعلق به بازیکن دیگری است.
                     </Text>
                   </View>

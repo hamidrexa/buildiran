@@ -4,28 +4,27 @@
  * Allows upgrading and listing for sale.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  Alert,
-  TextInput,
-  Modal,
-  ActivityIndicator,
-} from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { Text } from '@/components/ui/Text';
-import { useAssetStore, BUILDING_CONFIG } from '@/store/useAssetStore';
-import { usePlayerStore } from '@/store/usePlayerStore';
 import { GameAudio } from '@/lib/audio';
 import { supabase } from '@/lib/supabase';
+import { BUILDING_CONFIG, useAssetStore } from '@/store/useAssetStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
 import type { Asset, BuildingType } from '@/types/game.types';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const BUILDING_EMOJI: Record<BuildingType, string> = {
   house: '🏠', villa: '🏡', shop: '🏪', mall: '🏬',
@@ -152,32 +151,32 @@ export default function AssetsScreen() {
       >
         {/* Header Stats */}
         <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
-          <Text style={styles.headerTitle}>🏛️ دارایی‌های من</Text>
-          <Text style={styles.headerSub}>{myAssets.length} سازه</Text>
+          <Text variant="heading" weight="bold" color="primary">🏛️ دارایی‌های من</Text>
+          <Text variant="body" color="secondary">{myAssets.length} سازه</Text>
         </Animated.View>
 
         {/* Summary Cards */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.summaryRow}>
           <View style={[styles.summaryCard, { borderColor: '#FFD700' }]}>
-            <Text style={styles.summaryValue}>💰 {totalValue.toLocaleString('fa-IR')}</Text>
-            <Text style={styles.summaryLabel}>ارزش کل</Text>
+            <Text variant="body" weight="medium" color="primary">💰 {totalValue.toLocaleString('fa-IR')}</Text>
+            <Text variant="caption" color="secondary">ارزش کل</Text>
           </View>
           <View style={[styles.summaryCard, { borderColor: '#A78BFA' }]}>
-            <Text style={styles.summaryValue}>⚔️ +{totalPower}</Text>
-            <Text style={styles.summaryLabel}>قدرت کل</Text>
+            <Text variant="body" weight="medium" color="primary">⚔️ +{totalPower}</Text>
+            <Text variant="caption" color="secondary">قدرت کل</Text>
           </View>
           <View style={[styles.summaryCard, { borderColor: '#34D399' }]}>
-            <Text style={styles.summaryValue}>💵 {(player?.cash ?? 0).toLocaleString('fa-IR')}</Text>
-            <Text style={styles.summaryLabel}>موجودی</Text>
+            <Text variant="body" weight="medium" color="primary">💵 {(player?.cash ?? 0).toLocaleString('fa-IR')}</Text>
+            <Text variant="caption" color="secondary">موجودی</Text>
           </View>
         </Animated.View>
 
         {/* Asset List */}
         {myAssets.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🏗️</Text>
-            <Text style={styles.emptyTitle}>هنوز سازه‌ای ندارید</Text>
-            <Text style={styles.emptySub}>روی نقشه ضربه بزنید تا اولین ساختمان خود را بسازید</Text>
+            <Text variant="display" color="brand">🏗️</Text>
+            <Text variant="heading" weight="bold" color="primary">هنوز سازه‌ای ندارید</Text>
+            <Text variant="body" color="secondary">روی نقشه ضربه بزنید تا اولین ساختمان خود را بسازید</Text>
           </View>
         ) : (
           myAssets.map((asset, i) => (
@@ -211,10 +210,10 @@ export default function AssetsScreen() {
         <View style={saleStyles.overlay}>
           <View style={saleStyles.sheet}>
             <LinearGradient colors={['#0D1533', '#080C1A']} style={StyleSheet.absoluteFill} />
-            <Text style={saleStyles.title}>
+            <Text variant="title" weight="semibold" color="primary">
               💰 قیمت فروش {saleModal ? BUILDING_LABEL[saleModal.type] : ''}
             </Text>
-            <Text style={saleStyles.sub}>ارزش بازار: {saleModal?.marketValue?.toLocaleString('fa-IR')}</Text>
+            <Text variant="body" color="secondary">ارزش بازار: {saleModal?.marketValue?.toLocaleString('fa-IR')}</Text>
             <View style={saleStyles.inputWrapper}>
               <TextInput
                 style={saleStyles.input}
@@ -228,11 +227,11 @@ export default function AssetsScreen() {
             </View>
             <View style={saleStyles.btnRow}>
               <TouchableOpacity style={saleStyles.cancelBtn} onPress={() => setSaleModal(null)}>
-                <Text style={{ color: 'rgba(255,255,255,0.6)' }}>انصراف</Text>
+                <Text variant="body" color="secondary">انصراف</Text>
               </TouchableOpacity>
               <TouchableOpacity style={saleStyles.confirmBtn} onPress={handleListForSale} disabled={loading}>
                 <LinearGradient colors={['#6C63FF', '#A78BFA']} style={saleStyles.confirmGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '700' }}>فروش در بازار</Text>}
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text weight="semibold" color="inverse">فروش در بازار</Text>}
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -261,23 +260,23 @@ const AssetCard: React.FC<{
       {/* Header */}
       <View style={cardStyles.cardHeader}>
         <View style={cardStyles.emojiBox}>
-          <Text style={cardStyles.emoji}>{BUILDING_EMOJI[asset.type]}</Text>
+          <Text variant="display" color="brand">{BUILDING_EMOJI[asset.type]}</Text>
         </View>
         <View style={cardStyles.info}>
           <View style={cardStyles.titleRow}>
-            <Text style={cardStyles.name}>{BUILDING_LABEL[asset.type]}</Text>
+            <Text variant="title" weight="semibold" color="primary">{BUILDING_LABEL[asset.type]}</Text>
             <View style={[cardStyles.levelBadge, asset.isForSale && cardStyles.saleBadge]}>
-              <Text style={cardStyles.levelText}>
+              <Text variant="caption" weight="medium" color={asset.isForSale ? 'inverse' : 'primary'}>
                 {asset.isForSale ? '🔖 فروش' : `سطح ${asset.level}`}
               </Text>
             </View>
           </View>
-          <Text style={cardStyles.coords}>
+          <Text variant="caption" color="secondary">
             📍 {asset.latitude.toFixed(3)}°, {asset.longitude.toFixed(3)}°
           </Text>
           <View style={cardStyles.statsRow}>
-            <Text style={cardStyles.statText}>💰 {asset.marketValue.toLocaleString('fa-IR')}</Text>
-            <Text style={cardStyles.statText}>⚔️ +{asset.powerBonus}</Text>
+            <Text variant="caption" color="secondary">💰 {asset.marketValue.toLocaleString('fa-IR')}</Text>
+            <Text variant="caption" color="secondary">⚔️ +{asset.powerBonus}</Text>
           </View>
         </View>
       </View>
@@ -285,13 +284,13 @@ const AssetCard: React.FC<{
       {/* Actions */}
       <View style={cardStyles.actions}>
         <TouchableOpacity style={cardStyles.upgradeBtn} onPress={onUpgrade}>
-          <Text style={cardStyles.upgradeBtnText}>⬆️ ارتقاء</Text>
+          <Text variant="caption" weight="medium" color="primary">⬆️ ارتقاء</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[cardStyles.listBtn, asset.isForSale && cardStyles.listBtnActive]}
           onPress={onList}
         >
-          <Text style={[cardStyles.listBtnText, asset.isForSale && { color: '#EF4444' }]}>
+          <Text variant="caption" weight="medium" color={asset.isForSale ? 'muted' : 'primary'}>
             {asset.isForSale ? '🚫 لغو فروش' : '🏷️ فروش'}
           </Text>
         </TouchableOpacity>

@@ -4,26 +4,26 @@
  * Allows neighborhood editors to review, approve, or reject player-proposed building types.
  */
 
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  Modal,
-  Dimensions,
-  Alert,
-} from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { Text } from '@/components/ui/Text';
+import { GameAudio } from '@/lib/audio';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { GameAudio } from '@/lib/audio';
 import type { CustomBuildingType } from '@/types/game.types';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -122,10 +122,10 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
-              <Text style={styles.badgeEmoji}>🎖️</Text>
+              <Text variant="display" color="brand">🎖️</Text>
               <View>
-                <Text style={styles.title}>پنل بازبینی ویرایشگران محله</Text>
-                <Text style={styles.subtitle}>
+                <Text variant="heading" weight="bold" color="primary">پنل بازبینی ویرایشگران محله</Text>
+                <Text variant="body" color="secondary">
                   محله {currentNeighborhood.nameFa} ({currentNeighborhood.city})
                 </Text>
               </View>
@@ -133,10 +133,10 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
 
             {/* Power Status Badge */}
             <View style={[styles.powerBadge, isEditor ? styles.editorActive : styles.editorInactive]}>
-              <Text style={styles.powerBadgeText}>
+              <Text variant="body" weight="semibold" color={isEditor ? 'inverse' : 'muted'}>
                 {isEditor ? '⭐ ویرایشگر مجاز' : '🔒 فاقد قدرت کافی'}
               </Text>
-              <Text style={styles.powerSub}>
+              <Text variant="caption" color={isEditor ? 'inverse' : 'muted'}>
                 قدرت شما: {player.power} / حداقل {currentNeighborhood.minEditorPower}
               </Text>
             </View>
@@ -155,7 +155,7 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
                     GameAudio.playTap();
                   }}
                 >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  <Text variant="body" color={active ? 'inverse' : 'primary'}>
                     📍 {n.nameFa}
                   </Text>
                 </TouchableOpacity>
@@ -167,9 +167,9 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             {!isEditor ? (
               <View style={styles.lockedBox}>
-                <Text style={styles.lockedEmoji}>🛡️</Text>
-                <Text style={styles.lockedTitle}>شما هنوز ویرایشگر این محله نیستید</Text>
-                <Text style={styles.lockedDesc}>
+                <Text variant="display" color="brand">🛡️</Text>
+                <Text variant="heading" weight="bold" color="primary">شما هنوز ویرایشگر این محله نیستید</Text>
+                <Text variant="body" color="secondary">
                   برای کسب حق رأی و ویرایشگری در محله «{currentNeighborhood.nameFa}»، باید با ساخت و ارتقای سازه‌ها قدرت نفوذ خود را به حداقل {currentNeighborhood.minEditorPower} برسانید (قدرت فعلی: {player.power}).
                 </Text>
               </View>
@@ -177,15 +177,15 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
               <ActivityIndicator size="large" color="#6C63FF" style={{ marginTop: 40 }} />
             ) : pendingProposals.length === 0 ? (
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyEmoji}>📬</Text>
-                <Text style={styles.emptyTitle}>هیچ طرح معلقی وجود ندارد</Text>
-                <Text style={styles.emptySub}>
+                <Text variant="display" color="brand">📬</Text>
+                <Text variant="heading" weight="bold" color="primary">هیچ طرح معلقی وجود ندارد</Text>
+                <Text variant="body" color="secondary">
                   تمامی طرح‌های پیشنهادی بازیکنان در این محله بررسی شده‌اند.
                 </Text>
               </View>
             ) : (
               <View style={styles.proposalList}>
-                <Text style={styles.sectionHeading}>
+                <Text variant="title" weight="semibold" color="primary">
                   طرح‌های در انتظار بررسی ({pendingProposals.length}):
                 </Text>
 
@@ -201,10 +201,10 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
                         }}
                         activeOpacity={0.8}
                       >
-                        <Text style={styles.cardEmoji}>{p.emoji || '🏛️'}</Text>
+                        <Text variant="display" color="brand">{p.emoji || '🏛️'}</Text>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.cardTitle}>{p.nameFa}</Text>
-                          <Text style={styles.cardCategory}>دسته‌بندی: {p.category}</Text>
+                          <Text variant="title" weight="semibold" color="primary">{p.nameFa}</Text>
+                          <Text variant="caption" color="secondary">دسته‌بندی: {p.category}</Text>
                         </View>
                         <Ionicons
                           name={isSelected ? 'chevron-up' : 'chevron-down'}
@@ -216,29 +216,29 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
                       {/* Expanded Proposal Details */}
                       {isSelected && (
                         <View style={styles.detailsContainer}>
-                          <Text style={styles.detailsDesc}>{p.descriptionFa}</Text>
+                          <Text variant="body" color="secondary">{p.descriptionFa}</Text>
 
                           {/* Stats Row */}
                           <View style={styles.statsRow}>
                             <View style={styles.statPill}>
-                              <Text style={styles.statPillLabel}>هزینه پایه</Text>
-                              <Text style={styles.statPillVal}>💰 {p.baseCost.toLocaleString('fa-IR')}</Text>
+                              <Text variant="caption" color="secondary">هزینه پایه</Text>
+                              <Text variant="body" weight="medium" color="primary">💰 {p.baseCost.toLocaleString('fa-IR')}</Text>
                             </View>
                             <View style={styles.statPill}>
-                              <Text style={styles.statPillLabel}>پاداش قدرت</Text>
-                              <Text style={styles.statPillVal}>⚔️ +{p.powerBonus}</Text>
+                              <Text variant="caption" color="secondary">پاداش قدرت</Text>
+                              <Text variant="body" weight="medium" color="primary">⚔️ +{p.powerBonus}</Text>
                             </View>
                             <View style={styles.statPill}>
-                              <Text style={styles.statPillLabel}>درآمد ساعتی</Text>
-                              <Text style={styles.statPillVal}>🪙 {p.incomeRate}</Text>
+                              <Text variant="caption" color="secondary">درآمد ساعتی</Text>
+                              <Text variant="body" weight="medium" color="primary">🪙 {p.incomeRate}</Text>
                             </View>
                           </View>
 
                           {/* Custom Settings */}
                           {p.customSettings && Object.keys(p.customSettings).length > 0 && (
                             <View style={styles.customFeatureBox}>
-                              <Text style={styles.customFeatureTitle}>⚡ قابلیت ویژه پیشنهادی:</Text>
-                              <Text style={styles.customFeatureText}>
+                              <Text variant="label" color="secondary">⚡ قابلیت ویژه پیشنهادی:</Text>
+                              <Text variant="body" color="primary">
                                 {p.customSettings.specialFeature || JSON.stringify(p.customSettings)}
                               </Text>
                             </View>
@@ -260,7 +260,7 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
                               onPress={() => handleReject(p)}
                               disabled={actionLoading}
                             >
-                              <Text style={styles.rejectBtnText}>❌ رد طرح</Text>
+                              <Text weight="semibold" color="inverse">❌ رد طرح</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -277,7 +277,7 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
                                 {actionLoading ? (
                                   <ActivityIndicator color="#fff" />
                                 ) : (
-                                  <Text style={styles.approveBtnText}>✅ تأیید و انتشار در نقشه</Text>
+                                  <Text weight="semibold" color="inverse">✅ تأیید و انتشار در نقشه</Text>
                                 )}
                               </LinearGradient>
                             </TouchableOpacity>

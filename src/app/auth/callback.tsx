@@ -81,7 +81,7 @@ export default function AuthCallback() {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#6C63FF" />
-      <Text style={styles.text}>{errorMsg ?? "در حال ورود به بازی..."}</Text>
+      <Text variant="body" color="secondary">{errorMsg ?? "در حال ورود به بازی..."}</Text>
     </View>
   );
 }

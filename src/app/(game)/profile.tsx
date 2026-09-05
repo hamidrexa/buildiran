@@ -18,12 +18,12 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -407,7 +407,7 @@ const ResourceRow: React.FC<{ icon: string; label: string; value: number }> = ({
       <Text variant="body" color="secondary">
         {label}
       </Text>
-      <Text style={rowStyles.icon}>{icon}</Text>
+      <Text variant="body" color="primary">{icon}</Text>
     </View>
   </View>
 );
@@ -432,9 +432,9 @@ const StatChip: React.FC<{ icon: string; label: string; value: number }> = ({
   value,
 }) => (
   <View style={chipStyles.chip}>
-    <Text style={chipStyles.icon}>{icon}</Text>
-    <Text style={chipStyles.value}>{value.toLocaleString("fa-IR")}</Text>
-    <Text style={chipStyles.label}>{label}</Text>
+    <Text variant="body" color="primary">{icon}</Text>
+    <Text variant="body" weight="medium" color="primary">{value.toLocaleString("fa-IR")}</Text>
+    <Text variant="caption" color="secondary">{label}</Text>
   </View>
 );
 

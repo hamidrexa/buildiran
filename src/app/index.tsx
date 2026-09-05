@@ -3,13 +3,13 @@
  * Auth guard: redirects to game if session exists, else to login.
  */
 
-import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { Redirect } from 'expo-router';
-import { supabase } from '@/lib/supabase';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/ui/Text';
 import { GameAudio } from '@/lib/audio';
+import { supabase } from '@/lib/supabase';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Redirect } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 
 export default function Index() {
   const [checking, setChecking] = useState(true);
@@ -31,8 +31,12 @@ export default function Index() {
         colors={['#080C1A', '#0D1533']}
         style={styles.splash}
       >
-        <Text style={styles.splashEmoji}>🏰</Text>
-        <Text style={styles.splashTitle}>بیلد ایران</Text>
+        <Text variant="display" color="brand">🏰</Text>
+        <Text variant="heading" weight="extrabold" color="primary" style={{
+          textShadowColor: '#6C63FF',
+          textShadowRadius: 16,
+          textShadowOffset: { width: 0, height: 0 },
+        }}>بیلد ایران</Text>
         <ActivityIndicator color="#6C63FF" size="large" style={{ marginTop: 24 }} />
       </LinearGradient>
     );

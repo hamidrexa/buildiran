@@ -6,10 +6,11 @@
 import { Colors } from "@/theme";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import * as Font from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { I18nManager, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -18,14 +19,25 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
   useEffect(() => {
     async function prepare() {
       try {
+        // Load fonts
+        await Font.loadAsync({
+          Vazirmatn: require("../assets/fonts/Vazirmatn-Regular.ttf"),
+          VazirmatnBold: require("../assets/fonts/Vazirmatn-Bold.ttf"),
+          VazirmatnMedium: require("../assets/fonts/Vazirmatn-Medium.ttf"),
+        });
+        
         // Force RTL for Persian language
         if (!I18nManager.isRTL) {
           I18nManager.allowRTL(true);
           I18nManager.forceRTL(true);
         }
+        
+        setFontsLoaded(true);
       } catch (e) {
         console.warn("RTL initialization error:", e);
       } finally {
@@ -35,6 +47,10 @@ export default function RootLayout() {
 
     prepare();
   }, []);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

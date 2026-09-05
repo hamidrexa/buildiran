@@ -5,28 +5,28 @@
  * or propose a new custom building to the neighborhood editors.
  */
 
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  Modal,
-  Dimensions,
-} from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { Text } from '@/components/ui/Text';
-import { useAssetStore, BUILDING_CONFIG } from '@/store/useAssetStore';
-import { usePlayerStore } from '@/store/usePlayerStore';
-import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { GameAudio } from '@/lib/audio';
 import { useScalePop } from '@/lib/effects';
-import type { BuildingType, LatLng, CustomBuildingType } from '@/types/game.types';
-import { tileIdFromCoordinate } from '@/utils/geo';
 import { supabase } from '@/lib/supabase';
+import { useAssetStore } from '@/store/useAssetStore';
+import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import type { BuildingType, CustomBuildingType, LatLng } from '@/types/game.types';
+import { tileIdFromCoordinate } from '@/utils/geo';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { ProposeBuildingModal } from './ProposeBuildingModal';
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -192,9 +192,9 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
 
             {success ? (
               <View style={styles.successBox}>
-                <Text style={styles.successEmoji}>🎉</Text>
-                <Text style={styles.successTitle}>ساخت موفق!</Text>
-                <Text style={styles.successSub}>
+                <Text variant="display" color="brand">🎉</Text>
+                <Text variant="heading" weight="bold" color="primary">ساخت موفق!</Text>
+                <Text variant="body" color="secondary">
                   {selectedItem?.label ?? 'سازه'} با موفقیت در نقشه ساخته شد
                 </Text>
               </View>
@@ -203,14 +203,14 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
                 {/* Header */}
                 <View style={styles.header}>
                   <View>
-                    <Text style={styles.title}>📍 انتخاب سازه برای ساخت</Text>
-                    <Text style={styles.coords}>
+                    <Text variant="heading" weight="bold" color="primary">📍 انتخاب سازه برای ساخت</Text>
+                    <Text variant="caption" color="secondary">
                       {currentNeighborhood ? `محله ${currentNeighborhood.nameFa} | ` : ''}
                       {coordinate.latitude.toFixed(4)}°, {coordinate.longitude.toFixed(4)}°
                     </Text>
                   </View>
                   <View style={styles.cashBadge}>
-                    <Text style={styles.cashText}>💰 {(player?.cash ?? 0).toLocaleString('fa-IR')}</Text>
+                    <Text variant="body" weight="semibold" color="inverse">💰 {(player?.cash ?? 0).toLocaleString('fa-IR')}</Text>
                   </View>
                 </View>
 
@@ -221,7 +221,7 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
                   contentContainerStyle={styles.scrollContent}
                 >
                   {/* Standard Buildings */}
-                  <Text style={styles.sectionHeader}>سازه‌های اصلی شهر:</Text>
+                  <Text variant="title" weight="semibold" color="primary">سازه‌های اصلی شهر:</Text>
                   <View style={styles.buildingGrid}>
                     {STANDARD_BUILDINGS.map((b) => {
                       const isSelected = selectedItem?.type === b.type;
@@ -238,14 +238,14 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
                           onPress={() => affordable && handleSelectStandard(b)}
                           activeOpacity={affordable ? 0.8 : 1}
                         >
-                          <Text style={styles.buildingEmoji}>{b.emoji}</Text>
-                          <Text style={[styles.buildingLabel, !affordable && styles.dimText]}>
+                          <Text variant="display" color="brand">{b.emoji}</Text>
+                          <Text variant="body" weight="medium" color={affordable ? 'primary' : 'muted'}>
                             {b.label}
                           </Text>
-                          <Text style={[styles.buildingCost, !affordable && styles.costRed]}>
+                          <Text variant="caption" color={affordable ? 'primary' : 'muted'}>
                             💰 {b.cost.toLocaleString('fa-IR')}
                           </Text>
-                          <Text style={styles.buildingPower}>⚔️ +{b.power}</Text>
+                          <Text variant="caption" color="secondary">⚔️ +{b.power}</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -254,7 +254,7 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
                   {/* Neighborhood Custom Approved Buildings */}
                   {approvedCustomTypes.length > 0 && (
                     <>
-                      <Text style={[styles.sectionHeader, { marginTop: 14 }]}>
+                      <Text variant="title" weight="semibold" color="primary">
                         سازه‌های اختصاصی محله (طراحی شده توسط بازیکنان):
                       </Text>
                       <View style={styles.buildingGrid}>
@@ -274,14 +274,14 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
                               onPress={() => affordable && handleSelectCustom(c)}
                               activeOpacity={affordable ? 0.8 : 1}
                             >
-                              <Text style={styles.buildingEmoji}>{c.emoji || '🏛️'}</Text>
-                              <Text style={[styles.buildingLabel, !affordable && styles.dimText]}>
+                              <Text variant="display" color="brand">{c.emoji || '🏛️'}</Text>
+                              <Text variant="body" weight="medium" color={affordable ? 'primary' : 'muted'}>
                                 {c.nameFa}
                               </Text>
-                              <Text style={[styles.buildingCost, !affordable && styles.costRed]}>
+                              <Text variant="caption" color={affordable ? 'primary' : 'muted'}>
                                 💰 {c.baseCost.toLocaleString('fa-IR')}
                               </Text>
-                              <Text style={styles.buildingPower}>⚔️ +{c.powerBonus}</Text>
+                              <Text variant="caption" color="secondary">⚔️ +{c.powerBonus}</Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -304,10 +304,10 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <Text style={styles.proposeEmoji}>💡</Text>
+                      <Text variant="display" color="brand">💡</Text>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.proposeTitle}>پیشنهاد نوع سازه جدید</Text>
-                        <Text style={styles.proposeSub}>
+                        <Text variant="body" weight="semibold" color="primary">پیشنهاد نوع سازه جدید</Text>
+                        <Text variant="caption" color="secondary">
                           طرح سازه دلخواه خود را ثبت کنید تا ویرایشگران محله آن را تأیید کنند
                         </Text>
                       </View>
@@ -320,22 +320,22 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
                 {selectedItem && (
                   <View style={styles.footer}>
                     <View style={styles.selectedInfo}>
-                      <Text style={styles.selectedTitle}>
+                      <Text variant="title" weight="semibold" color="primary">
                         {selectedItem.emoji} {selectedItem.label}
                       </Text>
-                      <Text style={styles.selectedDesc}>{selectedItem.description}</Text>
+                      <Text variant="body" color="secondary">{selectedItem.description}</Text>
                       <View style={styles.statsRow}>
                         <View style={styles.statBadge}>
-                          <Text style={styles.statLabel}>ارزش سازه</Text>
-                          <Text style={styles.statValue}>💰 {selectedItem.value.toLocaleString('fa-IR')}</Text>
+                          <Text variant="caption" color="secondary">ارزش سازه</Text>
+                          <Text variant="body" weight="medium" color="primary">💰 {selectedItem.value.toLocaleString('fa-IR')}</Text>
                         </View>
                         <View style={styles.statBadge}>
-                          <Text style={styles.statLabel}>پاداش قدرت</Text>
-                          <Text style={styles.statValue}>⚔️ +{selectedItem.power}</Text>
+                          <Text variant="caption" color="secondary">پاداش قدرت</Text>
+                          <Text variant="body" weight="medium" color="primary">⚔️ +{selectedItem.power}</Text>
                         </View>
                         <View style={styles.statBadge}>
-                          <Text style={styles.statLabel}>هزینه ساخت</Text>
-                          <Text style={[styles.statValue, !canAfford && styles.costRed]}>
+                          <Text variant="caption" color="secondary">هزینه ساخت</Text>
+                          <Text variant="body" weight="medium" color={!canAfford ? 'muted' : 'primary'}>
                             💰 {selectedItem.cost.toLocaleString('fa-IR')}
                           </Text>
                         </View>
@@ -358,7 +358,7 @@ export function BuildModal({ visible, coordinate, onClose }: BuildModalProps) {
                           {building ? (
                             <ActivityIndicator color="#fff" />
                           ) : (
-                            <Text style={styles.buildBtnText}>
+                            <Text weight="semibold" color="inverse">
                               {canAfford ? '🏗️  احداث سازه در این مکان' : '💸  موجودی ناکافی'}
                             </Text>
                           )}

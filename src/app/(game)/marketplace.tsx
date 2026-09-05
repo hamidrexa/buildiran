@@ -3,25 +3,25 @@
  * Browse and buy assets listed for sale by other players.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/Text';
-import { useAssetStore } from '@/store/useAssetStore';
-import { usePlayerStore } from '@/store/usePlayerStore';
 import { GameAudio } from '@/lib/audio';
 import { supabase } from '@/lib/supabase';
+import { useAssetStore } from '@/store/useAssetStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
 import type { AssetListing, BuildingType } from '@/types/game.types';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const BUILDING_EMOJI: Record<BuildingType, string> = {
   house: '🏠', villa: '🏡', shop: '🏪', mall: '🏬',
@@ -136,24 +136,24 @@ export default function MarketplaceScreen() {
           {/* Type + Level */}
           <View style={cardStyles.row}>
             <View style={cardStyles.emojiBox}>
-              <Text style={cardStyles.emoji}>
+              <Text variant="display" color="brand">
                 {item.asset ? BUILDING_EMOJI[item.asset.type] : '🏗️'}
               </Text>
             </View>
             <View style={cardStyles.info}>
-              <Text style={cardStyles.name}>
+              <Text variant="title" weight="semibold" color="primary">
                 {item.asset ? BUILDING_LABEL[item.asset.type] : 'دارایی'}
                 {item.asset ? ` — سطح ${item.asset.level}` : ''}
               </Text>
-              <Text style={cardStyles.seller}>
+              <Text variant="caption" color="secondary">
                 👤 {item.sellerUsername ?? 'ناشناس'}
                 {isOwn ? '  (دارایی شما)' : ''}
               </Text>
               {item.asset && (
                 <View style={cardStyles.statsRow}>
-                  <Text style={cardStyles.stat}>💰 ارزش {item.asset.marketValue.toLocaleString('fa-IR')}</Text>
-                  <Text style={cardStyles.stat}>⚔️ +{item.asset.powerBonus}</Text>
-                  <Text style={cardStyles.stat}>
+                  <Text variant="caption" color="secondary">💰 ارزش {item.asset.marketValue.toLocaleString('fa-IR')}</Text>
+                  <Text variant="caption" color="secondary">⚔️ +{item.asset.powerBonus}</Text>
+                  <Text variant="caption" color="secondary">
                     📍 {item.asset.latitude.toFixed(2)}°, {item.asset.longitude.toFixed(2)}°
                   </Text>
                 </View>
@@ -164,8 +164,8 @@ export default function MarketplaceScreen() {
           {/* Price + Buy */}
           <View style={cardStyles.footer}>
             <View style={cardStyles.priceBox}>
-              <Text style={cardStyles.priceLabel}>قیمت فروش</Text>
-              <Text style={[cardStyles.price, !canAfford && cardStyles.priceRed]}>
+              <Text variant="caption" color="secondary">قیمت فروش</Text>
+              <Text variant="body" weight="medium" color={!canAfford ? 'muted' : 'primary'}>
                 💰 {item.price.toLocaleString('fa-IR')}
               </Text>
             </View>
@@ -188,7 +188,7 @@ export default function MarketplaceScreen() {
                   {isBuying ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={cardStyles.buyBtnText}>
+                    <Text weight="semibold" color="inverse">
                       {canAfford ? '🛒 خرید' : '💸 ناکافی'}
                     </Text>
                   )}
@@ -218,8 +218,8 @@ export default function MarketplaceScreen() {
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>🏛️ بازار دارایی‌ها</Text>
-            <Text style={styles.headerSub}>
+            <Text variant="heading" weight="bold" color="primary">🏛️ بازار دارایی‌ها</Text>
+            <Text variant="body" color="secondary">
               {listings.length} دارایی در فروش · موجودی: 💰{(player?.cash ?? 0).toLocaleString('fa-IR')}
             </Text>
           </View>
@@ -228,13 +228,13 @@ export default function MarketplaceScreen() {
           isLoadingListings ? (
             <View style={styles.emptyState}>
               <ActivityIndicator color="#6C63FF" size="large" />
-              <Text style={styles.emptyText}>در حال بارگذاری...</Text>
+              <Text variant="body" color="secondary">در حال بارگذاری...</Text>
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>🏷️</Text>
-              <Text style={styles.emptyTitle}>بازار خالی است</Text>
-              <Text style={styles.emptySub}>
+              <Text variant="display" color="brand">🏷️</Text>
+              <Text variant="heading" weight="bold" color="primary">بازار خالی است</Text>
+              <Text variant="body" color="secondary">
                 هنوز هیچ دارایی برای فروش لیست نشده. از صفحه «دارایی‌ها» دارایی خود را بفروشید!
               </Text>
             </View>

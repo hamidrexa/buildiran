@@ -6,11 +6,11 @@ import { Text } from "@/components/ui/Text";
 import { showAlert } from "@/lib/alert";
 import { GameAudio } from "@/lib/audio";
 import {
-  useFloatIn,
-  useGlowPulse,
-  useParticle,
-  useScalePop,
-  useShake,
+    useFloatIn,
+    useGlowPulse,
+    useParticle,
+    useScalePop,
+    useShake,
 } from "@/lib/effects";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,20 +20,20 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -242,7 +242,7 @@ export default function LoginScreen() {
         entering={FadeIn.duration(400)}
         style={[styles.registerBar, { top: insets.top + 10 }]}
       >
-        <Text style={styles.registerBarText}>حساب ندارید؟</Text>
+        <Text variant="body" color="secondary">حساب ندارید؟</Text>
         <TouchableOpacity
           style={styles.registerBarBtn}
           onPress={() => {
@@ -251,7 +251,7 @@ export default function LoginScreen() {
           }}
           activeOpacity={0.85}
         >
-          <Text style={styles.registerBarBtnText}>🚀 ثبت‌نام رایگان</Text>
+          <Text variant="body" weight="semibold" color="inverse">🚀 ثبت‌نام رایگان</Text>
         </TouchableOpacity>
       </Animated.View>
 
@@ -278,12 +278,12 @@ export default function LoginScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.logoEmoji}>🏰</Text>
+                <Text variant="display" color="brand">🏰</Text>
               </LinearGradient>
             </Animated.View>
             <Animated.View entering={FadeInUp.delay(200).duration(600)}>
-              <Text style={styles.appName}>بیلد ایران</Text>
-              <Text style={styles.tagline}>قلمرو خود را بسازید</Text>
+              <Text variant="heading" weight="bold" color="primary">بیلد ایران</Text>
+              <Text variant="body" color="secondary">قلمرو خود را بسازید</Text>
             </Animated.View>
           </Animated.View>
 
@@ -296,10 +296,10 @@ export default function LoginScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             />
-            <Text style={styles.cardTitle}>ورود به بازی</Text>
+            <Text variant="title" weight="semibold" color="primary">ورود به بازی</Text>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>ایمیل</Text>
+              <Text variant="label" color="secondary">ایمیل</Text>
               <View
                 style={[
                   styles.inputWrapper,
@@ -335,9 +335,9 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   onPress={() => router.push("/auth/forgot-password" as any)}
                 >
-                  <Text style={styles.forgotText}>فراموشی رمز؟</Text>
+                  <Text variant="caption" color="brand">فراموشی رمز؟</Text>
                 </TouchableOpacity>
-                <Text style={styles.fieldLabel}>رمز عبور</Text>
+                <Text variant="label" color="secondary">رمز عبور</Text>
               </View>
               <View
                 style={[
@@ -389,7 +389,7 @@ export default function LoginScreen() {
                   {loading ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={styles.loginBtnText}>⚔️ وارد شوید</Text>
+                    <Text weight="semibold" color="inverse">⚔️ وارد شوید</Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
@@ -397,7 +397,7 @@ export default function LoginScreen() {
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>یا</Text>
+              <Text variant="caption" color="secondary">یا</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -408,21 +408,21 @@ export default function LoginScreen() {
               activeOpacity={0.8}
             >
               <Ionicons name="logo-google" size={18} color="#EA4335" />
-              <Text style={styles.googleBtnText}>ورود با حساب گوگل</Text>
+              <Text variant="body" weight="medium" color="primary">ورود با حساب گوگل</Text>
             </TouchableOpacity>
 
             <View style={styles.registerRow}>
               <TouchableOpacity
                 onPress={() => router.push("/auth/register" as any)}
               >
-                <Text style={styles.registerLink}>ثبت نام کنید</Text>
+                <Text variant="body" weight="medium" color="brand">ثبت نام کنید</Text>
               </TouchableOpacity>
-              <Text style={styles.registerPrompt}>حساب ندارید؟ </Text>
+              <Text variant="body" color="secondary">حساب ندارید؟ </Text>
             </View>
           </Animated.View>
 
           <Animated.View entering={FadeIn.delay(800)} style={styles.footer}>
-            <Text style={styles.footerText}>
+            <Text variant="caption" color="muted">
               © 2026 BuildIran · تمام حقوق محفوظ است
             </Text>
           </Animated.View>
