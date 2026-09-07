@@ -141,6 +141,10 @@ CREATE TABLE IF NOT EXISTS public.asset_listings (
 
 COMMENT ON TABLE public.asset_listings IS 'Peer-to-peer asset marketplace listings.';
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_active_listing_per_asset
+  ON public.asset_listings(asset_id)
+  WHERE status = 'active';
+
 -- Atomic marketplace operations. These functions are the only client entry
 -- points for creating and settling listings, so a trade cannot partially apply.
 CREATE OR REPLACE FUNCTION public.list_asset_for_sale(p_asset_id UUID, p_price BIGINT)
@@ -241,6 +245,9 @@ BEGIN
   RETURN TRUE;
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.list_asset_for_sale(UUID, BIGINT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.buy_asset_listing(UUID) TO authenticated;
 
 -- ─── 7. Game Events Log ──────────────────────────────────────
 -- Append-only audit log of all game actions.

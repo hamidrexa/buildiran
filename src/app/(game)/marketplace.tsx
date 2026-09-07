@@ -10,6 +10,7 @@ import { useAssetStore } from "@/store/useAssetStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import type { AssetListing, BuildingType } from "@/types/game.types";
 import { LinearGradient } from "expo-linear-gradient";
+import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -57,6 +58,7 @@ export default function MarketplaceScreen() {
 
   const listings = useAssetStore((s) => s.listings);
   const isLoadingListings = useAssetStore((s) => s.isLoadingListings);
+  const listingsError = useAssetStore((s) => s.listingsError);
   const fetchListings = useAssetStore((s) => s.fetchListings);
   const buyAsset = useAssetStore((s) => s.buyAsset);
   const player = usePlayerStore((s) => s.player);
@@ -70,6 +72,12 @@ export default function MarketplaceScreen() {
       }
     });
   }, [fetchListings]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchListings();
+    }, [fetchListings]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -264,6 +272,18 @@ export default function MarketplaceScreen() {
               <ActivityIndicator color="#6C63FF" size="large" />
               <Text variant="body" color="secondary">
                 در حال بارگذاری...
+              </Text>
+            </View>
+          ) : listingsError ? (
+            <View style={styles.emptyState}>
+              <Text variant="display" color="brand">
+                ⚠️
+              </Text>
+              <Text variant="heading" weight="bold" color="primary">
+                خطا در بارگذاری بازار
+              </Text>
+              <Text variant="body" color="secondary">
+                {listingsError}
               </Text>
             </View>
           ) : (

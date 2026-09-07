@@ -12,6 +12,7 @@ interface AssetState {
   listings: AssetListing[];
   isLoadingAssets: boolean;
   isLoadingListings: boolean;
+  listingsError: string | null;
 
   // ─── Asset Actions ────────────────────────────────────────────────────────
   fetchMyAssets: (userId: string) => Promise<void>;
@@ -78,6 +79,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
   listings: [],
   isLoadingAssets: false,
   isLoadingListings: false,
+  listingsError: null,
 
   fetchMyAssets: async (userId: string) => {
     set({ isLoadingAssets: true });
@@ -277,11 +279,14 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     const asset = get().assets[assetId];
     if (!asset) return false;
     try {
-      const { error } = await supabase.rpc("list_asset_for_sale", {
+      const { data, error } = await supabase.rpc("list_asset_for_sale", {
         p_asset_id: assetId,
         p_price: price,
       });
       if (error) throw error;
+      if (data !== true) {
+        throw new Error("The asset could not be listed for sale");
+      }
 
       set((state) => ({
         assets: {
@@ -325,15 +330,15 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
   },
 
   fetchListings: async () => {
-    set({ isLoadingListings: true });
+    set({ isLoadingListings: true, listingsError: null });
     try {
       const { data, error } = await supabase
         .from("asset_listings")
         .select(
           `
           *,
-          asset:assets(*),
-          seller:profiles(username)
+          asset:assets!asset_listings_asset_id_fkey(*),
+          seller:profiles!asset_listings_seller_id_fkey(username)
         `,
         )
         .eq("status", "active")
@@ -357,6 +362,10 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       set({ listings });
     } catch (err) {
       console.warn("[AssetStore] fetchListings error:", err);
+      set({
+        listingsError:
+          err instanceof Error ? err.message : "Unable to load marketplace listings",
+      });
     } finally {
       set({ isLoadingListings: false });
     }
