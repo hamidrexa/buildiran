@@ -360,7 +360,8 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       const { data, error } = await supabase.rpc("buy_asset_listing", {
         p_listing_id: listingId,
       });
-      if (error || data !== true) throw error ?? new Error("Trade was not completed");
+      if (error || data !== true)
+        throw error ?? new Error("Trade was not completed");
 
       // Remove from listing UI
       set((state) => ({

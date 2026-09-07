@@ -14,13 +14,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
 
@@ -219,25 +219,35 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                   { borderColor: isOwned ? "#10B981" : "#6366F1" },
                 ]}
               >
-                <Text variant="display" color="brand">{buildingInfo.emoji}</Text>
+                <Text variant="display" color="brand">
+                  {buildingInfo.emoji}
+                </Text>
               </View>
               <View style={styles.titleCol}>
                 <View style={styles.titleRow}>
-                  <Text variant="heading" weight="bold" color="primary">{buildingInfo.label}</Text>
+                  <Text variant="heading" weight="bold" color="primary">
+                    {buildingInfo.label}
+                  </Text>
                   <View
                     style={[
                       styles.badge,
                       isOwned ? styles.badgeOwned : styles.badgeOther,
                     ]}
                   >
-                    <Text variant="caption" weight="medium" color={isOwned ? 'inverse' : 'primary'}>
+                    <Text
+                      variant="caption"
+                      weight="medium"
+                      color={isOwned ? "inverse" : "primary"}
+                    >
                       {isOwned
                         ? "مالک: شما"
                         : `مالک: ${asset.ownerUsername || "ناشناس"}`}
                     </Text>
                   </View>
                 </View>
-                <Text variant="body" color="secondary">{buildingInfo.desc}</Text>
+                <Text variant="body" color="secondary">
+                  {buildingInfo.desc}
+                </Text>
               </View>
             </View>
 
@@ -249,20 +259,30 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
-              <Text variant="caption" color="secondary">سطح سازه</Text>
-              <Text variant="body" weight="medium" color="primary">⭐ {asset.level}</Text>
+              <Text variant="caption" color="secondary">
+                سطح سازه
+              </Text>
+              <Text variant="body" weight="medium" color="primary">
+                ⭐ {asset.level}
+              </Text>
             </View>
 
             <View style={styles.statCard}>
-              <Text variant="caption" color="secondary">ارزش بازار</Text>
+              <Text variant="caption" color="secondary">
+                ارزش بازار
+              </Text>
               <Text variant="body" weight="medium" color="primary">
                 💰 {asset.marketValue.toLocaleString("fa-IR")}
               </Text>
             </View>
 
             <View style={styles.statCard}>
-              <Text variant="caption" color="secondary">قدرت اثر</Text>
-              <Text variant="body" weight="medium" color="primary">⚡ +{asset.powerBonus}</Text>
+              <Text variant="caption" color="secondary">
+                قدرت اثر
+              </Text>
+              <Text variant="body" weight="medium" color="primary">
+                ⚡ +{asset.powerBonus}
+              </Text>
             </View>
           </View>
 
@@ -315,7 +335,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         size={18}
                         color="#FFFFFF"
                       />
-                      <Text weight="semibold" color="inverse">فروش</Text>
+                      <Text weight="semibold" color="inverse">
+                        فروش
+                      </Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
@@ -350,7 +372,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       onPress={handleListForSale}
                       disabled={loading}
                     >
-                      <Text weight="semibold" color="inverse">ثبت در بازار</Text>
+                      <Text weight="semibold" color="inverse">
+                        ثبت در بازار
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
