@@ -364,7 +364,9 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       console.warn("[AssetStore] fetchListings error:", err);
       set({
         listingsError:
-          err instanceof Error ? err.message : "Unable to load marketplace listings",
+          err instanceof Error
+            ? err.message
+            : "Unable to load marketplace listings",
       });
     } finally {
       set({ isLoadingListings: false });
