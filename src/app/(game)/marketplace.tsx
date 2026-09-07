@@ -55,7 +55,7 @@ export default function MarketplaceScreen() {
         fetchListings();
       }
     });
-  }, []);
+  }, [fetchListings]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -90,22 +90,6 @@ export default function MarketplaceScreen() {
             setBuying(listing.id);
             const ok = await buyAsset(listing.id, userId);
             if (ok) {
-              // Deduct cash from buyer
-              await supabase
-                .from('profiles')
-                .update({ cash: player.cash - listing.price })
-                .eq('id', userId);
-
-              // Add cash to seller
-              try {
-                await supabase.rpc('increment_cash', {
-                  p_user_id: listing.sellerId,
-                  p_amount: listing.price,
-                });
-              } catch {
-                // Fallback if RPC not set up
-              }
-
               updateCash(-listing.price);
               GameAudio.playBuy();
               Alert.alert('🎉 خرید موفق!', `${assetLabel} با موفقیت خریداری شد.`);

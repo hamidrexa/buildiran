@@ -172,10 +172,6 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         const ok = await buyAsset(activeListing.id, player.id);
         if (ok) {
           updateCash(-priceToBuy);
-          await supabase
-            .from("profiles")
-            .update({ cash: player.cash - priceToBuy })
-            .eq("id", player.id);
           await GameAudio.playBuild();
           onClose();
         }

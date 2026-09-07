@@ -141,6 +141,107 @@ CREATE TABLE IF NOT EXISTS public.asset_listings (
 
 COMMENT ON TABLE public.asset_listings IS 'Peer-to-peer asset marketplace listings.';
 
+-- Atomic marketplace operations. These functions are the only client entry
+-- points for creating and settling listings, so a trade cannot partially apply.
+CREATE OR REPLACE FUNCTION public.list_asset_for_sale(p_asset_id UUID, p_price BIGINT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_owner_id UUID;
+BEGIN
+  IF auth.uid() IS NULL OR p_price <= 0 THEN
+    RETURN FALSE;
+  END IF;
+
+  SELECT owner_id INTO v_owner_id
+    FROM public.assets
+   WHERE id = p_asset_id
+   FOR UPDATE;
+
+  IF v_owner_id IS NULL OR v_owner_id <> auth.uid() THEN
+    RETURN FALSE;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.asset_listings
+     WHERE asset_id = p_asset_id AND status = 'active'
+  ) THEN
+    RETURN FALSE;
+  END IF;
+
+  UPDATE public.assets
+     SET is_for_sale = TRUE, ask_price = p_price
+   WHERE id = p_asset_id;
+
+  INSERT INTO public.asset_listings (asset_id, seller_id, price)
+  VALUES (p_asset_id, v_owner_id, p_price);
+
+  RETURN TRUE;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.buy_asset_listing(p_listing_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_buyer_id UUID := auth.uid();
+  v_asset_id UUID;
+  v_seller_id UUID;
+  v_price BIGINT;
+  v_buyer_cash BIGINT;
+BEGIN
+  IF v_buyer_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  SELECT asset_id, seller_id, price
+    INTO v_asset_id, v_seller_id, v_price
+    FROM public.asset_listings
+   WHERE id = p_listing_id AND status = 'active'
+   FOR UPDATE;
+
+  IF v_asset_id IS NULL OR v_seller_id = v_buyer_id THEN
+    RETURN FALSE;
+  END IF;
+
+  PERFORM 1 FROM public.assets
+   WHERE id = v_asset_id AND owner_id = v_seller_id AND is_for_sale = TRUE
+   FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+
+  SELECT cash INTO v_buyer_cash FROM public.profiles
+   WHERE id = v_buyer_id FOR UPDATE;
+  IF v_buyer_cash IS NULL OR v_buyer_cash < v_price THEN
+    RETURN FALSE;
+  END IF;
+
+  PERFORM 1 FROM public.profiles WHERE id = v_seller_id FOR UPDATE;
+
+  UPDATE public.profiles SET cash = cash - v_price WHERE id = v_buyer_id;
+  UPDATE public.profiles SET cash = cash + v_price WHERE id = v_seller_id;
+  UPDATE public.assets
+     SET owner_id = v_buyer_id, is_for_sale = FALSE, ask_price = NULL
+   WHERE id = v_asset_id;
+  UPDATE public.asset_listings
+     SET status = 'sold', buyer_id = v_buyer_id, sold_at = NOW()
+   WHERE id = p_listing_id;
+  INSERT INTO public.game_events (player_id, type, payload)
+  VALUES (v_buyer_id, 'asset_sold', jsonb_build_object(
+    'listing_id', p_listing_id, 'asset_id', v_asset_id, 'price', v_price
+  ));
+
+  RETURN TRUE;
+END;
+$$;
+
 -- ─── 7. Game Events Log ──────────────────────────────────────
 -- Append-only audit log of all game actions.
 

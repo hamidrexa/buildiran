@@ -268,22 +268,11 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     const asset = get().assets[assetId];
     if (!asset) return false;
     try {
-      // Update asset
-      const { error: assetError } = await supabase
-        .from("assets")
-        .update({ is_for_sale: true, ask_price: price })
-        .eq("id", assetId);
-      if (assetError) throw assetError;
-
-      // Create listing
-      const { error: listError } = await supabase
-        .from("asset_listings")
-        .insert({
-          asset_id: assetId,
-          seller_id: asset.ownerId,
-          price,
-        });
-      if (listError) throw listError;
+      const { error } = await supabase.rpc("list_asset_for_sale", {
+        p_asset_id: assetId,
+        p_price: price,
+      });
+      if (error) throw error;
 
       set((state) => ({
         assets: {
@@ -368,36 +357,23 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     const listing = get().listings.find((l) => l.id === listingId);
     if (!listing || !listing.asset) return false;
     try {
-      // Transfer ownership
-      await supabase
-        .from("assets")
-        .update({ owner_id: buyerId, is_for_sale: false, ask_price: null })
-        .eq("id", listing.assetId);
-
-      // Mark listing as sold
-      await supabase
-        .from("asset_listings")
-        .update({
-          status: "sold",
-          buyer_id: buyerId,
-          sold_at: new Date().toISOString(),
-        })
-        .eq("id", listingId);
-
-      // Log event
-      await supabase.from("game_events").insert({
-        player_id: buyerId,
-        type: "asset_sold",
-        payload: {
-          listing_id: listingId,
-          asset_id: listing.assetId,
-          price: listing.price,
-        },
+      const { data, error } = await supabase.rpc("buy_asset_listing", {
+        p_listing_id: listingId,
       });
+      if (error || data !== true) throw error ?? new Error("Trade was not completed");
 
       // Remove from listing UI
       set((state) => ({
         listings: state.listings.filter((l) => l.id !== listingId),
+        assets: {
+          ...state.assets,
+          [listing.assetId]: {
+            ...state.assets[listing.assetId],
+            ownerId: buyerId,
+            isForSale: false,
+            askPrice: null,
+          },
+        },
       }));
       return true;
     } catch (err) {
