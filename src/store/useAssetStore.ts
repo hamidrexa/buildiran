@@ -87,11 +87,20 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
         .select("*, owner:profiles(username, avatar_color)")
         .eq("owner_id", userId);
       if (error) throw error;
-      const map: Record<string, Asset> = {};
+      const ownAssets: Record<string, Asset> = {};
       (data ?? []).forEach((row) => {
-        map[row.id] = dbRowToAsset(row);
+        ownAssets[row.id] = dbRowToAsset(row);
       });
-      set({ assets: map });
+      set((state) => {
+        // This action serves the private asset screen, but the same store is
+        // also the map's global asset cache. Preserve assets owned by others.
+        const mergedAssets = Object.fromEntries(
+          Object.entries(state.assets).filter(
+            ([, asset]) => asset.ownerId !== userId,
+          ),
+        );
+        return { assets: { ...mergedAssets, ...ownAssets } };
+      });
     } catch (err) {
       console.warn("[AssetStore] fetchMyAssets error:", err);
     } finally {
