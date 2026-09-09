@@ -209,12 +209,13 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
+    <>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="none"
+        onRequestClose={onClose}
+      >
       <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
         <TouchableOpacity
           style={styles.backdrop}
@@ -512,6 +513,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         onClose={() => setShowBoostModal(false)}
       />
     )}
+    </>
   );
 };
 
