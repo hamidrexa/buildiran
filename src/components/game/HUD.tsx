@@ -10,6 +10,8 @@ import { useStatBarFill } from '@/lib/effects';
 import { useGameStore } from '@/store/useGameStore';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { useEconomyStore } from '@/store/useEconomyStore';
+import { getPlayerTier } from '@/lib/constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -63,12 +65,18 @@ export const HUD: React.FC = () => {
   const selectedTileId = useGameStore((s) => s.selectedTileId);
   const tiles = useGameStore((s) => s.tiles);
   const currentNeighborhood = useNeighborhoodStore((s) => s.currentNeighborhood);
+  const activeBoosts = useEconomyStore((s) => s.activeBoosts);
 
   const [showEditorModal, setShowEditorModal] = useState(false);
 
   const selectedTile = selectedTileId ? tiles[selectedTileId] : null;
 
   if (!player) return null;
+
+  const tier = getPlayerTier(player.power ?? 0);
+  const hasAnyBoost = Object.values(activeBoosts).some(
+    (b) => b.ownerId === player.id && new Date(b.expiresAt) > new Date(),
+  );
 
   const isEditor = currentNeighborhood
     ? player.power >= currentNeighborhood.minEditorPower
@@ -84,7 +92,7 @@ export const HUD: React.FC = () => {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          {/* Player avatar + name */}
+          {/* Player avatar + name + tier */}
           <TouchableOpacity
             style={styles.playerBadge}
             onPress={() => {
@@ -99,7 +107,10 @@ export const HUD: React.FC = () => {
             </View>
             <View style={styles.playerInfo}>
               <Text variant="body" weight="semibold" color="primary" numberOfLines={1}>{player.username}</Text>
-              <Text variant="caption" color="secondary">سطح {player.level.toLocaleString('fa-IR')}</Text>
+              {/* Tier badge */}
+              <View style={styles.tierBadge}>
+                <Text variant="caption" color="secondary">⚔️ {tier.nameFa}</Text>
+              </View>
             </View>
           </TouchableOpacity>
 
@@ -107,6 +118,11 @@ export const HUD: React.FC = () => {
           <View style={styles.resourceChips}>
             <ResourceChip icon="💰" value={player.cash ?? 0} color="#FFD700" />
             <ResourceChip icon="⚔️" value={player.power ?? 0} color="#A78BFA" />
+            {hasAnyBoost && (
+              <View style={styles.boostChip}>
+                <Text variant="caption" weight="bold" style={{ color: '#FB923C' }}>🔥 ۲×</Text>
+              </View>
+            )}
           </View>
         </LinearGradient>
       </View>
@@ -262,6 +278,31 @@ const styles = StyleSheet.create({
   },
   editorPillText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
 
+  // Tier badge under player name
+  tierBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(167,139,250,0.12)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.25)',
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+
+  // 2× boost active indicator chip
+  boostChip: {
+    backgroundColor: 'rgba(251,146,60,0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(251,146,60,0.4)',
+  },
+
   statsPanel: {
     position: 'absolute',
     right: 12,
@@ -298,6 +339,7 @@ const styles = StyleSheet.create({
   tileStatus: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
   tileId: { color: 'rgba(255,255,255,0.4)', fontSize: 11 },
 });
+
 
 const statStyles = StyleSheet.create({
   statRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

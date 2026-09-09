@@ -33,8 +33,12 @@ interface PlayerState {
     wealth?: number;
     activity?: number;
     popularity?: number;
+    powerTier?: number;
+    powerXp?: number;
   }) => void;
   updateCash: (delta: number) => void;
+  /** Increment activity score locally and persist to Supabase */
+  incrementActivity: (points: number) => Promise<void>;
 
   // ─── Supabase Sync ───────────────────────────────────────────────────────
   syncFromSupabase: (userId: string) => Promise<void>;
@@ -54,6 +58,8 @@ function dbRowToPlayer(row: Record<string, any>): Player {
     wealth: row.wealth ?? 0,
     activity: row.activity ?? 0,
     popularity: row.popularity ?? 0,
+    powerTier: row.power_tier ?? 1,
+    powerXp: row.power_xp ?? 0,
     resources: {
       gold: row.cash ?? 5000,
       food: 800,
@@ -164,6 +170,27 @@ export const usePlayerStore = create<PlayerState>()(
           };
         }),
 
+      incrementActivity: async (points: number) => {
+        const { player } = get();
+        if (!player) return;
+        const newActivity = player.activity + points;
+        // Optimistic local update
+        set((state) => ({
+          player: state.player
+            ? { ...state.player, activity: newActivity }
+            : null,
+        }));
+        // Persist to Supabase
+        try {
+          await supabase
+            .from('profiles')
+            .update({ activity: newActivity })
+            .eq('id', player.id);
+        } catch (err) {
+          console.warn('[PlayerStore] incrementActivity error:', err);
+        }
+      },
+
       // ─── Supabase Sync ─────────────────────────────────────────────────
 
       syncFromSupabase: async (userId: string) => {
@@ -193,6 +220,8 @@ export const usePlayerStore = create<PlayerState>()(
             .update({
               cash: player.cash,
               activity: player.activity,
+              power_tier: player.powerTier,
+              power_xp: player.powerXp,
               last_seen_at: new Date().toISOString(),
               status: 'in_game',
             })

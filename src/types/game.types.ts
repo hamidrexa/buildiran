@@ -124,6 +124,92 @@ export interface ResourceMap {
   population: number;
 }
 
+// ─── Economy: Power Tier ─────────────────────────────────────────────────────
+
+export interface PowerTier {
+  tier: number;
+  nameFa: string;
+  minPower: number;
+  maxPower: number;
+  xpRequired: number;
+}
+
+// ─── Economy: Institution ────────────────────────────────────────────────────
+
+/** All supported institution type codes */
+export type InstitutionType =
+  | 'home_rent'
+  | 'shopping'
+  | 'hospital'
+  | 'university'
+  | 'cafe'
+  | 'gym'
+  | 'library'
+  | 'exchange';
+
+/** Result of using an institution as a client */
+export interface ServiceResult {
+  success: boolean;
+  clientCostStat: 'cash' | 'activity';
+  clientCostAmount: number;
+  clientGainStat: 'power' | 'cash';
+  clientGainAmount: number;
+  providerCashEarned?: number;
+}
+
+/** DB row for service_transactions table */
+export interface ServiceTransaction {
+  id: string;
+  businessAssetId: string;
+  providerId: string;
+  clientId: string;
+  institutionType: InstitutionType;
+  clientCostStat: string;
+  clientCostAmount: number;
+  clientGainStat: string;
+  clientGainAmount: number;
+  providerActivitySpent: number;
+  providerCashEarned: number;
+  createdAt: string;
+}
+
+// ─── Economy: Asset Views ────────────────────────────────────────────────────
+
+/** Passive viewport view — recorded when another player's asset enters viewport */
+export interface AssetView {
+  id: string;
+  assetId: string;
+  viewerId: string;
+  ownerId: string;
+  viewedAt: string;
+}
+
+/** Aggregated engagement data for an asset owner's dashboard */
+export interface EngagementData {
+  assetId: string;
+  viewsToday: number;
+  viewsThisWeek: number;
+  viewsAllTime: number;
+  popularityEarned: number;
+  topViewers: Array<{ playerId: string; username: string; viewCount: number }>;
+  /** Suggestion to upgrade to attract more views */
+  upgradeSuggestion?: string;
+}
+
+// ─── Economy: Popularity Boost ───────────────────────────────────────────────
+
+export interface PopularityBoost {
+  id: string;
+  assetId: string;
+  ownerId: string;
+  popularitySpent: number;
+  assetLevel: number;
+  activatedAt: string;
+  expiresAt: string;
+  /** True if current time is before expiresAt */
+  isActive: boolean;
+}
+
 // ─── Player ─────────────────────────────────────────────────────────────────
 
 export type PlayerStatus = 'online' | 'offline' | 'in_game';
@@ -143,6 +229,9 @@ export interface Player {
   wealth: number;         // total asset market value
   activity: number;       // daily activity score
   popularity: number;     // social/trade score
+  // Power Tier (computed from power value, cached in DB)
+  powerTier: number;      // 1–6
+  powerXp: number;        // XP within current tier
   // Ownership
   ownedTileIds: string[];
   buildingIds: string[];
@@ -169,6 +258,12 @@ export interface Asset {
   askPrice: number | null;
   builtAt: string;
   upgradedAt: string | null;
+  // Economy additions
+  incomeRate: number;           // hourly cash income from this asset
+  totalViews: number;           // cached lifetime view count
+  dailyPowerDrip: number;       // power added to owner daily (via pg_cron)
+  institutionType: InstitutionType | null;  // null = not a service institution
+  // Joined owner data
   ownerUsername?: string;
   ownerAvatarColor?: string;
 }
@@ -201,7 +296,14 @@ export type GameEventType =
   | 'building_demolished'
   | 'player_joined'
   | 'player_left'
-  | 'resource_collected';
+  | 'resource_collected'
+  // Economy events
+  | 'asset_sold'
+  | 'service_used'
+  | 'exchange_used'
+  | 'popularity_boost_activated'
+  | 'daily_power_drip'
+  | 'power_tier_advanced';
 
 export interface GameEvent {
   id: string;

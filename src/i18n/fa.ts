@@ -201,6 +201,110 @@ const fa = {
     },
     startPlaying: 'شروع بازی',
   },
+
+  economy: {
+    // ─── Power Tiers ────────────────────────────────────────
+    tiers: {
+      title: 'سطح قدرت',
+      tier1: 'تازه‌کار',
+      tier2: 'شهروند',
+      tier3: 'استاندار',
+      tier4: 'فرماندار',
+      tier5: 'سلطان',
+      tier6: 'شاهنشاه',
+      nextTier: 'سطح بعدی',
+      xpProgress: 'پیشرفت XP',
+      tierUp: '🎉 ارتقا به سطح جدید!',
+    },
+
+    // ─── Institutions ────────────────────────────────────────
+    institution: {
+      title: 'استفاده از خدمات',
+      home_rent: 'اجاره مسکن',
+      shopping: 'خرید و پوشاک',
+      hospital: 'خدمات درمانی',
+      university: 'آموزش دانشگاهی',
+      cafe: 'کافه و رستوران',
+      gym: 'باشگاه ورزشی',
+      library: 'کتابخانه و فرهنگسرا',
+      exchange: 'بورس فعالیت',
+      clientPays: 'هزینه شما',
+      clientGains: 'دریافت شما',
+      providerEarns: 'درآمد ارائه‌دهنده',
+      useService: 'استفاده از خدمات',
+      usingService: 'در حال پردازش...',
+      successPower: 'قدرت شما افزایش یافت!',
+      successCash: 'موجودی نقد شما افزایش یافت!',
+      errorInsufficientCash: 'موجودی نقد کافی نیست',
+      errorInsufficientActivity: 'امتیاز فعالیت کافی نیست',
+      errorProviderActivity: 'ارائه‌دهنده فعالیت کافی ندارد',
+      errorOwnInstitution: 'نمی‌توانید از خدمات خود استفاده کنید',
+      ownerLabel: 'ارائه‌دهنده',
+      conversionFormula: 'معادل تبدیل',
+      stat_cash: 'تومان نقد',
+      stat_activity: 'امتیاز فعالیت',
+      stat_power: 'قدرت',
+    },
+
+    // ─── Exchange ────────────────────────────────────────────
+    exchange: {
+      title: 'بورس فعالیت',
+      subtitle: 'فعالیت خود را به نقد تبدیل کنید',
+      currentActivity: 'فعالیت فعلی شما',
+      exchangeAmount: 'مقدار تبدیل',
+      rate: 'نرخ تبدیل',
+      rateBase: '۱ فعالیت = ۲ تومان (نرخ پایه)',
+      rateOwner: '۱ فعالیت = ۳.۵ تومان (مالک کسب‌وکار)',
+      rateEstablished: '۱ فعالیت = ۵ تومان (کسب‌وکار فعال)',
+      youWillReceive: 'دریافت می‌کنید',
+      exchange: 'تبدیل فعالیت',
+      bonusActive: '🏆 نرخ ویژه مالک کسب‌وکار فعال است',
+      errorInsufficient: 'فعالیت کافی برای تبدیل ندارید',
+    },
+
+    // ─── Popularity Boost ────────────────────────────────────
+    boost: {
+      title: 'تقویت درآمد ۲×',
+      subtitle: 'محبوبیت خود را برای دو برابر کردن درآمد خرج کنید',
+      cost: 'هزینه محبوبیت',
+      costFormula: '۱۰ × سطح سازه',
+      duration: 'مدت زمان فعال',
+      durationValue: '۲۴ ساعت',
+      yourPopularity: 'محبوبیت شما',
+      activate: 'فعال‌سازی تقویت درآمد',
+      activating: 'در حال فعال‌سازی...',
+      activeUntil: 'فعال تا',
+      alreadyActive: '🔥 تقویت درآمد فعال است',
+      remainingTime: 'زمان باقی‌مانده',
+      successMsg: '🚀 تقویت ۲× فعال شد! درآمد سازه شما دو برابر شده است.',
+      errorPop: 'محبوبیت کافی ندارید',
+      multiplierBadge: '۲× درآمد',
+    },
+
+    // ─── Engagement Dashboard ────────────────────────────────
+    engagement: {
+      title: 'داشبورد تعامل',
+      subtitle: 'بینش از بازدیدکنندگان سازه شما',
+      viewsToday: 'بازدید امروز',
+      viewsWeek: 'بازدید هفته',
+      viewsAll: 'کل بازدیدها',
+      popularityEarned: 'محبوبیت کسب شده',
+      topViewers: 'بیشترین بازدیدکنندگان',
+      noViewers: 'هنوز هیچ بازدیدکننده‌ای ثبت نشده است.',
+      upgradeSuggestion: 'پیشنهاد ارتقا',
+      upgradeHint: 'با ارتقای سازه، بازدیدهای بیشتری جذب کنید و محبوبیت خود را افزایش دهید.',
+      viewsLead: 'هر بازدید = ۱ محبوبیت',
+    },
+
+    // ─── Daily Power Drip ────────────────────────────────────
+    dailyPower: {
+      title: 'درآمد روزانه قدرت',
+      subtitle: 'سازه‌های شما هر شب قدرت اضافه می‌کنند',
+      totalDrip: 'قدرت روزانه از سازه‌ها',
+      collected: 'قدرت دریافت شد امروز',
+      noAssets: 'هیچ سازه‌ای ندارید',
+    },
+  },
 } as const;
 
 export type TranslationKey = typeof fa;

@@ -39,18 +39,18 @@ interface AssetState {
 // Cost and reward table per building type
 const BUILDING_CONFIG: Record<
   BuildingType,
-  { cost: number; value: number; power: number }
+  { cost: number; value: number; power: number; incomeRate: number; dailyPowerDrip: number; institutionType: string | null }
 > = {
-  house: { cost: 500, value: 800, power: 2 },
-  farm: { cost: 800, value: 1200, power: 1 },
-  market: { cost: 1500, value: 2500, power: 3 },
-  tower: { cost: 3000, value: 5000, power: 15 },
-  warehouse: { cost: 1000, value: 1800, power: 2 },
-  barracks: { cost: 4000, value: 7000, power: 20 },
-  shop: { cost: 1200, value: 2000, power: 3 },
-  mall: { cost: 5000, value: 9000, power: 8 },
-  villa: { cost: 3500, value: 6000, power: 5 },
-  office: { cost: 2500, value: 4500, power: 6 },
+  house:     { cost: 500,  value: 800,  power: 2,  incomeRate: 20,  dailyPowerDrip: 1, institutionType: 'home_rent' },
+  farm:      { cost: 800,  value: 1200, power: 1,  incomeRate: 30,  dailyPowerDrip: 1, institutionType: null },
+  market:    { cost: 1500, value: 2500, power: 3,  incomeRate: 80,  dailyPowerDrip: 2, institutionType: 'shopping' },
+  tower:     { cost: 3000, value: 5000, power: 15, incomeRate: 50,  dailyPowerDrip: 5, institutionType: 'exchange' },
+  warehouse: { cost: 1000, value: 1800, power: 2,  incomeRate: 25,  dailyPowerDrip: 1, institutionType: null },
+  barracks:  { cost: 4000, value: 7000, power: 20, incomeRate: 0,   dailyPowerDrip: 8, institutionType: null },
+  shop:      { cost: 1200, value: 2000, power: 3,  incomeRate: 60,  dailyPowerDrip: 2, institutionType: 'shopping' },
+  mall:      { cost: 5000, value: 9000, power: 8,  incomeRate: 200, dailyPowerDrip: 3, institutionType: 'shopping' },
+  villa:     { cost: 3500, value: 6000, power: 5,  incomeRate: 40,  dailyPowerDrip: 2, institutionType: 'home_rent' },
+  office:    { cost: 2500, value: 4500, power: 6,  incomeRate: 100, dailyPowerDrip: 2, institutionType: 'exchange' },
 };
 
 function dbRowToAsset(row: Record<string, any>): Asset {
@@ -68,6 +68,12 @@ function dbRowToAsset(row: Record<string, any>): Asset {
     askPrice: row.ask_price ?? null,
     builtAt: row.built_at,
     upgradedAt: row.upgraded_at ?? null,
+    // Economy fields
+    incomeRate: row.income_rate ?? 0,
+    totalViews: row.total_views ?? 0,
+    dailyPowerDrip: row.daily_power_drip ?? 0,
+    institutionType: row.institution_type ?? null,
+    // Joined owner data
     ownerUsername: row.owner?.username ?? row.profiles?.username ?? undefined,
     ownerAvatarColor:
       row.owner?.avatar_color ?? row.profiles?.avatar_color ?? undefined,
@@ -207,6 +213,9 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
           tile_id: tileId,
           market_value: config.value,
           power_bonus: config.power,
+          income_rate: config.incomeRate ?? 0,
+          daily_power_drip: config.dailyPowerDrip ?? 0,
+          institution_type: config.institutionType ?? null,
         })
         .select()
         .single();

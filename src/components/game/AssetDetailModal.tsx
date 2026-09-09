@@ -1,6 +1,7 @@
 /**
  * BuildIran — Asset Detail Modal
  * Interactive card/modal showing building details when an asset marker is tapped on the map.
+ * Wired to the economy system: service usage, popularity boost, engagement dashboard.
  */
 
 import { Text } from "@/components/ui/Text";
@@ -8,21 +9,28 @@ import { GameAudio } from "@/lib/audio";
 import { supabase } from "@/lib/supabase";
 import { BUILDING_CONFIG, useAssetStore } from "@/store/useAssetStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
+import { useEconomyStore } from "@/store/useEconomyStore";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { Colors, Radii } from "@/theme";
-import type { Asset } from "@/types/game.types";
+import type { Asset, InstitutionType } from "@/types/game.types";
+import { INSTITUTION_DEFINITIONS } from "@/lib/constants";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
+  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
+import { InstitutionServiceModal } from "./InstitutionServiceModal";
+import { PopularityBoostModal } from "./PopularityBoostModal";
+import { EngagementDashboard } from "./EngagementDashboard";
 
 const BUILDING_LABELS: Record<
   string,
@@ -54,6 +62,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [showSellInput, setShowSellInput] = useState(false);
   const [salePrice, setSalePrice] = useState("");
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showBoostModal, setShowBoostModal] = useState(false);
+  const [showEngagement, setShowEngagement] = useState(false);
 
   const player = usePlayerStore((s) => s.player);
   const updateCash = usePlayerStore((s) => s.updateCash);
@@ -62,6 +73,15 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const cancelListing = useAssetStore((s) => s.cancelListing);
   const buyAsset = useAssetStore((s) => s.buyAsset);
   const listings = useAssetStore((s) => s.listings);
+  const isAssetBoosted = useEconomyStore((s) => s.isAssetBoosted);
+  const { track } = useActivityTracker();
+
+  // Track asset inspection for activity points
+  useEffect(() => {
+    if (visible && asset) {
+      track('asset_inspect');
+    }
+  }, [visible, asset?.id]);
 
   if (!asset) return null;
 
@@ -84,6 +104,11 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
     (l) => l.assetId === asset.id && l.status === "active",
   );
   const priceToBuy = asset.askPrice ?? activeListing?.price ?? null;
+
+  // Economy helpers
+  const instType = asset.institutionType as InstitutionType | null;
+  const instDef = instType ? INSTITUTION_DEFINITIONS[instType] : null;
+  const isBoosted = isAssetBoosted(asset.id);
 
   const handleUpgrade = async () => {
     if (!player) return;
@@ -259,32 +284,72 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
-              <Text variant="caption" color="secondary">
-                سطح سازه
-              </Text>
+              <Text variant="caption" color="secondary">سطح سازه</Text>
               <Text variant="body" weight="medium" color="primary">
                 ⭐ {asset.level}
               </Text>
             </View>
-
             <View style={styles.statCard}>
-              <Text variant="caption" color="secondary">
-                ارزش بازار
-              </Text>
+              <Text variant="caption" color="secondary">ارزش بازار</Text>
               <Text variant="body" weight="medium" color="primary">
                 💰 {asset.marketValue.toLocaleString("fa-IR")}
               </Text>
             </View>
-
             <View style={styles.statCard}>
-              <Text variant="caption" color="secondary">
-                قدرت اثر
-              </Text>
+              <Text variant="caption" color="secondary">قدرت اثر</Text>
               <Text variant="body" weight="medium" color="primary">
                 ⚡ +{asset.powerBonus}
               </Text>
             </View>
           </View>
+
+          {/* Economy Stats Row */}
+          <View style={styles.statsGrid}>
+            {asset.incomeRate > 0 && (
+              <View style={styles.statCard}>
+                <Text variant="caption" color="secondary">درآمد/ساعت</Text>
+                <Text variant="body" weight="medium" style={{ color: '#FFD700' }}>
+                  💵 {asset.incomeRate.toLocaleString('fa-IR')}
+                </Text>
+              </View>
+            )}
+            {asset.dailyPowerDrip > 0 && (
+              <View style={styles.statCard}>
+                <Text variant="caption" color="secondary">قدرت/روز</Text>
+                <Text variant="body" weight="medium" style={{ color: '#A78BFA' }}>
+                  ⚔️ +{asset.dailyPowerDrip}
+                </Text>
+              </View>
+            )}
+            {asset.totalViews > 0 && (
+              <View style={styles.statCard}>
+                <Text variant="caption" color="secondary">بازدید کل</Text>
+                <Text variant="body" weight="medium" style={{ color: '#34D399' }}>
+                  👁️ {asset.totalViews.toLocaleString('fa-IR')}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Institution badge */}
+          {instDef && (
+            <View style={styles.instBadge}>
+              <Text style={styles.instEmoji}>{instDef.emoji}</Text>
+              <Text variant="caption" color="secondary">{instDef.nameFa}</Text>
+              {isBoosted && (
+                <View style={styles.boostPill}>
+                  <Text variant="caption" weight="bold" style={{ color: '#FB923C' }}>🔥 ۲× درآمد</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Engagement dashboard (owner only) */}
+          {isOwned && showEngagement && (
+            <View style={styles.engagementWrap}>
+              <EngagementDashboard assetId={asset.id} />
+            </View>
+          )}
 
           {/* Coordinates Info */}
           <View style={styles.coordRow}>
@@ -312,14 +377,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                       <>
-                        <Ionicons
-                          name="arrow-up-circle-outline"
-                          size={18}
-                          color="#FFFFFF"
-                        />
+                        <Ionicons name="arrow-up-circle-outline" size={18} color="#FFFFFF" />
                         <Text weight="semibold" color="inverse">
-                          ارتقاء به سطح {asset.level + 1} (
-                          {upgradeCost.toLocaleString("fa-IR")} 💰)
+                          ارتقاء سطح {asset.level + 1} ({upgradeCost.toLocaleString("fa-IR")} 💰)
                         </Text>
                       </>
                     )}
@@ -330,14 +390,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       style={[styles.actionBtn, styles.sellBtn]}
                       onPress={() => setShowSellInput((v) => !v)}
                     >
-                      <Ionicons
-                        name="pricetag-outline"
-                        size={18}
-                        color="#FFFFFF"
-                      />
-                      <Text weight="semibold" color="inverse">
-                        فروش
-                      </Text>
+                      <Ionicons name="pricetag-outline" size={18} color="#FFFFFF" />
+                      <Text weight="semibold" color="inverse">فروش</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
@@ -345,16 +399,34 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       onPress={handleCancelSale}
                       disabled={loading}
                     >
-                      <Ionicons
-                        name="close-circle-outline"
-                        size={18}
-                        color="#FFFFFF"
-                      />
+                      <Ionicons name="close-circle-outline" size={18} color="#FFFFFF" />
                       <Text weight="semibold" color="inverse">
                         لغو فروش ({asset.askPrice?.toLocaleString("fa-IR")} 💰)
                       </Text>
                     </TouchableOpacity>
                   )}
+                </View>
+
+                {/* Owner economy buttons */}
+                <View style={styles.btnRow}>
+                  {instDef && (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.boostBtn]}
+                      onPress={() => { GameAudio.playTap(); setShowBoostModal(true); }}
+                    >
+                      <Text weight="semibold" color="inverse">
+                        {isBoosted ? '🔥 ۲× فعال' : '🚀 تقویت درآمد'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.dashBtn]}
+                    onPress={() => { GameAudio.playTap(); setShowEngagement((v) => !v); }}
+                  >
+                    <Text weight="semibold" color="inverse">
+                      {showEngagement ? '📊 بستن' : '📊 تعامل'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
                 {showSellInput && !asset.isForSale && (
@@ -372,15 +444,26 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       onPress={handleListForSale}
                       disabled={loading}
                     >
-                      <Text weight="semibold" color="inverse">
-                        ثبت در بازار
-                      </Text>
+                      <Text weight="semibold" color="inverse">ثبت در بازار</Text>
                     </TouchableOpacity>
                   </View>
                 )}
               </>
             ) : (
               <View style={styles.otherActionBox}>
+                {/* Use service institution (non-owner) */}
+                {instDef && (
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.serviceBtn]}
+                    onPress={() => { GameAudio.playTap(); setShowServiceModal(true); }}
+                  >
+                    <Text style={{ fontSize: 18 }}>{instDef.emoji}</Text>
+                    <Text weight="semibold" color="inverse">
+                      استفاده از {instDef.nameFa}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
                 {asset.isForSale && priceToBuy ? (
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.buyBtn]}
@@ -391,36 +474,44 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                       <>
-                        <Ionicons
-                          name="cart-outline"
-                          size={18}
-                          color="#FFFFFF"
-                        />
+                        <Ionicons name="cart-outline" size={18} color="#FFFFFF" />
                         <Text weight="semibold" color="inverse">
-                          خرید این سازه به قیمت{" "}
-                          {priceToBuy.toLocaleString("fa-IR")} 💰
+                          خرید — {priceToBuy.toLocaleString("fa-IR")} 💰
                         </Text>
                       </>
                     )}
                   </TouchableOpacity>
-                ) : (
+                ) : !instDef ? (
                   <View style={styles.notForSaleBox}>
-                    <Ionicons
-                      name="shield-checkmark-outline"
-                      size={18}
-                      color="#6366F1"
-                    />
+                    <Ionicons name="shield-checkmark-outline" size={18} color="#6366F1" />
                     <Text variant="body" color="secondary">
                       این سازه متعلق به بازیکن دیگری است.
                     </Text>
                   </View>
-                )}
+                ) : null}
               </View>
             )}
           </View>
         </Animated.View>
       </Animated.View>
     </Modal>
+
+    {/* Economy sub-modals */}
+    {instType && (
+      <InstitutionServiceModal
+        visible={showServiceModal}
+        asset={asset}
+        institutionType={instType}
+        onClose={() => setShowServiceModal(false)}
+      />
+    )}
+    {instType && isOwned && (
+      <PopularityBoostModal
+        visible={showBoostModal}
+        asset={asset}
+        onClose={() => setShowBoostModal(false)}
+      />
+    )}
   );
 };
 
@@ -562,6 +653,43 @@ const styles = StyleSheet.create({
   btnRow: {
     flexDirection: "row-reverse",
     gap: 8,
+  },
+  instBadge: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(108,99,255,0.08)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(108,99,255,0.2)',
+    marginBottom: 4,
+  },
+  instEmoji: { fontSize: 18 },
+  boostPill: {
+    backgroundColor: 'rgba(251,146,60,0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(251,146,60,0.4)',
+  },
+  engagementWrap: {
+    maxHeight: 320,
+    marginBottom: 8,
+  },
+  serviceBtn: {
+    backgroundColor: '#6C63FF',
+    marginBottom: 8,
+  },
+  boostBtn: {
+    backgroundColor: '#D97706',
+    flex: 1,
+  },
+  dashBtn: {
+    backgroundColor: '#0F766E',
+    flex: 1,
   },
   actionBtn: {
     flex: 1,
