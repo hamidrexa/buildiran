@@ -5,32 +5,31 @@
  */
 
 import { Text } from "@/components/ui/Text";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { GameAudio } from "@/lib/audio";
+import { INSTITUTION_DEFINITIONS } from "@/lib/constants";
 import { supabase } from "@/lib/supabase";
 import { BUILDING_CONFIG, useAssetStore } from "@/store/useAssetStore";
-import { usePlayerStore } from "@/store/usePlayerStore";
 import { useEconomyStore } from "@/store/useEconomyStore";
-import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { usePlayerStore } from "@/store/usePlayerStore";
 import { Colors, Radii } from "@/theme";
 import type { Asset, InstitutionType } from "@/types/game.types";
-import { INSTITUTION_DEFINITIONS } from "@/lib/constants";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
-  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
+import { EngagementDashboard } from "./EngagementDashboard";
 import { InstitutionServiceModal } from "./InstitutionServiceModal";
 import { PopularityBoostModal } from "./PopularityBoostModal";
-import { EngagementDashboard } from "./EngagementDashboard";
 
 const BUILDING_LABELS: Record<
   string,
@@ -79,7 +78,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   // Track asset inspection for activity points
   useEffect(() => {
     if (visible && asset) {
-      track('asset_inspect');
+      track("asset_inspect");
     }
   }, [visible, asset?.id]);
 
@@ -216,303 +215,371 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         animationType="none"
         onRequestClose={onClose}
       >
-      <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
-        <TouchableOpacity
-          style={styles.backdrop}
-          onPress={onClose}
-          activeOpacity={1}
-        />
-
-        <Animated.View
-          entering={SlideInDown.springify().damping(18)}
-          style={styles.sheet}
-        >
-          <LinearGradient
-            colors={["#0D1533", "#080C1A"]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
+        <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
+          <TouchableOpacity
+            style={styles.backdrop}
+            onPress={onClose}
+            activeOpacity={1}
           />
 
-          <View style={styles.handle} />
+          <Animated.View
+            entering={SlideInDown.springify().damping(18)}
+            style={styles.sheet}
+          >
+            <LinearGradient
+              colors={["#0D1533", "#080C1A"]}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            />
 
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View
-                style={[
-                  styles.avatarBox,
-                  { borderColor: isOwned ? "#10B981" : "#6366F1" },
-                ]}
-              >
-                <Text variant="display" color="brand">
-                  {buildingInfo.emoji}
-                </Text>
-              </View>
-              <View style={styles.titleCol}>
-                <View style={styles.titleRow}>
-                  <Text variant="heading" weight="bold" color="primary">
-                    {buildingInfo.label}
+            <View style={styles.handle} />
+
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <View
+                  style={[
+                    styles.avatarBox,
+                    { borderColor: isOwned ? "#10B981" : "#6366F1" },
+                  ]}
+                >
+                  <Text variant="display" color="brand">
+                    {buildingInfo.emoji}
                   </Text>
-                  <View
-                    style={[
-                      styles.badge,
-                      isOwned ? styles.badgeOwned : styles.badgeOther,
-                    ]}
-                  >
-                    <Text
-                      variant="caption"
-                      weight="medium"
-                      color={isOwned ? "inverse" : "primary"}
-                    >
-                      {isOwned
-                        ? "مالک: شما"
-                        : `مالک: ${asset.ownerUsername || "ناشناس"}`}
-                    </Text>
-                  </View>
                 </View>
-                <Text variant="body" color="secondary">
-                  {buildingInfo.desc}
-                </Text>
+                <View style={styles.titleCol}>
+                  <View style={styles.titleRow}>
+                    <Text variant="heading" weight="bold" color="primary">
+                      {buildingInfo.label}
+                    </Text>
+                    <View
+                      style={[
+                        styles.badge,
+                        isOwned ? styles.badgeOwned : styles.badgeOther,
+                      ]}
+                    >
+                      <Text
+                        variant="caption"
+                        weight="medium"
+                        color={isOwned ? "inverse" : "primary"}
+                      >
+                        {isOwned
+                          ? "مالک: شما"
+                          : `مالک: ${asset.ownerUsername || "ناشناس"}`}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text variant="body" color="secondary">
+                    {buildingInfo.desc}
+                  </Text>
+                </View>
               </View>
+
+              <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+                <Ionicons name="close" size={22} color={Colors.text.muted} />
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <Ionicons name="close" size={22} color={Colors.text.muted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Stats Grid */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text variant="caption" color="secondary">سطح سازه</Text>
-              <Text variant="body" weight="medium" color="primary">
-                ⭐ {asset.level}
-              </Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text variant="caption" color="secondary">ارزش بازار</Text>
-              <Text variant="body" weight="medium" color="primary">
-                💰 {asset.marketValue.toLocaleString("fa-IR")}
-              </Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text variant="caption" color="secondary">قدرت اثر</Text>
-              <Text variant="body" weight="medium" color="primary">
-                ⚡ +{asset.powerBonus}
-              </Text>
-            </View>
-          </View>
-
-          {/* Economy Stats Row */}
-          <View style={styles.statsGrid}>
-            {asset.incomeRate > 0 && (
+            {/* Stats Grid */}
+            <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <Text variant="caption" color="secondary">درآمد/ساعت</Text>
-                <Text variant="body" weight="medium" style={{ color: '#FFD700' }}>
-                  💵 {asset.incomeRate.toLocaleString('fa-IR')}
+                <Text variant="caption" color="secondary">
+                  سطح سازه
+                </Text>
+                <Text variant="body" weight="medium" color="primary">
+                  ⭐ {asset.level}
                 </Text>
               </View>
-            )}
-            {asset.dailyPowerDrip > 0 && (
               <View style={styles.statCard}>
-                <Text variant="caption" color="secondary">قدرت/روز</Text>
-                <Text variant="body" weight="medium" style={{ color: '#A78BFA' }}>
-                  ⚔️ +{asset.dailyPowerDrip}
+                <Text variant="caption" color="secondary">
+                  ارزش بازار
+                </Text>
+                <Text variant="body" weight="medium" color="primary">
+                  💰 {asset.marketValue.toLocaleString("fa-IR")}
                 </Text>
               </View>
-            )}
-            {asset.totalViews > 0 && (
               <View style={styles.statCard}>
-                <Text variant="caption" color="secondary">بازدید کل</Text>
-                <Text variant="body" weight="medium" style={{ color: '#34D399' }}>
-                  👁️ {asset.totalViews.toLocaleString('fa-IR')}
+                <Text variant="caption" color="secondary">
+                  قدرت اثر
+                </Text>
+                <Text variant="body" weight="medium" color="primary">
+                  ⚡ +{asset.powerBonus}
                 </Text>
               </View>
-            )}
-          </View>
+            </View>
 
-          {/* Institution badge */}
-          {instDef && (
-            <View style={styles.instBadge}>
-              <Text style={styles.instEmoji}>{instDef.emoji}</Text>
-              <Text variant="caption" color="secondary">{instDef.nameFa}</Text>
-              {isBoosted && (
-                <View style={styles.boostPill}>
-                  <Text variant="caption" weight="bold" style={{ color: '#FB923C' }}>🔥 ۲× درآمد</Text>
+            {/* Economy Stats Row */}
+            <View style={styles.statsGrid}>
+              {asset.incomeRate > 0 && (
+                <View style={styles.statCard}>
+                  <Text variant="caption" color="secondary">
+                    درآمد/ساعت
+                  </Text>
+                  <Text
+                    variant="body"
+                    weight="medium"
+                    style={{ color: "#FFD700" }}
+                  >
+                    💵 {asset.incomeRate.toLocaleString("fa-IR")}
+                  </Text>
+                </View>
+              )}
+              {asset.dailyPowerDrip > 0 && (
+                <View style={styles.statCard}>
+                  <Text variant="caption" color="secondary">
+                    قدرت/روز
+                  </Text>
+                  <Text
+                    variant="body"
+                    weight="medium"
+                    style={{ color: "#A78BFA" }}
+                  >
+                    ⚔️ +{asset.dailyPowerDrip}
+                  </Text>
+                </View>
+              )}
+              {asset.totalViews > 0 && (
+                <View style={styles.statCard}>
+                  <Text variant="caption" color="secondary">
+                    بازدید کل
+                  </Text>
+                  <Text
+                    variant="body"
+                    weight="medium"
+                    style={{ color: "#34D399" }}
+                  >
+                    👁️ {asset.totalViews.toLocaleString("fa-IR")}
+                  </Text>
                 </View>
               )}
             </View>
-          )}
 
-          {/* Engagement dashboard (owner only) */}
-          {isOwned && showEngagement && (
-            <View style={styles.engagementWrap}>
-              <EngagementDashboard assetId={asset.id} />
-            </View>
-          )}
-
-          {/* Coordinates Info */}
-          <View style={styles.coordRow}>
-            <Ionicons
-              name="location-outline"
-              size={14}
-              color={Colors.text.muted}
-            />
-            <Text variant="caption" color="secondary">
-              مختصات: {asset.latitude.toFixed(4)}, {asset.longitude.toFixed(4)}
-            </Text>
-          </View>
-
-          {/* Action Area */}
-          <View style={styles.actionsContainer}>
-            {isOwned ? (
-              <>
-                <View style={styles.btnRow}>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.upgradeBtn]}
-                    onPress={handleUpgrade}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <Ionicons name="arrow-up-circle-outline" size={18} color="#FFFFFF" />
-                        <Text weight="semibold" color="inverse">
-                          ارتقاء سطح {asset.level + 1} ({upgradeCost.toLocaleString("fa-IR")} 💰)
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-
-                  {!asset.isForSale ? (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.sellBtn]}
-                      onPress={() => setShowSellInput((v) => !v)}
+            {/* Institution badge */}
+            {instDef && (
+              <View style={styles.instBadge}>
+                <Text style={styles.instEmoji}>{instDef.emoji}</Text>
+                <Text variant="caption" color="secondary">
+                  {instDef.nameFa}
+                </Text>
+                {isBoosted && (
+                  <View style={styles.boostPill}>
+                    <Text
+                      variant="caption"
+                      weight="bold"
+                      style={{ color: "#FB923C" }}
                     >
-                      <Ionicons name="pricetag-outline" size={18} color="#FFFFFF" />
-                      <Text weight="semibold" color="inverse">فروش</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.cancelBtn]}
-                      onPress={handleCancelSale}
-                      disabled={loading}
-                    >
-                      <Ionicons name="close-circle-outline" size={18} color="#FFFFFF" />
-                      <Text weight="semibold" color="inverse">
-                        لغو فروش ({asset.askPrice?.toLocaleString("fa-IR")} 💰)
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Owner economy buttons */}
-                <View style={styles.btnRow}>
-                  {instDef && (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.boostBtn]}
-                      onPress={() => { GameAudio.playTap(); setShowBoostModal(true); }}
-                    >
-                      <Text weight="semibold" color="inverse">
-                        {isBoosted ? '🔥 ۲× فعال' : '🚀 تقویت درآمد'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.dashBtn]}
-                    onPress={() => { GameAudio.playTap(); setShowEngagement((v) => !v); }}
-                  >
-                    <Text weight="semibold" color="inverse">
-                      {showEngagement ? '📊 بستن' : '📊 تعامل'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {showSellInput && !asset.isForSale && (
-                  <View style={styles.sellInputBox}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="قیمت پیشنهادی (سکه)..."
-                      placeholderTextColor="#64748B"
-                      keyboardType="numeric"
-                      value={salePrice}
-                      onChangeText={setSalePrice}
-                    />
-                    <TouchableOpacity
-                      style={styles.confirmSellBtn}
-                      onPress={handleListForSale}
-                      disabled={loading}
-                    >
-                      <Text weight="semibold" color="inverse">ثبت در بازار</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </>
-            ) : (
-              <View style={styles.otherActionBox}>
-                {/* Use service institution (non-owner) */}
-                {instDef && (
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.serviceBtn]}
-                    onPress={() => { GameAudio.playTap(); setShowServiceModal(true); }}
-                  >
-                    <Text style={{ fontSize: 18 }}>{instDef.emoji}</Text>
-                    <Text weight="semibold" color="inverse">
-                      استفاده از {instDef.nameFa}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {asset.isForSale && priceToBuy ? (
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.buyBtn]}
-                    onPress={handleBuy}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <Ionicons name="cart-outline" size={18} color="#FFFFFF" />
-                        <Text weight="semibold" color="inverse">
-                          خرید — {priceToBuy.toLocaleString("fa-IR")} 💰
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                ) : !instDef ? (
-                  <View style={styles.notForSaleBox}>
-                    <Ionicons name="shield-checkmark-outline" size={18} color="#6366F1" />
-                    <Text variant="body" color="secondary">
-                      این سازه متعلق به بازیکن دیگری است.
+                      🔥 ۲× درآمد
                     </Text>
                   </View>
-                ) : null}
+                )}
               </View>
             )}
-          </View>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
 
-    {/* Economy sub-modals */}
-    {instType && (
-      <InstitutionServiceModal
-        visible={showServiceModal}
-        asset={asset}
-        institutionType={instType}
-        onClose={() => setShowServiceModal(false)}
-      />
-    )}
-    {instType && isOwned && (
-      <PopularityBoostModal
-        visible={showBoostModal}
-        asset={asset}
-        onClose={() => setShowBoostModal(false)}
-      />
-    )}
+            {/* Engagement dashboard (owner only) */}
+            {isOwned && showEngagement && (
+              <View style={styles.engagementWrap}>
+                <EngagementDashboard assetId={asset.id} />
+              </View>
+            )}
+
+            {/* Coordinates Info */}
+            <View style={styles.coordRow}>
+              <Ionicons
+                name="location-outline"
+                size={14}
+                color={Colors.text.muted}
+              />
+              <Text variant="caption" color="secondary">
+                مختصات: {asset.latitude.toFixed(4)},{" "}
+                {asset.longitude.toFixed(4)}
+              </Text>
+            </View>
+
+            {/* Action Area */}
+            <View style={styles.actionsContainer}>
+              {isOwned ? (
+                <>
+                  <View style={styles.btnRow}>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.upgradeBtn]}
+                      onPress={handleUpgrade}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="arrow-up-circle-outline"
+                            size={18}
+                            color="#FFFFFF"
+                          />
+                          <Text weight="semibold" color="inverse">
+                            ارتقاء سطح {asset.level + 1} (
+                            {upgradeCost.toLocaleString("fa-IR")} 💰)
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+
+                    {!asset.isForSale ? (
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.sellBtn]}
+                        onPress={() => setShowSellInput((v) => !v)}
+                      >
+                        <Ionicons
+                          name="pricetag-outline"
+                          size={18}
+                          color="#FFFFFF"
+                        />
+                        <Text weight="semibold" color="inverse">
+                          فروش
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.cancelBtn]}
+                        onPress={handleCancelSale}
+                        disabled={loading}
+                      >
+                        <Ionicons
+                          name="close-circle-outline"
+                          size={18}
+                          color="#FFFFFF"
+                        />
+                        <Text weight="semibold" color="inverse">
+                          لغو فروش ({asset.askPrice?.toLocaleString("fa-IR")}{" "}
+                          💰)
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Owner economy buttons */}
+                  <View style={styles.btnRow}>
+                    {instDef && (
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.boostBtn]}
+                        onPress={() => {
+                          GameAudio.playTap();
+                          setShowBoostModal(true);
+                        }}
+                      >
+                        <Text weight="semibold" color="inverse">
+                          {isBoosted ? "🔥 ۲× فعال" : "🚀 تقویت درآمد"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.dashBtn]}
+                      onPress={() => {
+                        GameAudio.playTap();
+                        setShowEngagement((v) => !v);
+                      }}
+                    >
+                      <Text weight="semibold" color="inverse">
+                        {showEngagement ? "📊 بستن" : "📊 تعامل"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {showSellInput && !asset.isForSale && (
+                    <View style={styles.sellInputBox}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="قیمت پیشنهادی (سکه)..."
+                        placeholderTextColor="#64748B"
+                        keyboardType="numeric"
+                        value={salePrice}
+                        onChangeText={setSalePrice}
+                      />
+                      <TouchableOpacity
+                        style={styles.confirmSellBtn}
+                        onPress={handleListForSale}
+                        disabled={loading}
+                      >
+                        <Text weight="semibold" color="inverse">
+                          ثبت در بازار
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <View style={styles.otherActionBox}>
+                  {/* Use service institution (non-owner) */}
+                  {instDef && (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.serviceBtn]}
+                      onPress={() => {
+                        GameAudio.playTap();
+                        setShowServiceModal(true);
+                      }}
+                    >
+                      <Text style={{ fontSize: 18 }}>{instDef.emoji}</Text>
+                      <Text weight="semibold" color="inverse">
+                        استفاده از {instDef.nameFa}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {asset.isForSale && priceToBuy ? (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.buyBtn]}
+                      onPress={handleBuy}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name="cart-outline"
+                            size={18}
+                            color="#FFFFFF"
+                          />
+                          <Text weight="semibold" color="inverse">
+                            خرید — {priceToBuy.toLocaleString("fa-IR")} 💰
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : !instDef ? (
+                    <View style={styles.notForSaleBox}>
+                      <Ionicons
+                        name="shield-checkmark-outline"
+                        size={18}
+                        color="#6366F1"
+                      />
+                      <Text variant="body" color="secondary">
+                        این سازه متعلق به بازیکن دیگری است.
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              )}
+            </View>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
+
+      {/* Economy sub-modals */}
+      {instType && (
+        <InstitutionServiceModal
+          visible={showServiceModal}
+          asset={asset}
+          institutionType={instType}
+          onClose={() => setShowServiceModal(false)}
+        />
+      )}
+      {instType && isOwned && (
+        <PopularityBoostModal
+          visible={showBoostModal}
+          asset={asset}
+          onClose={() => setShowBoostModal(false)}
+        />
+      )}
     </>
   );
 };
@@ -657,40 +724,40 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   instBadge: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
+    flexDirection: "row-reverse",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: 'rgba(108,99,255,0.08)',
+    backgroundColor: "rgba(108,99,255,0.08)",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.2)',
+    borderColor: "rgba(108,99,255,0.2)",
     marginBottom: 4,
   },
   instEmoji: { fontSize: 18 },
   boostPill: {
-    backgroundColor: 'rgba(251,146,60,0.15)',
+    backgroundColor: "rgba(251,146,60,0.15)",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderWidth: 1,
-    borderColor: 'rgba(251,146,60,0.4)',
+    borderColor: "rgba(251,146,60,0.4)",
   },
   engagementWrap: {
     maxHeight: 320,
     marginBottom: 8,
   },
   serviceBtn: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: "#6C63FF",
     marginBottom: 8,
   },
   boostBtn: {
-    backgroundColor: '#D97706',
+    backgroundColor: "#D97706",
     flex: 1,
   },
   dashBtn: {
-    backgroundColor: '#0F766E',
+    backgroundColor: "#0F766E",
     flex: 1,
   },
   actionBtn: {
