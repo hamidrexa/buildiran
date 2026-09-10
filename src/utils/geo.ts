@@ -2,7 +2,7 @@
  * BuildIran — Geographic Utilities
  */
 
-import type { LatLng, Bounds } from '@/types/game.types';
+import type { Bounds, LatLng } from '@/types/game.types';
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -21,9 +21,9 @@ export function haversineDistance(a: LatLng, b: LatLng): number {
   const h =
     sinDLat * sinDLat +
     Math.cos(toRad(a.latitude)) *
-      Math.cos(toRad(b.latitude)) *
-      sinDLon *
-      sinDLon;
+    Math.cos(toRad(b.latitude)) *
+    sinDLon *
+    sinDLon;
 
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }

@@ -20,7 +20,7 @@ export const MAP_DEFAULT_CENTER = {
 /** Street-level zoom so streets, alleys, and building plots are immediately visible */
 export const MAP_DEFAULT_ZOOM = 15;
 export const MAP_MIN_ZOOM = 4;
-export const MAP_MAX_ZOOM = 19;
+export const MAP_MAX_ZOOM = 18;
 
 /**
  * High-detail street map style (CartoDB Voyager / OpenStreetMap raster tiles).
@@ -157,12 +157,12 @@ export const IRAN_BOUNDS = {
 // XP is the unlock gate to advance to the next tier.
 
 export const POWER_TIERS = [
-  { tier: 1, nameFa: 'تازه‌کار',   minPower: 0,    maxPower: 20,   xpRequired: 100 },
-  { tier: 2, nameFa: 'شهروند',    minPower: 21,   maxPower: 50,   xpRequired: 500 },
-  { tier: 3, nameFa: 'استاندار',   minPower: 51,   maxPower: 150,  xpRequired: 2000 },
-  { tier: 4, nameFa: 'فرماندار',   minPower: 151,  maxPower: 500,  xpRequired: 10000 },
-  { tier: 5, nameFa: 'سلطان',     minPower: 501,  maxPower: 2000, xpRequired: 50000 },
-  { tier: 6, nameFa: 'شاهنشاه',   minPower: 2001, maxPower: Infinity, xpRequired: Infinity },
+  { tier: 1, nameFa: 'تازه‌کار', minPower: 0, maxPower: 20, xpRequired: 100 },
+  { tier: 2, nameFa: 'شهروند', minPower: 21, maxPower: 50, xpRequired: 500 },
+  { tier: 3, nameFa: 'استاندار', minPower: 51, maxPower: 150, xpRequired: 2000 },
+  { tier: 4, nameFa: 'فرماندار', minPower: 151, maxPower: 500, xpRequired: 10000 },
+  { tier: 5, nameFa: 'سلطان', minPower: 501, maxPower: 2000, xpRequired: 50000 },
+  { tier: 6, nameFa: 'شاهنشاه', minPower: 2001, maxPower: Infinity, xpRequired: Infinity },
 ] as const;
 
 export type PowerTierIndex = 1 | 2 | 3 | 4 | 5 | 6;
@@ -202,61 +202,61 @@ export const INSTITUTION_DEFINITIONS: Record<string, InstitutionDefinition> = {
   home_rent: {
     nameFa: 'اجاره مسکن',
     emoji: '🏠',
-    clientCost:  { stat: 'cash',     amount: 200 },
-    clientGain:  { stat: 'power',    amount: 5   },
+    clientCost: { stat: 'cash', amount: 200 },
+    clientGain: { stat: 'power', amount: 5 },
     buildingTypes: ['house', 'villa'],
   },
   shopping: {
     nameFa: 'خرید و پوشاک',
     emoji: '🛍️',
-    clientCost:       { stat: 'cash',     amount: 300 },
-    clientGain:       { stat: 'power',    amount: 6   },
-    providerCost:     { stat: 'activity', amount: 10  },
+    clientCost: { stat: 'cash', amount: 300 },
+    clientGain: { stat: 'power', amount: 6 },
+    providerCost: { stat: 'activity', amount: 10 },
     providerGainPercent: 60,
     buildingTypes: ['shop', 'mall', 'market'],
   },
   hospital: {
     nameFa: 'خدمات درمانی',
     emoji: '🏥',
-    clientCost:       { stat: 'cash',     amount: 500 },
-    clientGain:       { stat: 'power',    amount: 15  },
-    providerCost:     { stat: 'activity', amount: 20  },
+    clientCost: { stat: 'cash', amount: 500 },
+    clientGain: { stat: 'power', amount: 15 },
+    providerCost: { stat: 'activity', amount: 20 },
     providerGainPercent: 55,
     buildingTypes: ['hospital'],
   },
   university: {
     nameFa: 'آموزش دانشگاهی',
     emoji: '🎓',
-    clientCost:       { stat: 'cash',     amount: 400 },
-    clientGain:       { stat: 'power',    amount: 12  },
-    providerCost:     { stat: 'activity', amount: 15  },
+    clientCost: { stat: 'cash', amount: 400 },
+    clientGain: { stat: 'power', amount: 12 },
+    providerCost: { stat: 'activity', amount: 15 },
     providerGainPercent: 50,
     buildingTypes: ['university'],
   },
   cafe: {
     nameFa: 'کافه و رستوران',
     emoji: '☕',
-    clientCost:       { stat: 'cash',     amount: 150 },
-    clientGain:       { stat: 'power',    amount: 3   },
-    providerCost:     { stat: 'activity', amount: 8   },
+    clientCost: { stat: 'cash', amount: 150 },
+    clientGain: { stat: 'power', amount: 3 },
+    providerCost: { stat: 'activity', amount: 8 },
     providerGainPercent: 65,
     buildingTypes: ['cafe'],
   },
   gym: {
     nameFa: 'باشگاه ورزشی',
     emoji: '🏋️',
-    clientCost:       { stat: 'cash',     amount: 250 },
-    clientGain:       { stat: 'power',    amount: 8   },
-    providerCost:     { stat: 'activity', amount: 12  },
+    clientCost: { stat: 'cash', amount: 250 },
+    clientGain: { stat: 'power', amount: 8 },
+    providerCost: { stat: 'activity', amount: 12 },
     providerGainPercent: 58,
     buildingTypes: ['gym'],
   },
   library: {
     nameFa: 'کتابخانه و فرهنگسرا',
     emoji: '📚',
-    clientCost:       { stat: 'cash',     amount: 100 },
-    clientGain:       { stat: 'power',    amount: 4   },
-    providerCost:     { stat: 'activity', amount: 6   },
+    clientCost: { stat: 'cash', amount: 100 },
+    clientGain: { stat: 'power', amount: 4 },
+    providerCost: { stat: 'activity', amount: 6 },
     providerGainPercent: 45,
     buildingTypes: ['library'],
   },
@@ -266,8 +266,8 @@ export const INSTITUTION_DEFINITIONS: Record<string, InstitutionDefinition> = {
   exchange: {
     nameFa: 'بورس فعالیت',
     emoji: '🏦',
-    clientCost:  { stat: 'activity', amount: 1   },
-    clientGain:  { stat: 'cash',     amount: 2   }, // base rate; overridden by EXCHANGE_RATES
+    clientCost: { stat: 'activity', amount: 1 },
+    clientGain: { stat: 'cash', amount: 2 }, // base rate; overridden by EXCHANGE_RATES
     buildingTypes: ['office', 'tower'],
   },
 } as const;
@@ -297,16 +297,16 @@ export const ESTABLISHED_BIZ_DAYS = 7;
 // for every asset they own of that type.
 
 export const DAILY_POWER_DRIP: Record<string, number> = {
-  house:     1,
-  villa:     2,
-  shop:      2,
-  market:    2,
-  mall:      3,
-  office:    2,
-  farm:      1,
+  house: 1,
+  villa: 2,
+  shop: 2,
+  market: 2,
+  mall: 3,
+  office: 2,
+  farm: 1,
   warehouse: 1,
-  tower:     5,
-  barracks:  8,
+  tower: 5,
+  barracks: 8,
   // custom building types inherit the value from their custom_settings.daily_power_drip
 } as const;
 
@@ -335,14 +335,14 @@ export const VIEWPORT_VIEW_FLUSH_INTERVAL_MS = 5000;
 // These are accumulated in profiles.activity and reset daily by pg_cron.
 
 export const ACTIVITY_EVENTS = {
-  tile_load:          1,   // a new map tile enters the viewport
-  marketplace_view:   2,   // player opens the marketplace tab
-  asset_inspect:      2,   // player opens an asset detail (own or other's)
-  trade_complete:     10,  // player buys an asset from the marketplace
-  build_complete:     8,   // player builds a new asset
-  upgrade_complete:   6,   // player upgrades an existing asset
-  service_used:       5,   // player uses a service institution as a client
-  exchange_used:      4,   // player uses the exchange institution
+  tile_load: 1,   // a new map tile enters the viewport
+  marketplace_view: 2,   // player opens the marketplace tab
+  asset_inspect: 2,   // player opens an asset detail (own or other's)
+  trade_complete: 10,  // player buys an asset from the marketplace
+  build_complete: 8,   // player builds a new asset
+  upgrade_complete: 6,   // player upgrades an existing asset
+  service_used: 5,   // player uses a service institution as a client
+  exchange_used: 4,   // player uses the exchange institution
   proposal_submitted: 5,   // player submits a custom building proposal
 } as const;
 
