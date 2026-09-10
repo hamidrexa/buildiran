@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeInUp, SlideInDown } from 'react-native-reanimated';
+import Animated, { SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BuildingPlacementHUDProps {
@@ -37,12 +37,13 @@ export const BuildingPlacementHUD: React.FC<BuildingPlacementHUDProps> = ({
   const insets = useSafeAreaInsets();
 
   const isValid = proximityResult?.isValid ?? false;
+  const ruleMeters = proximityResult?.ruleDistanceMeters ?? 20;
 
   const statusColor = isChecking
     ? '#F59E0B'
     : isValid
-    ? '#10B981'
-    : '#EF4444';
+      ? '#10B981'
+      : '#EF4444';
 
   return (
     <Animated.View
@@ -71,19 +72,19 @@ export const BuildingPlacementHUD: React.FC<BuildingPlacementHUDProps> = ({
                 {isChecking
                   ? 'در حال استعلام حریم معابر...'
                   : isValid
-                  ? 'موقعیت زمین مجاز است'
-                  : 'خطای حریم معابر (ساخت غیرمجاز)'}
+                    ? 'موقعیت زمین مجاز است'
+                    : 'خطای حریم معابر (ساخت غیرمجاز)'}
               </Text>
               <View style={[styles.badge, { borderColor: statusColor, backgroundColor: `${statusColor}18` }]}>
                 <Text variant="caption" weight="bold" style={{ color: statusColor }}>
-                  شعاع ۵ متر
+                  حریم {ruleMeters.toLocaleString('fa-IR')} متر
                 </Text>
               </View>
             </View>
 
             <Text variant="caption" color="secondary" numberOfLines={2} style={styles.descText}>
               {isChecking
-                ? 'فاصله دایره ۵ متری با نزدیک‌ترین خیابان و کوچه در حال ارزیابی است...'
+                ? `در حال استعلام حریم ${ruleMeters.toLocaleString('fa-IR')} متری از معابر و فضاهای عمومی...`
                 : proximityResult?.message ?? ''}
             </Text>
           </View>
@@ -137,7 +138,7 @@ export const BuildingPlacementHUD: React.FC<BuildingPlacementHUDProps> = ({
               end={{ x: 1, y: 0 }}
             >
               <Text variant="body" weight="bold" color="inverse">
-                {isValid ? '🏗️ تأیید و انتخاب سازه' : '🚫 حریم غیرمجاز (کمتر از ۵ متر)'}
+                {isValid ? '🏗️ تأیید و انتخاب سازه' : `🚫 حریم غیرمجاز (کمتر از ${ruleMeters.toLocaleString('fa-IR')} متر)`}
               </Text>
             </LinearGradient>
           </TouchableOpacity>

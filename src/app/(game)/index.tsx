@@ -7,7 +7,7 @@ import { NeighborhoodEditorModal } from "@/components/game/NeighborhoodEditorMod
 import { NeighborhoodEvaluationModal } from "@/components/game/NeighborhoodEvaluationModal";
 import { GameMap } from "@/components/map/GameMap";
 import { GameAudio } from "@/lib/audio";
-import { MAP_DEFAULT_ZOOM, MAP_MAX_ZOOM } from "@/lib/constants";
+import { DEFAULT_BUILDING_SETBACK_METERS, MAP_DEFAULT_ZOOM, MAP_MAX_ZOOM } from "@/lib/constants";
 import { supabase } from "@/lib/supabase";
 import { useAssetStore } from "@/store/useAssetStore";
 import { useGameStore } from "@/store/useGameStore";
@@ -87,7 +87,7 @@ export default function MapScreen() {
     setIsCheckingStreet(true);
     setStreetProximity(null);
     try {
-      const result = await checkStreetProximity(coord, 5);
+      const result = await checkStreetProximity(coord, DEFAULT_BUILDING_SETBACK_METERS);
       setStreetProximity(result);
       if (result.isValid) {
         GameAudio.playApprove();
@@ -97,15 +97,17 @@ export default function MapScreen() {
     } catch {
       setStreetProximity({
         isValid: true,
-        distanceMeters: 10,
-        nearestStreetName: 'معبر محلی',
-        ruleDistanceMeters: 5,
+        distanceMeters: DEFAULT_BUILDING_SETBACK_METERS,
+        nearestStreetName: '',
+        ruleDistanceMeters: DEFAULT_BUILDING_SETBACK_METERS,
         message: 'موقعیت زمین مجاز ارزیابی شد.',
       });
     } finally {
       setIsCheckingStreet(false);
     }
-  }, []);
+  },
+    [player, assetsList],
+  );
 
   // ─── Map Interactions ─────────────────────────────────────────────────────
 
@@ -191,7 +193,7 @@ export default function MapScreen() {
     if (!isPlacementMode || !tappedCoordinate) return null;
     return {
       center: tappedCoordinate,
-      radiusMeters: 5,
+      radiusMeters: streetProximity?.ruleDistanceMeters ?? DEFAULT_BUILDING_SETBACK_METERS,
       status: isCheckingStreet ? 'checking' : streetProximity?.isValid ? 'valid' : 'invalid',
       distanceToStreet: streetProximity?.distanceMeters,
       streetName: streetProximity?.nearestStreetName,

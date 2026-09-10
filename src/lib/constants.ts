@@ -22,6 +22,16 @@ export const MAP_DEFAULT_ZOOM = 15;
 export const MAP_MIN_ZOOM = 4;
 export const MAP_MAX_ZOOM = 18;
 
+// ─── Building Placement Rules ─────────────────────────────────────────────────
+
+/** Default minimum distance (meters) a new building must keep from streets,
+ *  squares, parks, water, and bridges. Configurable per-call. */
+export const DEFAULT_BUILDING_SETBACK_METERS = 10;
+
+/** Minimum distance (meters) a new building must keep from the player's
+ *  own existing assets, so a player can't stack structures on one spot. */
+export const DEFAULT_ASSET_SPACING_METERS = 10;
+
 /**
  * High-detail street map style (CartoDB Voyager / OpenStreetMap raster tiles).
  * Renders high-contrast streets, alleys, avenues, and clear Persian/English labels.
