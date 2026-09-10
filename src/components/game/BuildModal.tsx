@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { useAssetStore } from '@/store/useAssetStore';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 import type { BuildingType, CustomBuildingType, LatLng } from '@/types/game.types';
 import { tileIdFromCoordinate, type StreetProximityResult } from '@/utils/geo';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,10 +84,13 @@ export function BuildModal({ visible, coordinate, proximityResult, onClose }: Bu
   const buildAsset = useAssetStore((s) => s.buildAsset);
   const player = usePlayerStore((s) => s.player);
   const updateCash = usePlayerStore((s) => s.updateCash);
+  const updateStats = usePlayerStore((s) => s.updateStats);
   const incrementScore = usePlayerStore((s) => s.incrementScore);
   const currentNeighborhood = useNeighborhoodStore((s) => s.currentNeighborhood);
   const approvedCustomTypes = useNeighborhoodStore((s) => s.approvedCustomTypes);
   const { style: btnStyle, pop } = useScalePop();
+  const { track } = useActivityTracker();
+  const ruleMeters = proximityResult?.ruleDistanceMeters ?? 10;
 
   const handleSelectStandard = useCallback((b: BuildingDef) => {
     setSelectedItem({
@@ -117,12 +121,12 @@ export function BuildModal({ visible, coordinate, proximityResult, onClose }: Bu
   const handleBuild = useCallback(async () => {
     if (!selectedItem || !coordinate || !player) return;
 
-    // Strict application-layer validation: Location must not be within 5m of any street
+    // Strict application-layer validation: Location must not be within rule distance of streets
     if (proximityResult && !proximityResult.isValid) {
       GameAudio.playError();
       Alert.alert(
         'عدم امکان احداث ملک',
-        proximityResult.message || 'ساخت روی معابر و خیابان‌ها (یا فاصله کمتر از ۵ متر) مجاز نیست.'
+        proximityResult.message || `ساخت روی معابر و خیابان‌ها (یا فاصله کمتر از ${ruleMeters.toLocaleString('fa-IR')} متر) مجاز نیست.`
       );
       return;
     }
@@ -152,14 +156,21 @@ export function BuildModal({ visible, coordinate, proximityResult, onClose }: Bu
 
       if (!asset) throw new Error('Build failed');
 
-      // Deduct cash from profile
+      const newPower = (player.power ?? 0) + selectedItem.power;
+
+      // Deduct cash from profile and award building power bonus
       await supabase
         .from('profiles')
-        .update({ cash: player.cash - selectedItem.cost })
+        .update({
+          cash: player.cash - selectedItem.cost,
+          power: newPower,
+        })
         .eq('id', session.user.id);
 
       updateCash(-selectedItem.cost);
+      updateStats({ power: newPower });
       incrementScore(selectedItem.power * 10);
+      track('build_complete');
       await GameAudio.playBuild();
       setSuccess(true);
 
@@ -174,7 +185,7 @@ export function BuildModal({ visible, coordinate, proximityResult, onClose }: Bu
     } finally {
       setBuilding(false);
     }
-  }, [selectedItem, coordinate, player, proximityResult, buildAsset, updateCash, incrementScore, onClose, pop]);
+  }, [selectedItem, coordinate, player, proximityResult, ruleMeters, buildAsset, updateCash, updateStats, incrementScore, track, onClose, pop]);
 
   const handleClose = useCallback(() => {
     setSelectedItem(null);
@@ -223,7 +234,7 @@ export function BuildModal({ visible, coordinate, proximityResult, onClose }: Bu
                       </Text>
                       {proximityResult?.isValid && (
                         <View style={styles.verifiedBadge}>
-                          <Text style={styles.verifiedBadgeText}>✅ حریم ۵ متر معابر رعایت شده</Text>
+                          <Text style={styles.verifiedBadgeText}>✅ حریم {ruleMeters.toLocaleString('fa-IR')} متر معابر رعایت شده</Text>
                         </View>
                       )}
                     </View>

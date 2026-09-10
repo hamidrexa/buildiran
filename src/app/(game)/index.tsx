@@ -10,9 +10,11 @@ import { GameAudio } from "@/lib/audio";
 import { DEFAULT_BUILDING_SETBACK_METERS, MAP_DEFAULT_ZOOM, MAP_MAX_ZOOM } from "@/lib/constants";
 import { supabase } from "@/lib/supabase";
 import { useAssetStore } from "@/store/useAssetStore";
+import { useEconomyStore } from "@/store/useEconomyStore";
 import { useGameStore } from "@/store/useGameStore";
 import { useMapStore } from "@/store/useMapStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
+import { useViewportTracker } from "@/hooks/useViewportTracker";
 import type { Asset, LatLng } from "@/types/game.types";
 import type { BuildingZoneOverlay } from "@/types/map.types";
 import { checkStreetProximity, tileIdFromCoordinate, type StreetProximityResult } from "@/utils/geo";
@@ -29,6 +31,7 @@ export default function MapScreen() {
   const fetchAllAssets = useAssetStore((s) => s.fetchAllAssets);
   const fetchListings = useAssetStore((s) => s.fetchListings);
   const subscribeToAssets = useAssetStore((s) => s.subscribeToAssets);
+  const fetchActiveBoosts = useEconomyStore((s) => s.fetchActiveBoosts);
 
   // ─── Modals and Flow States ───────────────────────────────────────────────
   const [actionModalVisible, setActionModalVisible] = useState(false);
@@ -52,6 +55,9 @@ export default function MapScreen() {
     return assetsMap[selectedAsset.id] ?? selectedAsset;
   }, [selectedAsset, assetsMap]);
 
+  // Passively records viewport views for visible assets (grants popularity to owners)
+  useViewportTracker(assetsList);
+
   // ─── Auth check + player/asset load & realtime sync ───────────────────────
   useEffect(() => {
     let mounted = true;
@@ -71,6 +77,8 @@ export default function MapScreen() {
       // Load all map assets & active marketplace listings
       await fetchAllAssets();
       await fetchListings();
+      // Load active popularity 2x boosts
+      await fetchActiveBoosts(session.user.id);
 
       // Subscribe to live changes
       unsubscribeAssets = subscribeToAssets();

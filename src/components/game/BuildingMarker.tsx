@@ -6,6 +6,8 @@
 import { Text } from '@/components/ui/Text';
 import { Radii } from "@/theme";
 import type { Asset, Building } from "@/types/game.types";
+import { useEconomyStore } from "@/store/useEconomyStore";
+import { INSTITUTION_DEFINITIONS } from "@/lib/constants";
 import React from "react";
 import {
     Platform,
@@ -47,6 +49,12 @@ export const BuildingMarker: React.FC<Props> = ({
   const isForSale = asset?.isForSale ?? false;
   const emoji = BUILDING_EMOJIS[type] || "🏛️";
 
+  // Economy state
+  const isAssetBoosted = useEconomyStore((s) => s.isAssetBoosted);
+  const isBoosted = asset ? isAssetBoosted(asset.id) : false;
+  const instType = asset?.institutionType;
+  const instDef = instType && INSTITUTION_DEFINITIONS[instType as keyof typeof INSTITUTION_DEFINITIONS];
+
   const content = (
     <View style={[styles.container, isSelected && styles.selectedContainer]}>
       <View
@@ -55,6 +63,7 @@ export const BuildingMarker: React.FC<Props> = ({
           isOwned ? styles.owned : styles.otherPlayer,
           isSelected && styles.selectedMarker,
           isForSale && styles.saleMarker,
+          isBoosted && styles.boostedMarker,
         ]}
       >
         <Text variant="body" color="primary">{emoji}</Text>
@@ -68,6 +77,20 @@ export const BuildingMarker: React.FC<Props> = ({
             ]}
           >
             <Text variant="caption" weight="bold" color="inverse">{level}</Text>
+          </View>
+        )}
+
+        {/* 2x Popularity Boost Badge */}
+        {isBoosted && (
+          <View style={styles.boostBadge}>
+            <Text style={styles.boostText}>🔥</Text>
+          </View>
+        )}
+
+        {/* Institution Service Badge */}
+        {instDef && !isBoosted && (
+          <View style={styles.instBadge}>
+            <Text style={styles.instText}>{instDef.emoji}</Text>
           </View>
         )}
 
@@ -86,6 +109,7 @@ export const BuildingMarker: React.FC<Props> = ({
           isOwned ? styles.arrowOwned : styles.arrowOther,
           isSelected && styles.arrowSelected,
           isForSale && styles.arrowSale,
+          isBoosted && styles.arrowBoosted,
         ]}
       />
     </View>
@@ -149,6 +173,14 @@ const styles = StyleSheet.create({
   saleMarker: {
     borderColor: "#F59E0B",
   },
+  boostedMarker: {
+    borderColor: "#FB923C",
+    borderWidth: 3,
+    shadowColor: "#F97316",
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+    elevation: 12,
+  },
   arrow: {
     width: 0,
     height: 0,
@@ -173,6 +205,9 @@ const styles = StyleSheet.create({
   },
   arrowSale: {
     borderTopColor: "#F59E0B",
+  },
+  arrowBoosted: {
+    borderTopColor: "#FB923C",
   },
   emoji: {
     fontSize: 22,
@@ -200,6 +235,43 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#FFFFFF",
     fontWeight: "800",
+  },
+  boostBadge: {
+    position: "absolute",
+    top: -8,
+    left: -8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#EA580C",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#FED7AA",
+    elevation: 6,
+    shadowColor: "#EA580C",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  boostText: {
+    fontSize: 10,
+  },
+  instBadge: {
+    position: "absolute",
+    top: -7,
+    left: -7,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#1E293B",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#60A5FA",
+  },
+  instText: {
+    fontSize: 9,
   },
   saleBadge: {
     position: "absolute",

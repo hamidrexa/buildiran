@@ -81,12 +81,35 @@ export const InstitutionServiceModal: React.FC<Props> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const useInstitution = useEconomyStore((s) => s.useInstitution);
+  const resolveExchangeRate = useEconomyStore((s) => s.resolveExchangeRate);
+  const exchangeActivity = useEconomyStore((s) => s.exchangeActivity);
   const player = usePlayerStore((s) => s.player);
   const { style: floatStyle } = useFloatIn(0);
   const { style: btnStyle, pop } = useScalePop();
 
+  // Exchange specific state
+  const isExchange = institutionType === 'exchange';
+  const [exchangeRateKey, setExchangeRateKey] = useState<'base' | 'ownerBonus' | 'establishedBusiness'>('base');
+  const [selectedActivityAmount, setSelectedActivityAmount] = useState<number>(10);
+
+  // Fetch exchange rate on mount
+  React.useEffect(() => {
+    if (visible && isExchange && player?.id) {
+      resolveExchangeRate(player.id).then((rate) => {
+        setExchangeRateKey(rate);
+      });
+      // Default to min(10, player.activity) or 5
+      setSelectedActivityAmount(Math.max(1, Math.min(10, player?.activity ?? 10)));
+    }
+  }, [visible, isExchange, player?.id, resolveExchangeRate]);
+
   const def = INSTITUTION_DEFINITIONS[institutionType];
   if (!def) return null;
+
+  // Compute active conversion amounts (dynamic for exchange, static for standard institutions)
+  const activeRate = isExchange ? (exchangeRateKey === 'establishedBusiness' ? 5 : exchangeRateKey === 'ownerBonus' ? 3.5 : 2) : 1;
+  const clientCostAmount = isExchange ? selectedActivityAmount : def.clientCost.amount;
+  const clientGainAmount = isExchange ? Math.floor(selectedActivityAmount * activeRate) : def.clientGain.amount;
 
   // Colour coding by stat type
   const costColor  = def.clientCost.stat === 'cash' ? '#FFD700' : '#FB923C';
@@ -95,8 +118,8 @@ export const InstitutionServiceModal: React.FC<Props> = ({
   // Affordability check
   const canAfford = player
     ? def.clientCost.stat === 'cash'
-      ? player.cash >= def.clientCost.amount
-      : player.activity >= def.clientCost.amount
+      ? player.cash >= clientCostAmount
+      : player.activity >= clientCostAmount
     : false;
 
   const handleUse = async () => {
@@ -114,18 +137,33 @@ export const InstitutionServiceModal: React.FC<Props> = ({
     GameAudio.playTap();
     setLoading(true);
     try {
-      const result = await useInstitution(asset.id, institutionType);
-      if (result.success) {
-        GameAudio.playBuild?.();
-        const gainMsg =
-          result.clientGainStat === 'power'
-            ? `${lang.economy.institution.successPower} +${result.clientGainAmount}`
-            : `${lang.economy.institution.successCash} +${result.clientGainAmount.toLocaleString('fa-IR')}`;
-        showAlert(def.emoji + ' ' + def.nameFa, gainMsg);
-        onClose();
+      if (isExchange) {
+        const ok = await exchangeActivity(selectedActivityAmount, exchangeRateKey);
+        if (ok) {
+          GameAudio.playBuild?.();
+          showAlert(
+            '🏦 بورس مبادلات',
+            `تبدیل موفق! ${selectedActivityAmount.toLocaleString('fa-IR')} امتیاز فعالیت به ${clientGainAmount.toLocaleString('fa-IR')} 💰 تبدیل شد.`,
+          );
+          onClose();
+        } else {
+          GameAudio.playError?.();
+          showAlert('❌', 'خطا در انجام مبادله. لطفاً دوباره تلاش کنید.');
+        }
       } else {
-        GameAudio.playError?.();
-        showAlert('❌', lang.economy.institution.errorInsufficientCash);
+        const result = await useInstitution(asset.id, institutionType);
+        if (result.success) {
+          GameAudio.playBuild?.();
+          const gainMsg =
+            result.clientGainStat === 'power'
+              ? `${lang.economy.institution.successPower} +${result.clientGainAmount}`
+              : `${lang.economy.institution.successCash} +${result.clientGainAmount.toLocaleString('fa-IR')}`;
+          showAlert(def.emoji + ' ' + def.nameFa, gainMsg);
+          onClose();
+        } else {
+          GameAudio.playError?.();
+          showAlert('❌', lang.economy.institution.errorInsufficientCash);
+        }
       }
     } finally {
       setLoading(false);
@@ -145,10 +183,12 @@ export const InstitutionServiceModal: React.FC<Props> = ({
               <Text variant="heading" style={styles.emoji}>{def.emoji}</Text>
               <View style={{ flex: 1 }}>
                 <Text variant="title" weight="bold" color="primary">{def.nameFa}</Text>
-                {asset.ownerUsername && (
+                {asset.ownerUsername ? (
                   <Text variant="caption" color="secondary">
                     {lang.economy.institution.ownerLabel}: {asset.ownerUsername}
                   </Text>
+                ) : (
+                  <Text variant="caption" color="secondary">موسسه عمومی شهر</Text>
                 )}
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -159,21 +199,90 @@ export const InstitutionServiceModal: React.FC<Props> = ({
             <View style={styles.divider} />
 
             <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Dynamic Exchange Rate Tier Banner */}
+              {isExchange && (
+                <View style={exchangeStyles.tierCard}>
+                  <View style={exchangeStyles.tierHeader}>
+                    <Text variant="caption" weight="bold" color="primary">
+                      {exchangeRateKey === 'establishedBusiness'
+                        ? '🌟 نرخ کسب‌وکار مستقر'
+                        : exchangeRateKey === 'ownerBonus'
+                        ? '🏪 بونوس مالک کسب‌وکار'
+                        : '🚶‍♂️ نرخ پایه مبادله'}
+                    </Text>
+                    <View style={exchangeStyles.rateChip}>
+                      <Text variant="caption" weight="bold" style={{ color: '#10B981' }}>
+                        هر ۱ 🔥 = {activeRate.toLocaleString('fa-IR')} 💰
+                      </Text>
+                    </View>
+                  </View>
+                  <Text variant="caption" color="secondary" style={{ marginTop: 4 }}>
+                    {exchangeRateKey === 'establishedBusiness'
+                      ? 'دارای کسب‌وکار سطح ۲ به بالا با تراکنش فعال (حداکثر سود)'
+                      : exchangeRateKey === 'ownerBonus'
+                      ? 'مالک کسب‌وکار در شهر (پاداش کارآفرینی)'
+                      : 'برای نرخ بالاتر (تا ۵ برابر)، یک مغازه، کافه یا درمانگاه تأسیس کنید.'}
+                  </Text>
+
+                  {/* Activity Amount Quick Selectors */}
+                  <Text variant="label" color="secondary" style={[styles.sectionLabel, { marginTop: 12 }]}>
+                    میزان فعالیت جهت تبدیل:
+                  </Text>
+                  <View style={exchangeStyles.amountsRow}>
+                    {[5, 10, 25, 50].map((amt) => {
+                      const isSelected = selectedActivityAmount === amt;
+                      const hasEnough = (player?.activity ?? 0) >= amt;
+                      return (
+                        <TouchableOpacity
+                          key={amt}
+                          style={[
+                            exchangeStyles.amtPill,
+                            isSelected && exchangeStyles.amtPillSelected,
+                            !hasEnough && exchangeStyles.amtPillDisabled,
+                          ]}
+                          onPress={() => setSelectedActivityAmount(amt)}
+                        >
+                          <Text
+                            variant="caption"
+                            weight="bold"
+                            style={{ color: isSelected ? '#fff' : hasEnough ? '#CBD5E1' : '#64748B' }}
+                          >
+                            {amt.toLocaleString('fa-IR')} 🔥
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    {/* Max button */}
+                    {(player?.activity ?? 0) > 0 && (
+                      <TouchableOpacity
+                        style={[
+                          exchangeStyles.amtPill,
+                          selectedActivityAmount === player?.activity && exchangeStyles.amtPillSelected,
+                        ]}
+                        onPress={() => setSelectedActivityAmount(player?.activity ?? 1)}
+                      >
+                        <Text variant="caption" weight="bold" color="inverse">همه</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
+
               {/* Conversion formula */}
               <Text variant="label" color="secondary" style={styles.sectionLabel}>
                 {lang.economy.institution.conversionFormula}
               </Text>
               <ConversionRow
                 fromLabel={statLabel(def.clientCost.stat)}
-                fromAmount={def.clientCost.amount}
+                fromAmount={clientCostAmount}
                 toLabel={statLabel(def.clientGain.stat)}
-                toAmount={def.clientGain.amount}
+                toAmount={clientGainAmount}
                 fromColor={costColor}
                 toColor={gainColor}
               />
 
               {/* Provider side (if applicable) */}
-              {def.providerCost && def.providerGainPercent && (
+              {!isExchange && def.providerCost && def.providerGainPercent && (
                 <>
                   <View style={styles.divider} />
                   <Text variant="label" color="secondary" style={styles.sectionLabel}>
@@ -214,7 +323,7 @@ export const InstitutionServiceModal: React.FC<Props> = ({
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={canAfford ? ['#6C63FF', '#8B5CF6'] : ['#3a3a4a', '#2a2a3a']}
+                  colors={canAfford ? (isExchange ? ['#10B981', '#059669'] : ['#6C63FF', '#8B5CF6']) : ['#3a3a4a', '#2a2a3a']}
                   style={styles.ctaGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -224,8 +333,12 @@ export const InstitutionServiceModal: React.FC<Props> = ({
                   ) : (
                     <Text variant="body" weight="bold" color="inverse">
                       {canAfford
-                        ? lang.economy.institution.useService
-                        : lang.economy.institution.errorInsufficientCash}
+                        ? isExchange
+                          ? `تبدیل ${clientCostAmount.toLocaleString('fa-IR')} فعالیت به ${clientGainAmount.toLocaleString('fa-IR')} سکه`
+                          : lang.economy.institution.useService
+                        : def.clientCost.stat === 'cash'
+                        ? lang.economy.institution.errorInsufficientCash
+                        : lang.economy.institution.errorInsufficientActivity}
                     </Text>
                   )}
                 </LinearGradient>
@@ -314,5 +427,50 @@ const convStyles = StyleSheet.create({
     paddingVertical: 6,
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 10,
+  },
+});
+
+const exchangeStyles = StyleSheet.create({
+  tierCard: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.3)',
+    marginBottom: 8,
+  },
+  tierHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  rateChip: {
+    backgroundColor: 'rgba(16,185,129,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.4)',
+  },
+  amountsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  amtPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  amtPillSelected: {
+    backgroundColor: '#059669',
+    borderColor: '#34D399',
+  },
+  amtPillDisabled: {
+    opacity: 0.4,
   },
 });

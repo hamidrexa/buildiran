@@ -11,6 +11,8 @@ import { showAlert, showConfirm } from "@/lib/alert";
 import { GameAudio } from "@/lib/audio";
 import { supabase } from "@/lib/supabase";
 import { usePlayerStore } from "@/store/usePlayerStore";
+import { useAssetStore } from "@/store/useAssetStore";
+import { getPlayerTier } from "@/lib/constants";
 import { Colors, Radii, Spacing } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
@@ -42,6 +44,14 @@ export default function ProfileScreen() {
   const isGoogleUser =
     session?.user?.app_metadata?.provider === "google" ||
     session?.user?.app_metadata?.providers?.includes("google");
+
+  const assets = useAssetStore((s) => s.assets);
+  const myAssets = Object.values(assets).filter((a) => a.ownerId === player?.id);
+  const totalDailyPowerDrip = myAssets.reduce((sum, a) => sum + (a.dailyPowerDrip ?? 0), 0);
+  const tier = getPlayerTier(player?.power ?? 0);
+  const nextTierXp = tier.xpRequired;
+  const currentXp = player?.powerXp ?? 0;
+  const xpPercent = nextTierXp === Infinity ? 100 : Math.min(100, Math.floor((currentXp / nextTierXp) * 100));
 
   const handleLogout = () => {
     showConfirm(
@@ -178,28 +188,43 @@ export default function ProfileScreen() {
       >
         {tab === "game" ? (
           <>
-            <Card style={styles.card}>
-              <Text variant="label" color="secondary">
-                {lang.player.experience}
-              </Text>
-              <View style={styles.xpBarBg}>
-                <View
-                  style={[
-                    styles.xpBarFill,
-                    {
-                      width: `${Math.min((player.experience % 1000) / 10, 100)}%`,
-                    },
-                  ]}
-                />
+            {/* 6-Tier Power Progression Card */}
+            <Card style={[styles.card, { borderColor: 'rgba(167,139,250,0.35)', borderWidth: 1 }]}>
+              <View style={tierStyles.headerRow}>
+                <View>
+                  <Text variant="title" weight="bold" style={{ color: '#A78BFA' }}>
+                    ⚔️ رده {tier.tier}: {tier.nameFa}
+                  </Text>
+                  <Text variant="caption" color="secondary" style={{ marginTop: 2 }}>
+                    قدرت فعلی: {(player.power ?? 0).toLocaleString('fa-IR')} {tier.maxPower === Infinity ? 'به بالا' : `از ${tier.maxPower.toLocaleString('fa-IR')}`}
+                  </Text>
+                </View>
+                {totalDailyPowerDrip > 0 && (
+                  <View style={tierStyles.dripBadge}>
+                    <Text variant="caption" weight="bold" style={{ color: '#34D399' }}>
+                      +{totalDailyPowerDrip.toLocaleString('fa-IR')} قدرت/روز
+                    </Text>
+                  </View>
+                )}
               </View>
-              <Text variant="caption" color="muted">
-                {player.experience.toLocaleString("fa-IR")} XP
-              </Text>
+
+              {/* XP Progress Bar to next Tier */}
+              <View style={{ marginTop: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text variant="caption" color="secondary">پیشرفت آنلاک رده بعدی (XP)</Text>
+                  <Text variant="caption" weight="bold" style={{ color: '#A78BFA' }}>
+                    {tier.xpRequired === Infinity ? 'حداکثر رده 👑' : `${currentXp.toLocaleString('fa-IR')} / ${tier.xpRequired.toLocaleString('fa-IR')} XP (${xpPercent}٪)`}
+                  </Text>
+                </View>
+                <View style={styles.xpBarBg}>
+                  <View style={[styles.xpBarFill, { width: `${xpPercent}%`, backgroundColor: '#A78BFA' }]} />
+                </View>
+              </View>
             </Card>
 
             <Card style={styles.card}>
               <Text variant="label" color="secondary" style={styles.cardTitle}>
-                آمار قدرت
+                آمار ۴ گانه اقتصاد
               </Text>
               <View style={styles.statGrid}>
                 <StatChip icon="⚔️" label="قدرت" value={player.power} />
@@ -567,5 +592,21 @@ const styles = StyleSheet.create({
   logoutBtn: {
     backgroundColor: "rgba(239, 68, 68, 0.1)",
     marginTop: Spacing.md,
+  },
+});
+
+const tierStyles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dripBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.4)',
   },
 });

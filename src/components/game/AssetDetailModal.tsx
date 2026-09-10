@@ -129,6 +129,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           .from("profiles")
           .update({ cash: player.cash - upgradeCost })
           .eq("id", player.id);
+        track("upgrade_complete");
         await GameAudio.playBuild();
       } else {
         GameAudio.playError();
@@ -196,6 +197,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         const ok = await buyAsset(activeListing.id, player.id);
         if (ok) {
           updateCash(-priceToBuy);
+          track("trade_complete");
           await GameAudio.playBuild();
           onClose();
         }

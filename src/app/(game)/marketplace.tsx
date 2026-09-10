@@ -8,6 +8,7 @@ import { GameAudio } from "@/lib/audio";
 import { supabase } from "@/lib/supabase";
 import { useAssetStore } from "@/store/useAssetStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 import type { AssetListing, BuildingType } from "@/types/game.types";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
@@ -55,6 +56,7 @@ export default function MarketplaceScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
+  const { track } = useActivityTracker();
 
   const listings = useAssetStore((s) => s.listings);
   const isLoadingListings = useAssetStore((s) => s.isLoadingListings);
@@ -76,7 +78,8 @@ export default function MarketplaceScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchListings();
-    }, [fetchListings]),
+      track("marketplace_view");
+    }, [fetchListings, track]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -116,6 +119,7 @@ export default function MarketplaceScreen() {
               const ok = await buyAsset(listing.id, userId);
               if (ok) {
                 updateCash(-listing.price);
+                track("trade_complete");
                 GameAudio.playBuy();
                 Alert.alert(
                   "🎉 خرید موفق!",
