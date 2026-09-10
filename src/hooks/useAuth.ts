@@ -22,6 +22,8 @@ function dbProfileToPlayer(row: Record<string, any>): Player {
     wealth: row.wealth ?? 0,
     activity: row.activity ?? 0,
     popularity: row.popularity ?? 0,
+    powerTier: row.power_tier ?? 1,
+    powerXp: row.power_xp ?? 0,
     resources: {
       gold: row.cash ?? 5000,
       food: 800,

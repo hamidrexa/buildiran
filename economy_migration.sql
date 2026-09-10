@@ -25,11 +25,21 @@ ALTER TABLE public.assets
   ADD COLUMN IF NOT EXISTS income_rate       BIGINT  NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS total_views       INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS daily_power_drip  INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS institution_type  TEXT    REFERENCES NULL
-    CHECK (institution_type IN (
-      'home_rent','shopping','hospital','university',
-      'cafe','gym','library','exchange'
-    ));
+  ADD COLUMN IF NOT EXISTS institution_type  TEXT    DEFAULT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'chk_assets_institution_type'
+  ) THEN
+    ALTER TABLE public.assets
+      ADD CONSTRAINT chk_assets_institution_type
+      CHECK (institution_type IS NULL OR institution_type IN (
+        'home_rent','shopping','hospital','university',
+        'cafe','gym','library','exchange'
+      ));
+  END IF;
+END $$;
 
 -- ─── 3. Table: asset_views ────────────────────────────────────
 -- Passive viewport views. One unique record per viewer per asset per day.
@@ -40,12 +50,16 @@ CREATE TABLE IF NOT EXISTS public.asset_views (
   asset_id   UUID NOT NULL REFERENCES public.assets(id)   ON DELETE CASCADE,
   viewer_id  UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   owner_id   UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  viewed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  viewed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  view_date  DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
--- One view per viewer per asset per day (date part only)
+-- Ensure view_date exists if table was partially created
+ALTER TABLE public.asset_views ADD COLUMN IF NOT EXISTS view_date DATE NOT NULL DEFAULT CURRENT_DATE;
+
+-- One view per viewer per asset per day
 CREATE UNIQUE INDEX IF NOT EXISTS idx_asset_views_unique_daily
-  ON public.asset_views(asset_id, viewer_id, (viewed_at::date));
+  ON public.asset_views(asset_id, viewer_id, view_date);
 
 CREATE INDEX IF NOT EXISTS idx_asset_views_owner    ON public.asset_views(owner_id);
 CREATE INDEX IF NOT EXISTS idx_asset_views_asset    ON public.asset_views(asset_id);
@@ -264,17 +278,18 @@ DECLARE
 BEGIN
   FOR v_view IN SELECT * FROM jsonb_array_elements(p_views)
   LOOP
-    v_asset_id  := (v_view->>'asset_id')::UUID;
-    v_viewer_id := (v_view->>'viewer_id')::UUID;
-    v_owner_id  := (v_view->>'owner_id')::UUID;
+    v_asset_id  := COALESCE(v_view->>'asset_id', v_view->>'assetId')::UUID;
+    v_viewer_id := COALESCE(v_view->>'viewer_id', v_view->>'viewerId')::UUID;
+    v_owner_id  := COALESCE(v_view->>'owner_id', v_view->>'ownerId')::UUID;
 
-    -- Skip self-views
+    -- Skip self-views or invalid payloads
+    IF v_asset_id IS NULL OR v_viewer_id IS NULL OR v_owner_id IS NULL THEN CONTINUE; END IF;
     IF v_viewer_id = v_owner_id THEN CONTINUE; END IF;
 
     -- Insert unique daily view (ON CONFLICT = already viewed today, skip)
-    INSERT INTO public.asset_views (asset_id, viewer_id, owner_id, viewed_at)
-    VALUES (v_asset_id, v_viewer_id, v_owner_id, NOW())
-    ON CONFLICT (asset_id, viewer_id, (viewed_at::date)) DO NOTHING;
+    INSERT INTO public.asset_views (asset_id, viewer_id, owner_id, viewed_at, view_date)
+    VALUES (v_asset_id, v_viewer_id, v_owner_id, NOW(), CURRENT_DATE)
+    ON CONFLICT (asset_id, viewer_id, view_date) DO NOTHING;
 
     IF FOUND THEN
       -- Increment owner popularity and asset total_views
@@ -426,21 +441,34 @@ $$;
 
 -- ─── 12. pg_cron Schedules ────────────────────────────────────
 -- Requires pg_cron extension to be enabled in Supabase Dashboard:
---   Settings → Database → Extensions → pg_cron
+--   Settings → Database → Extensions → enable "pg_cron"
 --
--- Run these manually after enabling pg_cron:
+-- This block safely checks if pg_cron is available before scheduling:
 
-SELECT cron.schedule(
-  'buildiran-daily-power-drip',
-  '0 0 * * *',
-  $$ SELECT public.collect_daily_power(); $$
-);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    -- Unsched existing jobs to prevent duplicate errors on re-run
+    PERFORM cron.unschedule('buildiran-daily-power-drip')
+      WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'buildiran-daily-power-drip');
+    PERFORM cron.unschedule('buildiran-daily-activity-reset')
+      WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'buildiran-daily-activity-reset');
 
-SELECT cron.schedule(
-  'buildiran-daily-activity-reset',
-  '0 0 * * *',
-  $$ SELECT public.reset_daily_activity(); $$
-);
+    PERFORM cron.schedule(
+      'buildiran-daily-power-drip',
+      '0 0 * * *',
+      'SELECT public.collect_daily_power();'
+    );
+    PERFORM cron.schedule(
+      'buildiran-daily-activity-reset',
+      '0 0 * * *',
+      'SELECT public.reset_daily_activity();'
+    );
+    RAISE NOTICE 'pg_cron daily drip and activity reset scheduled successfully.';
+  ELSE
+    RAISE NOTICE 'pg_cron extension is not active. Enable pg_cron in Supabase (Database -> Extensions) for daily automatic power drips and activity resets.';
+  END IF;
+END $$;
 
 -- ─── 13. Helper view: active_boosts ──────────────────────────
 -- Quick lookup of all currently active popularity boosts.
