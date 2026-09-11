@@ -40,6 +40,14 @@ interface PlayerState {
   /** Increment activity score locally and persist to Supabase */
   incrementActivity: (points: number) => Promise<void>;
 
+  // ─── Subsidy Quota ───────────────────────────────────────────────────────
+  /**
+   * Optimistically deducts `amount` from the player's subsidy quota.
+   * Returns false if the player has insufficient quota (no Supabase call made).
+   * The actual atomic deduction happens inside the `add_material_to_session` RPC.
+   */
+  useSubsidy: (amount: number) => boolean;
+
   // ─── Supabase Sync ───────────────────────────────────────────────────────
   syncFromSupabase: (userId: string) => Promise<void>;
   syncToSupabase: () => Promise<void>;
@@ -60,6 +68,7 @@ function dbRowToPlayer(row: Record<string, any>): Player {
     popularity: row.popularity ?? 0,
     powerTier: row.power_tier ?? 1,
     powerXp: row.power_xp ?? 0,
+    subsidyQuota: row.subsidy_quota ?? 5000,
     resources: {
       gold: row.cash ?? 5000,
       food: 800,
@@ -72,6 +81,7 @@ function dbRowToPlayer(row: Record<string, any>): Player {
     score: row.score ?? 0,
     rank: row.rank ?? 9999,
     status: row.status ?? 'online',
+    subsidyResetAt: row.subsidy_reset_at ?? new Date().toISOString(),
     joinedAt: row.joined_at ?? new Date().toISOString(),
     lastSeenAt: row.last_seen_at ?? new Date().toISOString(),
   };
@@ -191,6 +201,20 @@ export const usePlayerStore = create<PlayerState>()(
         }
       },
 
+      // ─── Subsidy Quota ─────────────────────────────────────────
+
+      useSubsidy: (amount: number): boolean => {
+        const { player } = get();
+        if (!player) return false;
+        if (player.subsidyQuota < amount) return false;
+        set((state) => ({
+          player: state.player
+            ? { ...state.player, subsidyQuota: state.player.subsidyQuota - amount }
+            : null,
+        }));
+        return true;
+      },
+
       // ─── Supabase Sync ─────────────────────────────────────────────────
 
       syncFromSupabase: async (userId: string) => {
@@ -222,6 +246,7 @@ export const usePlayerStore = create<PlayerState>()(
               activity: player.activity,
               power_tier: player.powerTier,
               power_xp: player.powerXp,
+              subsidy_quota: player.subsidyQuota,
               last_seen_at: new Date().toISOString(),
               status: 'in_game',
             })

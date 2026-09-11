@@ -82,11 +82,16 @@ export const useEconomyStore = create<EconomyState>()((set, get) => ({
     }
 
     // Build RPC args from definition
-    const clientCostStat   = def.clientCost.stat;
-    const clientCostAmt    = def.clientCost.amount;
-    const clientGainStat   = def.clientGain.stat;
-    const clientGainAmt    = def.clientGain.amount;
-    const providerActivity = def.providerCost?.amount ?? 0;
+    const clientCostStat      = def.clientCost.stat;
+    const clientCostAmt       = def.clientCost.amount;
+    const clientCost2Stat     = def.clientCost2?.stat ?? null;
+    const clientCost2Amt      = def.clientCost2?.amount ?? 0;
+    const clientGainStat      = def.clientGain.stat;
+    const clientGainAmt       = def.clientGain.amount;
+    const providerActivity    = def.providerCost?.amount ?? 0;
+    const providerPowerGain   = def.providerGainPower ?? 0;
+    const providerPopGain     = def.providerGainPopularity ?? 0;
+    const requiresWarehouse   = def.requiresWarehouse ?? false;
 
     // Compute provider cash share (% of client cash cost)
     const providerCashShare = def.providerGainPercent && clientCostStat === 'cash'
@@ -95,14 +100,19 @@ export const useEconomyStore = create<EconomyState>()((set, get) => ({
 
     try {
       const { data, error } = await supabase.rpc('use_institution', {
-        p_asset_id:             assetId,
-        p_institution_type:     institutionType,
-        p_client_cost_stat:     clientCostStat,
-        p_client_cost_amt:      clientCostAmt,
-        p_client_gain_stat:     clientGainStat,
-        p_client_gain_amt:      clientGainAmt,
-        p_provider_activity_cost: providerActivity,
-        p_provider_cash_share:  providerCashShare,
+        p_asset_id:                  assetId,
+        p_institution_type:          institutionType,
+        p_client_cost_stat:          clientCostStat,
+        p_client_cost_amt:           clientCostAmt,
+        p_client_cost2_stat:         clientCost2Stat,
+        p_client_cost2_amt:          clientCost2Amt,
+        p_client_gain_stat:          clientGainStat,
+        p_client_gain_amt:           clientGainAmt,
+        p_provider_activity_cost:    providerActivity,
+        p_provider_cash_share:       providerCashShare,
+        p_provider_power_gain:       providerPowerGain,
+        p_provider_popularity_gain:  providerPopGain,
+        p_requires_warehouse:        requiresWarehouse,
       });
 
       if (error) throw error;
@@ -125,10 +135,23 @@ export const useEconomyStore = create<EconomyState>()((set, get) => ({
       } else {
         playerStore.updateStats({ activity: Math.max(0, (playerStore.player?.activity ?? 0) - clientCostAmt) });
       }
+
+      if (clientCost2Stat === 'cash') {
+        playerStore.updateCash(-clientCost2Amt);
+      } else if (clientCost2Stat === 'activity') {
+        playerStore.updateStats({ activity: Math.max(0, (playerStore.player?.activity ?? 0) - clientCost2Amt) });
+      }
       if (clientGainStat === 'power') {
         playerStore.updateStats({ power: (playerStore.player?.power ?? 0) + clientGainAmt });
       } else {
         playerStore.updateCash(clientGainAmt);
+      }
+
+      // Optimistic popularity update for Public institution provider
+      if (providerPopGain > 0) {
+        playerStore.updateStats({
+          popularity: (playerStore.player?.popularity ?? 0) + providerPopGain,
+        });
       }
 
       const result: ServiceResult = {
@@ -138,6 +161,8 @@ export const useEconomyStore = create<EconomyState>()((set, get) => ({
         clientGainStat,
         clientGainAmount: clientGainAmt,
         providerCashEarned: providerCashShare,
+        providerPowerEarned: providerPowerGain > 0 ? providerPowerGain : undefined,
+        providerPopularityEarned: providerPopGain > 0 ? providerPopGain : undefined,
       };
       set({ lastServiceResult: result });
       return result;

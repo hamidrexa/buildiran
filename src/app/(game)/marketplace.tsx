@@ -26,28 +26,18 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const BUILDING_EMOJI: Record<BuildingType, string> = {
-  house: "🏠",
-  villa: "🏡",
-  shop: "🏪",
-  mall: "🏬",
-  market: "🏦",
-  office: "🏢",
-  farm: "🌾",
-  warehouse: "🏭",
-  tower: "🗼",
+  house: "🏠", villa: "🏡", tower: "🏢",
+  shop: "🏪", cafe: "☕", gym: "🏋️", restaurant: "🍽️", mall: "🏬", exchange: "💱", warehouse: "🏭", market: "🏦", office: "🏢",
+  farm: "🌾", factory: "🏗️",
+  hospital: "🏥", park: "🌳", university: "🎓", bank: "🏦",
   barracks: "⚔️",
 };
 
 const BUILDING_LABEL: Record<BuildingType, string> = {
-  house: "خانه",
-  villa: "ویلا",
-  shop: "مغازه",
-  mall: "مرکز خرید",
-  market: "بازار",
-  office: "اداره",
-  farm: "مزرعه",
-  warehouse: "انبار",
-  tower: "برج",
+  house: "خانه", villa: "ویلا", tower: "برج",
+  shop: "مغازه", cafe: "کافه", gym: "باشگاه", restaurant: "رستوران", mall: "مرکز خرید", exchange: "صرافی", warehouse: "انبار", market: "بازار", office: "اداره",
+  farm: "مزرعه", factory: "کارخانه",
+  hospital: "بیمارستان", park: "پارک", university: "دانشگاه", bank: "بانک",
   barracks: "پادگان",
 };
 

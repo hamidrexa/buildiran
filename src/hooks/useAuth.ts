@@ -36,6 +36,8 @@ function dbProfileToPlayer(row: Record<string, any>): Player {
     score: row.score ?? 0,
     rank: row.rank ?? 9999,
     status: row.status ?? "online",
+    subsidyQuota: row.subsidy_quota ?? 5000,
+    subsidyResetAt: row.subsidy_reset_at ?? new Date().toISOString(),
     joinedAt: row.joined_at ?? new Date().toISOString(),
     lastSeenAt: row.last_seen_at ?? new Date().toISOString(),
   };

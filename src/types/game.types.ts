@@ -43,7 +43,16 @@ export type StandardBuildingType =
   | 'shop'
   | 'mall'
   | 'villa'
-  | 'office';
+  | 'office'
+  // v3 — new types
+  | 'restaurant'
+  | 'gym'
+  | 'cafe'
+  | 'factory'
+  | 'hospital'
+  | 'park'
+  | 'university'
+  | 'bank';
 
 export type BuildingType = StandardBuildingType | (string & {});
 
@@ -54,6 +63,15 @@ export type BuildingCategory =
   | 'military'
   | 'cultural'
   | 'tech';
+
+/** 4-type institution classification (v3) */
+export type InstitutionCategory = 'residential' | 'commercial' | 'industrial' | 'public';
+
+/** Build mode: pay premium for instant build vs. manually gather materials */
+export type BuildMode = 'fast' | 'advanced';
+
+/** Source of a build material item in Advanced mode */
+export type MaterialSource = 'market' | 'subsidized';
 
 export type ProposalStatus = 'pending' | 'approved' | 'rejected';
 
@@ -145,7 +163,14 @@ export type InstitutionType =
   | 'cafe'
   | 'gym'
   | 'library'
-  | 'exchange';
+  | 'exchange'
+  // v3 — new types
+  | 'restaurant'
+  | 'park_service'
+  | 'bank_service'
+  | 'farm_supply'
+  | 'factory_supply'
+  | 'industrial_supply';
 
 /** Result of using an institution as a client */
 export interface ServiceResult {
@@ -155,6 +180,9 @@ export interface ServiceResult {
   clientGainStat: 'power' | 'cash';
   clientGainAmount: number;
   providerCashEarned?: number;
+  providerPowerEarned?: number;
+  providerPopularityEarned?: number;
+  errorCode?: string;
 }
 
 /** DB row for service_transactions table */
@@ -170,6 +198,8 @@ export interface ServiceTransaction {
   clientGainAmount: number;
   providerActivitySpent: number;
   providerCashEarned: number;
+  providerPowerEarned: number;
+  providerPopularityEarned: number;
   createdAt: string;
 }
 
@@ -210,6 +240,62 @@ export interface PopularityBoost {
   isActive: boolean;
 }
 
+// ─── Advanced Build Mode ─────────────────────────────────────────────────────
+
+/** A construction material item available from a nearby player-run shop */
+export interface NearbyShopItem {
+  shopAssetId: string;
+  shopOwnerUsername: string;
+  itemId: string;
+  nameFa: string;
+  /** Cash per unit (set freely by shop owner) */
+  price: number;
+  stock: number;
+}
+
+/** A single material slot that must be gathered before confirming an Advanced build */
+export interface BuildMaterialSlot {
+  slotId: string;
+  itemId: string;
+  nameFa: string;
+  /** Quantity of this material required */
+  qtyRequired: number;
+  /** How the player sourced this slot (null if not yet gathered) */
+  gathered: BuildMaterialGather | null;
+}
+
+/** The fill details for a gathered material slot */
+export interface BuildMaterialGather {
+  source: MaterialSource;
+  /** Present only when source === 'market' */
+  shopAssetId?: string;
+  shopOwnerUsername?: string;
+  unitCost: number;
+  qty: number;
+  /** 1.0 for market, 0.7 for subsidized */
+  powerRatio: number;
+  /** Subsidy quota consumed (0 for market) */
+  quotaCost: number;
+}
+
+/** Full in-progress Advanced Build session (client-side mirror of DB row) */
+export interface AdvancedBuildSession {
+  sessionId: string;
+  buildingType: string;
+  latitude: number;
+  longitude: number;
+  tileId: string;
+  slots: BuildMaterialSlot[];
+  /** Running total cash cost of gathered market items */
+  totalCashCost: number;
+  /** Running total subsidy quota consumed */
+  totalQuotaUsed: number;
+  /** Weighted average power ratio across all gathered slots */
+  effectivePowerRatio: number;
+  /** True when every slot has been gathered */
+  allGathered: boolean;
+}
+
 // ─── Player ─────────────────────────────────────────────────────────────────
 
 export type PlayerStatus = 'online' | 'offline' | 'in_game';
@@ -232,6 +318,9 @@ export interface Player {
   // Power Tier (computed from power value, cached in DB)
   powerTier: number;      // 1–6
   powerXp: number;        // XP within current tier
+  // Subsidy quota (resets weekly to 5000)
+  subsidyQuota: number;
+  subsidyResetAt: string;
   // Ownership
   ownedTileIds: string[];
   buildingIds: string[];
@@ -263,6 +352,11 @@ export interface Asset {
   totalViews: number;           // cached lifetime view count
   dailyPowerDrip: number;       // power added to owner daily (via pg_cron)
   institutionType: InstitutionType | null;  // null = not a service institution
+  // v3 — Build modes & institution category
+  buildMode: BuildMode;
+  institutionCategory: InstitutionCategory | null;
+  licensePurchased: boolean;
+  warehouseFilled: boolean;
   // Joined owner data
   ownerUsername?: string;
   ownerAvatarColor?: string;
@@ -303,7 +397,10 @@ export type GameEventType =
   | 'exchange_used'
   | 'popularity_boost_activated'
   | 'daily_power_drip'
-  | 'power_tier_advanced';
+  | 'power_tier_advanced'
+  // v3
+  | 'license_purchased'
+  | 'warehouse_filled';
 
 export interface GameEvent {
   id: string;

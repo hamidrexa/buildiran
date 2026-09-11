@@ -2,6 +2,8 @@
  * BuildIran — App-wide Constants
  */
 
+import type { InstitutionCategory } from '@/types/game.types';
+
 // ─── App Info ────────────────────────────────────────────────────────────────
 
 export const APP_NAME = "بیلد ایران";
@@ -185,13 +187,146 @@ export function getPlayerTier(power: number) {
   return POWER_TIERS[0];
 }
 
+// ─── Build Mode Constants ─────────────────────────────────────────────────────
+
+/** Fast mode charges the full base cost (land + construction, bundled) */
+export const BUILD_MODE_FAST_COST_MULTIPLIER = 1.0;
+
+/** Advanced (free-market) total cost is ~60% of fast mode */
+export const BUILD_MODE_ADVANCED_COST_RATIO = 0.60;
+
+/** Advanced (subsidized) total cost is ~40% of fast mode */
+export const BUILD_MODE_SUBSIDIZED_COST_RATIO = 0.40;
+
+/** Power bonus ratio when using subsidized materials (weighted average) */
+export const SUBSIDIZED_POWER_RATIO = 0.70;
+
+/** Default weekly subsidy quota per player (resets every Monday 00:00 UTC) */
+export const SUBSIDY_QUOTA_DEFAULT = 5000;
+
+/**
+ * One-time license fee per building for commercial, industrial, and public buildings.
+ * Residential buildings do not require a license.
+ */
+export const LICENSE_FEE: Record<InstitutionCategory, number> = {
+  residential: 0,
+  commercial:  500,
+  industrial:  800,
+  public:      1000,
+};
+
+/** Radius in meters to search for nearby player shops in Advanced Build mode */
+export const ADVANCED_BUILD_NEARBY_RADIUS_METERS = 500;
+
+// ─── Build Materials Catalog ──────────────────────────────────────────────────
+// Used in Advanced Build mode — the player must gather these from nearby shops
+// or the state subsidy to complete the build.
+
+export interface BuildMaterialDef {
+  itemId: string;
+  nameFa: string;
+  /** Base state-subsidized price per unit (quota cost = same number in quota units) */
+  subsidizedUnitCost: number;
+  /** Subsidy quota units consumed per unit bought */
+  subsidyQuotaCostPerUnit: number;
+}
+
+export const BUILD_MATERIALS: BuildMaterialDef[] = [
+  { itemId: 'cement',  nameFa: 'سیمان',  subsidizedUnitCost: 40,  subsidyQuotaCostPerUnit: 40  },
+  { itemId: 'steel',   nameFa: 'فولاد',  subsidizedUnitCost: 80,  subsidyQuotaCostPerUnit: 80  },
+  { itemId: 'brick',   nameFa: 'آجر',    subsidizedUnitCost: 20,  subsidyQuotaCostPerUnit: 20  },
+  { itemId: 'glass',   nameFa: 'شیشه',   subsidizedUnitCost: 50,  subsidyQuotaCostPerUnit: 50  },
+  { itemId: 'wood',    nameFa: 'چوب',    subsidizedUnitCost: 30,  subsidyQuotaCostPerUnit: 30  },
+  { itemId: 'sand',    nameFa: 'شن',     subsidizedUnitCost: 15,  subsidyQuotaCostPerUnit: 15  },
+  { itemId: 'tile',    nameFa: 'کاشی',   subsidizedUnitCost: 35,  subsidyQuotaCostPerUnit: 35  },
+  { itemId: 'pipe',    nameFa: 'لوله',   subsidizedUnitCost: 45,  subsidyQuotaCostPerUnit: 45  },
+];
+
+/**
+ * Required materials per building type for Advanced Build mode.
+ * Each entry is an array of { itemId, qtyRequired }.
+ */
+export const BUILD_MATERIAL_SLOTS: Record<string, Array<{ itemId: string; qtyRequired: number }>> = {
+  // ── Residential ──
+  house:      [{ itemId: 'cement', qtyRequired: 3 }, { itemId: 'brick', qtyRequired: 5 }, { itemId: 'wood', qtyRequired: 2 }],
+  villa:      [{ itemId: 'cement', qtyRequired: 6 }, { itemId: 'brick', qtyRequired: 8 }, { itemId: 'glass', qtyRequired: 3 }, { itemId: 'tile', qtyRequired: 4 }],
+  tower:      [{ itemId: 'cement', qtyRequired: 10 }, { itemId: 'steel', qtyRequired: 6 }, { itemId: 'glass', qtyRequired: 8 }, { itemId: 'pipe', qtyRequired: 4 }],
+  // ── Commercial ──
+  shop:       [{ itemId: 'cement', qtyRequired: 2 }, { itemId: 'brick', qtyRequired: 3 }, { itemId: 'glass', qtyRequired: 2 }],
+  cafe:       [{ itemId: 'cement', qtyRequired: 2 }, { itemId: 'tile',  qtyRequired: 4 }, { itemId: 'glass', qtyRequired: 3 }],
+  gym:        [{ itemId: 'cement', qtyRequired: 3 }, { itemId: 'steel', qtyRequired: 3 }, { itemId: 'tile',  qtyRequired: 3 }],
+  warehouse:  [{ itemId: 'cement', qtyRequired: 2 }, { itemId: 'steel', qtyRequired: 4 }, { itemId: 'sand',  qtyRequired: 4 }],
+  exchange:   [{ itemId: 'cement', qtyRequired: 4 }, { itemId: 'glass', qtyRequired: 4 }, { itemId: 'steel', qtyRequired: 2 }],
+  mall:       [{ itemId: 'cement', qtyRequired: 8 }, { itemId: 'steel', qtyRequired: 5 }, { itemId: 'glass', qtyRequired: 6 }, { itemId: 'tile', qtyRequired: 5 }],
+  restaurant: [{ itemId: 'cement', qtyRequired: 3 }, { itemId: 'tile',  qtyRequired: 5 }, { itemId: 'glass', qtyRequired: 2 }, { itemId: 'pipe', qtyRequired: 2 }],
+  // ── Industrial ──
+  farm:       [{ itemId: 'wood',   qtyRequired: 4 }, { itemId: 'sand',  qtyRequired: 6 }, { itemId: 'pipe',  qtyRequired: 2 }],
+  factory:    [{ itemId: 'cement', qtyRequired: 6 }, { itemId: 'steel', qtyRequired: 8 }, { itemId: 'pipe',  qtyRequired: 5 }],
+  // ── Public ──
+  hospital:   [{ itemId: 'cement', qtyRequired: 7 }, { itemId: 'steel', qtyRequired: 4 }, { itemId: 'glass', qtyRequired: 5 }, { itemId: 'pipe', qtyRequired: 4 }],
+  park:       [{ itemId: 'brick',  qtyRequired: 4 }, { itemId: 'sand',  qtyRequired: 6 }, { itemId: 'wood',  qtyRequired: 5 }],
+  university: [{ itemId: 'cement', qtyRequired: 9 }, { itemId: 'steel', qtyRequired: 5 }, { itemId: 'glass', qtyRequired: 6 }, { itemId: 'tile', qtyRequired: 4 }],
+  bank:       [{ itemId: 'cement', qtyRequired: 5 }, { itemId: 'steel', qtyRequired: 4 }, { itemId: 'glass', qtyRequired: 4 }],
+  // Legacy types
+  market:     [{ itemId: 'cement', qtyRequired: 2 }, { itemId: 'brick', qtyRequired: 3 }],
+  office:     [{ itemId: 'cement', qtyRequired: 3 }, { itemId: 'glass', qtyRequired: 4 }, { itemId: 'steel', qtyRequired: 2 }],
+  barracks:   [{ itemId: 'cement', qtyRequired: 5 }, { itemId: 'steel', qtyRequired: 6 }, { itemId: 'sand',  qtyRequired: 4 }],
+};
+
+// ─── Economy: Building Base Costs & Power ─────────────────────────────────────
+// Used for Fast Build mode and general building metadata.
+
+export const BUILDING_CONFIG: Record<string, { cost: number; power: number }> = {
+  // ── Residential ──
+  house:      { cost: 500,  power: 2 },
+  villa:      { cost: 3500, power: 5 },
+  tower:      { cost: 8000, power: 12 },
+  // ── Commercial ──
+  shop:       { cost: 1200, power: 3 },
+  cafe:       { cost: 1500, power: 4 },
+  gym:        { cost: 2000, power: 5 },
+  warehouse:  { cost: 1000, power: 2 },
+  exchange:   { cost: 4000, power: 8 },
+  mall:       { cost: 5000, power: 10 },
+  restaurant: { cost: 3000, power: 6 },
+  market:     { cost: 1500, power: 3 },
+  office:     { cost: 2500, power: 6 },
+  // ── Industrial ──
+  farm:       { cost: 800,  power: 1 },
+  factory:    { cost: 4500, power: 7 },
+  // ── Public ──
+  hospital:   { cost: 6000, power: 15 },
+  park:       { cost: 2000, power: 5 },
+  university: { cost: 7000, power: 18 },
+  bank:       { cost: 4000, power: 9 },
+  // ── Legacy ──
+  barracks:   { cost: 4000, power: 20 },
+};
+
+// ─── Institution Category Map ─────────────────────────────────────────────────
+// Maps every building type to its institution category.
+
+export const INSTITUTION_CATEGORY: Record<string, InstitutionCategory> = {
+  // Residential
+  house: 'residential', villa: 'residential', tower: 'residential',
+  // Commercial
+  shop: 'commercial', mall: 'commercial', exchange: 'commercial',
+  gym: 'commercial', cafe: 'commercial', restaurant: 'commercial',
+  warehouse: 'commercial', market: 'commercial', office: 'commercial',
+  // Industrial
+  farm: 'industrial', factory: 'industrial',
+  // Public
+  hospital: 'public', park: 'public', university: 'public', bank: 'public',
+  // Legacy / military (no category = no license)
+  barracks: 'residential',
+};
+
 // ─── Economy: Institution Definitions ────────────────────────────────────────
 // Every institution is a conversion formula:
 //   client pays (cash or activity) → client gains (power or cash)
-//   provider pays (activity)       → provider gains (% share of client cash)
+//   provider pays (activity)       → provider gains (% share of client cash + optional power/popularity)
 //
-// providerCost / providerGain are undefined for system-run institutions
-// (home_rent, exchange) that have no player provider.
+// providerCost / providerGain are undefined for system-run institutions.
 
 export type InstitutionStatSource = 'cash' | 'activity';
 export type InstitutionStatTarget = 'power' | 'cash';
@@ -199,95 +334,214 @@ export type InstitutionStatTarget = 'power' | 'cash';
 export interface InstitutionDefinition {
   nameFa: string;
   emoji: string;
+  category: InstitutionCategory;
   clientCost: { stat: InstitutionStatSource; amount: number };
+  /** Optional secondary cost for the client (e.g. library: cash + activity) */
+  clientCost2?: { stat: InstitutionStatSource; amount: number };
   clientGain: { stat: InstitutionStatTarget; amount: number };
   providerCost?: { stat: 'activity'; amount: number };
   /** Percent (0–100) of client cash cost that goes to the provider */
   providerGainPercent?: number;
+  /** Extra power earned by the provider per transaction (Industrial + Public) */
+  providerGainPower?: number;
+  /** Extra popularity earned by the provider per transaction (Public only) */
+  providerGainPopularity?: number;
+  /** True if a filled warehouse is required for this service to be active */
+  requiresWarehouse?: boolean;
+  /** True if a one-time license must be purchased (all non-residential) */
+  licenseRequired: boolean;
   /** Building types that count as this institution */
   buildingTypes: string[];
 }
 
 export const INSTITUTION_DEFINITIONS: Record<string, InstitutionDefinition> = {
+  // ── Residential ────────────────────────────────────────────────────────────
   home_rent: {
     nameFa: 'اجاره مسکن',
     emoji: '🏠',
+    category: 'residential',
     clientCost: { stat: 'cash', amount: 200 },
     clientGain: { stat: 'power', amount: 5 },
+    licenseRequired: false,
     buildingTypes: ['house', 'villa'],
   },
+
+  // ── Commercial (basic) ─────────────────────────────────────────────────────
   shopping: {
     nameFa: 'خرید و پوشاک',
     emoji: '🛍️',
+    category: 'commercial',
     clientCost: { stat: 'cash', amount: 300 },
     clientGain: { stat: 'power', amount: 6 },
     providerCost: { stat: 'activity', amount: 10 },
     providerGainPercent: 60,
-    buildingTypes: ['shop', 'mall', 'market'],
-  },
-  hospital: {
-    nameFa: 'خدمات درمانی',
-    emoji: '🏥',
-    clientCost: { stat: 'cash', amount: 500 },
-    clientGain: { stat: 'power', amount: 15 },
-    providerCost: { stat: 'activity', amount: 20 },
-    providerGainPercent: 55,
-    buildingTypes: ['hospital'],
-  },
-  university: {
-    nameFa: 'آموزش دانشگاهی',
-    emoji: '🎓',
-    clientCost: { stat: 'cash', amount: 400 },
-    clientGain: { stat: 'power', amount: 12 },
-    providerCost: { stat: 'activity', amount: 15 },
-    providerGainPercent: 50,
-    buildingTypes: ['university'],
+    licenseRequired: true,
+    buildingTypes: ['shop', 'market'],
   },
   cafe: {
-    nameFa: 'کافه و رستوران',
+    nameFa: 'کافه و نوشیدنی',
     emoji: '☕',
+    category: 'commercial',
     clientCost: { stat: 'cash', amount: 150 },
     clientGain: { stat: 'power', amount: 3 },
     providerCost: { stat: 'activity', amount: 8 },
     providerGainPercent: 65,
+    licenseRequired: true,
     buildingTypes: ['cafe'],
   },
   gym: {
     nameFa: 'باشگاه ورزشی',
     emoji: '🏋️',
+    category: 'commercial',
     clientCost: { stat: 'cash', amount: 250 },
     clientGain: { stat: 'power', amount: 8 },
     providerCost: { stat: 'activity', amount: 12 },
     providerGainPercent: 58,
+    licenseRequired: true,
     buildingTypes: ['gym'],
   },
+  restaurant: {
+    nameFa: 'رستوران',
+    emoji: '🍽️',
+    category: 'commercial',
+    clientCost: { stat: 'cash', amount: 200 },
+    clientGain: { stat: 'power', amount: 5 },
+    providerCost: { stat: 'activity', amount: 10 },
+    providerGainPercent: 62,
+    requiresWarehouse: true,
+    licenseRequired: true,
+    buildingTypes: ['restaurant'],
+  },
+  // ── Commercial: big (requires warehouse) ──────────────────────────────────
+  mall_service: {
+    nameFa: 'مرکز خرید',
+    emoji: '🏬',
+    category: 'commercial',
+    clientCost: { stat: 'cash', amount: 400 },
+    clientGain: { stat: 'power', amount: 10 },
+    providerCost: { stat: 'activity', amount: 15 },
+    providerGainPercent: 60,
+    requiresWarehouse: true,
+    licenseRequired: true,
+    buildingTypes: ['mall'],
+  },
+  // ── Commercial: library (client also pays activity) ────────────────────────
   library: {
     nameFa: 'کتابخانه و فرهنگسرا',
     emoji: '📚',
+    category: 'commercial',
     clientCost: { stat: 'cash', amount: 100 },
-    clientGain: { stat: 'power', amount: 4 },
+    clientCost2: { stat: 'activity', amount: 5 },
+    clientGain: { stat: 'power', amount: 7 },   // higher than base because client also pays activity
     providerCost: { stat: 'activity', amount: 6 },
     providerGainPercent: 45,
+    licenseRequired: true,
     buildingTypes: ['library'],
   },
-  /** Exchange: converts the client's Activity into Cash.
-   *  Rate is determined by EXCHANGE_RATES — not a fixed amount here.
-   *  clientCost.amount = 1 unit of activity (rate multiplied at runtime). */
+  // ── Commercial: exchange (Activity → Cash) ─────────────────────────────────
   exchange: {
     nameFa: 'بورس فعالیت',
     emoji: '🏦',
+    category: 'commercial',
     clientCost: { stat: 'activity', amount: 1 },
-    clientGain: { stat: 'cash', amount: 2 }, // base rate; overridden by EXCHANGE_RATES
-    buildingTypes: ['office', 'tower'],
+    clientGain: { stat: 'cash', amount: 2 },  // base rate; overridden at runtime by EXCHANGE_RATES
+    licenseRequired: true,
+    buildingTypes: ['office', 'exchange'],
+  },
+
+  // ── Industrial ──────────────────────────────────────────────────────────────
+  // Industrial providers fill warehouses; they do not have a direct client interaction.
+  // Their reward comes from fill_warehouse RPC (cash + power).
+  farm_supply: {
+    nameFa: 'تأمین کالای مزرعه',
+    emoji: '🌾',
+    category: 'industrial',
+    // No client side — this is provider-only; amounts represent the warehouse fill reward
+    clientCost: { stat: 'cash', amount: 0 },
+    clientGain: { stat: 'power', amount: 0 },
+    providerGainPercent: 0,
+    providerGainPower: 2,     // +2 power per warehouse fill
+    licenseRequired: true,
+    buildingTypes: ['farm'],
+  },
+  factory_supply: {
+    nameFa: 'تأمین کالای کارخانه',
+    emoji: '🏭',
+    category: 'industrial',
+    clientCost: { stat: 'cash', amount: 0 },
+    clientGain: { stat: 'power', amount: 0 },
+    providerGainPercent: 0,
+    providerGainPower: 3,     // +3 power per warehouse fill
+    licenseRequired: true,
+    buildingTypes: ['factory'],
+  },
+  industrial_supply: {
+    nameFa: 'تأمین انبار صنعتی',
+    emoji: '📦',
+    category: 'industrial',
+    clientCost: { stat: 'cash', amount: 0 },
+    clientGain: { stat: 'power', amount: 0 },
+    providerGainPower: 2,
+    licenseRequired: true,
+    buildingTypes: ['farm', 'factory'],
+  },
+
+  // ── Public ──────────────────────────────────────────────────────────────────
+  hospital: {
+    nameFa: 'خدمات درمانی',
+    emoji: '🏥',
+    category: 'public',
+    clientCost: { stat: 'cash', amount: 500 },
+    clientGain: { stat: 'power', amount: 15 },
+    providerCost: { stat: 'activity', amount: 20 },
+    providerGainPercent: 55,
+    providerGainPower: 3,
+    providerGainPopularity: 2,
+    licenseRequired: true,
+    buildingTypes: ['hospital'],
+  },
+  university: {
+    nameFa: 'آموزش دانشگاهی',
+    emoji: '🎓',
+    category: 'public',
+    clientCost: { stat: 'cash', amount: 400 },
+    clientGain: { stat: 'power', amount: 12 },
+    providerCost: { stat: 'activity', amount: 15 },
+    providerGainPercent: 50,
+    providerGainPower: 2,
+    providerGainPopularity: 3,
+    licenseRequired: true,
+    buildingTypes: ['university'],
+  },
+  bank_service: {
+    nameFa: 'خدمات بانکی',
+    emoji: '🏦',
+    category: 'public',
+    clientCost: { stat: 'cash', amount: 300 },
+    clientGain: { stat: 'power', amount: 8 },
+    providerCost: { stat: 'activity', amount: 12 },
+    providerGainPercent: 48,
+    providerGainPower: 1,
+    providerGainPopularity: 2,
+    licenseRequired: true,
+    buildingTypes: ['bank'],
+  },
+  park_service: {
+    nameFa: 'پارک و فضای سبز',
+    emoji: '🌳',
+    category: 'public',
+    clientCost: { stat: 'cash', amount: 100 },
+    clientGain: { stat: 'power', amount: 4 },
+    providerCost: { stat: 'activity', amount: 8 },
+    providerGainPercent: 40,
+    providerGainPower: 1,
+    providerGainPopularity: 4,   // parks yield higher popularity
+    licenseRequired: true,
+    buildingTypes: ['park'],
   },
 } as const;
 
 // ─── Economy: Exchange Rates ──────────────────────────────────────────────────
-// Exchange institution converts Activity → Cash.
-// Rate depends on the client's business ownership status.
-//   base             — no business (lazy tax)
-//   ownerBonus       — owns a business in the same category as the exchange
-//   establishedBiz   — owns a level-2+ business used within the last 7 days
 
 export const EXCHANGE_RATES = {
   /** 1 activity = 2 cash — no business owned */
@@ -305,23 +559,39 @@ export const ESTABLISHED_BIZ_DAYS = 7;
 // ─── Economy: Daily Power Drip (pg_cron) ─────────────────────────────────────
 // Power added to a player's total once per day (midnight UTC via pg_cron)
 // for every asset they own of that type.
+//
+// Tiered by institution category:
+//   Residential (T1): 1–5 | Commercial (T2): 1–3 | Industrial (T3): 3–4 | Public (T4): 2–4
 
 export const DAILY_POWER_DRIP: Record<string, number> = {
-  house: 1,
-  villa: 2,
-  shop: 2,
-  market: 2,
-  mall: 3,
-  office: 2,
-  farm: 1,
-  warehouse: 1,
-  tower: 5,
-  barracks: 8,
+  // ── Residential T1 ──
+  house:      1,
+  villa:      2,
+  tower:      5,
+  // ── Commercial T2 ──
+  shop:       2,
+  cafe:       2,
+  gym:        2,
+  warehouse:  1,
+  exchange:   2,
+  mall:       3,
+  restaurant: 2,
+  market:     2,
+  office:     2,
+  // ── Industrial T3 ──
+  farm:       3,
+  factory:    4,
+  // ── Public T4 ──
+  hospital:   4,
+  park:       2,
+  university: 4,
+  bank:       3,
+  // ── Legacy ──
+  barracks:   8,
   // custom building types inherit the value from their custom_settings.daily_power_drip
 } as const;
 
 // ─── Economy: Popularity Boost ────────────────────────────────────────────────
-// Owners of player-run businesses can spend popularity for 2× income.
 
 /** Base popularity cost — multiplied by asset.level at activation time */
 export const POPULARITY_BOOST_BASE_COST = 10;
@@ -341,20 +611,17 @@ export const POPULARITY_PER_VIEW = 1;
 export const VIEWPORT_VIEW_FLUSH_INTERVAL_MS = 5000;
 
 // ─── Economy: Activity Events ─────────────────────────────────────────────────
-// Every trackable user action awards activity points.
-// These are accumulated in profiles.activity and reset daily by pg_cron.
 
 export const ACTIVITY_EVENTS = {
-  tile_load: 1,   // a new map tile enters the viewport
-  marketplace_view: 2,   // player opens the marketplace tab
-  asset_inspect: 2,   // player opens an asset detail (own or other's)
-  trade_complete: 10,  // player buys an asset from the marketplace
-  build_complete: 8,   // player builds a new asset
-  upgrade_complete: 6,   // player upgrades an existing asset
-  service_used: 5,   // player uses a service institution as a client
-  exchange_used: 4,   // player uses the exchange institution
-  proposal_submitted: 5,   // player submits a custom building proposal
+  tile_load: 1,
+  marketplace_view: 2,
+  asset_inspect: 2,
+  trade_complete: 10,
+  build_complete: 8,
+  upgrade_complete: 6,
+  service_used: 5,
+  exchange_used: 4,
+  proposal_submitted: 5,
 } as const;
 
 export type ActivityEventKey = keyof typeof ACTIVITY_EVENTS;
-

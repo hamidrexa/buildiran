@@ -72,6 +72,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const cancelListing = useAssetStore((s) => s.cancelListing);
   const buyAsset = useAssetStore((s) => s.buyAsset);
   const listings = useAssetStore((s) => s.listings);
+  const allAssets = useAssetStore((s) => s.assets);
+  const fillWarehouse = useAssetStore((s) => s.fillWarehouse);
+  const updateStats = usePlayerStore((s) => s.updateStats);
   const isAssetBoosted = useEconomyStore((s) => s.isAssetBoosted);
   const { track } = useActivityTracker();
 
@@ -108,6 +111,34 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const instType = asset.institutionType as InstitutionType | null;
   const instDef = instType ? INSTITUTION_DEFINITIONS[instType] : null;
   const isBoosted = isAssetBoosted(asset.id);
+
+  const myIndustrialAssets = Object.values(allAssets).filter(
+    (a) => a.ownerId === player?.id && a.institutionCategory === "industrial"
+  );
+  const canFillWarehouse = myIndustrialAssets.length > 0;
+  const warehouseEmpty = (instDef?.requiresWarehouse && !asset.warehouseFilled) ?? false;
+
+  const handleFillWarehouse = async () => {
+    if (!myIndustrialAssets[0] || !player) return;
+    setLoading(true);
+    try {
+      const { success, cashEarned, powerEarned, error } = await fillWarehouse(myIndustrialAssets[0].id, asset.id);
+      if (success) {
+        GameAudio.playBuild();
+        if (cashEarned) updateCash(cashEarned);
+        if (powerEarned) updateStats({ power: (player.power ?? 0) + powerEarned });
+      } else {
+        GameAudio.playError();
+        if (error === 'insufficient_activity') {
+           Alert.alert("خطا", "فعالیت کافی برای تأمین انبار ندارید.");
+        }
+      }
+    } catch {
+      GameAudio.playError();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpgrade = async () => {
     if (!player) return;
@@ -169,10 +200,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const handleCancelSale = async () => {
     setLoading(true);
     try {
-      const ok = await cancelListing(asset.id);
-      if (ok) {
-        GameAudio.playTap();
-      }
+      await cancelListing(asset.id);
+      GameAudio.playTap();
     } catch {
       GameAudio.playError();
     } finally {
@@ -510,8 +539,35 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 </>
               ) : (
                 <View style={styles.otherActionBox}>
+                  {/* Warehouse Empty Warning & Fill Button */}
+                  {warehouseEmpty && (
+                    <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: 12, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+                      <Text variant="caption" weight="bold" color="inverse" style={{ color: '#EF4444', textAlign: 'center', marginBottom: 4 }}>
+                        ⚠️ انبار خالی است
+                      </Text>
+                      <Text variant="caption" color="secondary" style={{ textAlign: 'center' }}>
+                        نیازمند تأمین توسط بخش صنعتی
+                      </Text>
+                      {canFillWarehouse && (
+                        <TouchableOpacity
+                          style={[styles.actionBtn, { backgroundColor: '#F59E0B', marginTop: 12 }]}
+                          onPress={handleFillWarehouse}
+                          disabled={loading}
+                        >
+                          {loading ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <Text weight="semibold" color="inverse">
+                              📦 تأمین انبار (صنعتی)
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+
                   {/* Use service institution (non-owner) */}
-                  {instDef && (
+                  {instDef && !warehouseEmpty && (
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.serviceBtn]}
                       onPress={() => {
