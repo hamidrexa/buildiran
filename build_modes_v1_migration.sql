@@ -80,6 +80,10 @@ ALTER TABLE public.service_transactions
   ADD COLUMN IF NOT EXISTS provider_power_earned      INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS provider_popularity_earned INTEGER NOT NULL DEFAULT 0;
 
+-- Allow system transactions (like exchange) where business_asset_id is NULL
+ALTER TABLE public.service_transactions
+  ALTER COLUMN business_asset_id DROP NOT NULL;
+
 -- ─── 4. Table: market_items ───────────────────────────────────
 -- Shop owners list construction materials / goods with price and stock.
 -- Used by Advanced Build mode to discover items from nearby player-run shops.
@@ -499,12 +503,15 @@ GRANT EXECUTE ON FUNCTION public.confirm_advanced_build(UUID, INTEGER, BIGINT, B
 -- ─── 11. RPC: buy_license ─────────────────────────────────────
 -- One-time license fee payment for an existing asset.
 -- Idempotent: returns success immediately if already licensed.
--- Used by both Fast mode (called after asset insert) and
--- Advanced mode (handled inside confirm_advanced_build, but callable standalone).
+-- Accepts either p_fee or p_license_fee for client compatibility.
+
+DROP FUNCTION IF EXISTS public.buy_license(UUID, BIGINT);
+DROP FUNCTION IF EXISTS public.buy_license(UUID, BIGINT, BIGINT);
 
 CREATE OR REPLACE FUNCTION public.buy_license(
   p_asset_id    UUID,
-  p_license_fee BIGINT
+  p_fee         BIGINT DEFAULT NULL,
+  p_license_fee BIGINT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -512,9 +519,10 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_owner_id UUID := auth.uid();
-  v_asset    RECORD;
-  v_cash     BIGINT;
+  v_owner_id   UUID := auth.uid();
+  v_asset      RECORD;
+  v_cash       BIGINT;
+  v_actual_fee BIGINT := COALESCE(p_fee, p_license_fee, 0);
 BEGIN
   IF v_owner_id IS NULL THEN
     RETURN jsonb_build_object('success', false, 'error', 'not_authenticated');
@@ -533,25 +541,28 @@ BEGIN
     RETURN jsonb_build_object('success', true, 'alreadyLicensed', true);
   END IF;
 
-  SELECT cash INTO v_cash FROM public.profiles WHERE id = v_owner_id FOR UPDATE;
-  IF v_cash < p_license_fee THEN
-    RETURN jsonb_build_object('success', false, 'error', 'insufficient_cash');
+  IF v_actual_fee > 0 THEN
+    SELECT cash INTO v_cash FROM public.profiles WHERE id = v_owner_id FOR UPDATE;
+    IF v_cash < v_actual_fee THEN
+      RETURN jsonb_build_object('success', false, 'error', 'insufficient_cash');
+    END IF;
+
+    UPDATE public.profiles SET cash = cash - v_actual_fee WHERE id = v_owner_id;
   END IF;
 
-  UPDATE public.profiles SET cash = cash - p_license_fee WHERE id = v_owner_id;
   UPDATE public.assets SET license_purchased = TRUE WHERE id = p_asset_id;
 
   INSERT INTO public.game_events (player_id, type, payload)
   VALUES (v_owner_id, 'license_purchased', jsonb_build_object(
     'asset_id', p_asset_id,
-    'fee',      p_license_fee
+    'fee',      v_actual_fee
   ));
 
-  RETURN jsonb_build_object('success', true, 'licenseFee', p_license_fee);
+  RETURN jsonb_build_object('success', true, 'licenseFee', v_actual_fee);
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.buy_license(UUID, BIGINT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.buy_license(UUID, BIGINT, BIGINT) TO authenticated;
 
 -- ─── 12. RPC: fill_warehouse ──────────────────────────────────
 -- An Industrial provider (farm/factory owner) fills a Commercial warehouse.
@@ -637,23 +648,28 @@ $$;
 GRANT EXECUTE ON FUNCTION public.fill_warehouse(UUID, UUID, BIGINT, INTEGER) TO authenticated;
 
 -- ─── 13. RPC: use_institution (REPLACE — adds provider power/popularity) ──────
--- Drops and recreates use_institution with two new optional parameters:
---   p_provider_power_gain    INTEGER  DEFAULT 0
---   p_provider_popularity_gain INTEGER DEFAULT 0
---   p_requires_warehouse     BOOLEAN  DEFAULT FALSE
--- All existing callers pass 0/FALSE for the new params → backward compatible.
+-- Drops and recreates use_institution with extended parameters:
+--   p_client_cost2_stat        TEXT     DEFAULT NULL
+--   p_client_cost2_amt         BIGINT   DEFAULT 0
+--   p_provider_activity_cost   INTEGER  DEFAULT 0
+--   p_provider_cash_share      BIGINT   DEFAULT 0
+--   p_provider_power_gain      INTEGER  DEFAULT 0
+--   p_provider_popularity_gain INTEGER  DEFAULT 0
+--   p_requires_warehouse       BOOLEAN  DEFAULT FALSE
 
 DROP FUNCTION IF EXISTS public.use_institution(UUID, TEXT, TEXT, BIGINT, TEXT, BIGINT, INTEGER, BIGINT);
+DROP FUNCTION IF EXISTS public.use_institution(UUID, TEXT, TEXT, BIGINT, TEXT, BIGINT, INTEGER, BIGINT, INTEGER, INTEGER, BOOLEAN);
+DROP FUNCTION IF EXISTS public.use_institution(UUID, TEXT, TEXT, BIGINT, TEXT, BIGINT, TEXT, BIGINT, INTEGER, BIGINT, INTEGER, INTEGER, BOOLEAN);
 
 CREATE OR REPLACE FUNCTION public.use_institution(
   p_asset_id                 UUID,
   p_institution_type         TEXT,
   p_client_cost_stat         TEXT,     -- 'cash' or 'activity'
   p_client_cost_amt          BIGINT,
-  p_client_cost2_stat        TEXT     DEFAULT NULL, -- optional secondary cost
-  p_client_cost2_amt         BIGINT   DEFAULT 0,
   p_client_gain_stat         TEXT,     -- 'power' or 'cash'
   p_client_gain_amt          BIGINT,
+  p_client_cost2_stat        TEXT     DEFAULT NULL, -- optional secondary cost
+  p_client_cost2_amt         BIGINT   DEFAULT 0,
   p_provider_activity_cost   INTEGER  DEFAULT 0,
   p_provider_cash_share      BIGINT   DEFAULT 0,
   p_provider_power_gain      INTEGER  DEFAULT 0,
@@ -672,16 +688,29 @@ DECLARE
   v_client_activity  INTEGER;
   v_prov_activity    INTEGER;
   v_warehouse_filled BOOLEAN;
+  v_is_system        BOOLEAN := FALSE;
+  v_cost2_amt        BIGINT := COALESCE(p_client_cost2_amt, 0);
 BEGIN
   IF v_client_id IS NULL THEN
     RETURN jsonb_build_object('success', false, 'error', 'not_authenticated');
   END IF;
 
-  SELECT owner_id, warehouse_filled INTO v_owner_id, v_warehouse_filled
-    FROM public.assets WHERE id = p_asset_id FOR UPDATE;
+  -- Handle exchange or system assets gracefully
+  IF p_institution_type = 'exchange' AND (p_asset_id IS NULL OR p_asset_id = '00000000-0000-0000-0000-000000000000'::UUID) THEN
+    v_owner_id := v_client_id;
+    v_is_system := TRUE;
+  ELSE
+    SELECT owner_id, warehouse_filled INTO v_owner_id, v_warehouse_filled
+      FROM public.assets WHERE id = p_asset_id FOR UPDATE;
 
-  IF v_owner_id IS NULL THEN
-    RETURN jsonb_build_object('success', false, 'error', 'asset_not_found');
+    IF v_owner_id IS NULL THEN
+      IF p_institution_type = 'exchange' THEN
+        v_owner_id := v_client_id;
+        v_is_system := TRUE;
+      ELSE
+        RETURN jsonb_build_object('success', false, 'error', 'asset_not_found');
+      END IF;
+    END IF;
   END IF;
 
   -- Warehouse gate for large Commercial
@@ -690,7 +719,7 @@ BEGIN
   END IF;
 
   -- Owner cannot use their own business (except system-run types)
-  IF v_owner_id = v_client_id
+  IF NOT v_is_system AND v_owner_id = v_client_id
     AND p_institution_type NOT IN ('home_rent', 'exchange', 'industrial_supply')
   THEN
     RETURN jsonb_build_object('success', false, 'error', 'cannot_use_own_institution');
@@ -699,6 +728,7 @@ BEGIN
   SELECT cash, activity INTO v_client_cash, v_client_activity
     FROM public.profiles WHERE id = v_client_id FOR UPDATE;
 
+  -- Primary cost check
   IF p_client_cost_stat = 'cash'     AND v_client_cash     < p_client_cost_amt THEN
     RETURN jsonb_build_object('success', false, 'error', 'insufficient_cash');
   END IF;
@@ -706,14 +736,31 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'insufficient_activity');
   END IF;
 
-  IF p_client_cost2_stat = 'cash'     AND v_client_cash     < (p_client_cost_amt + p_client_cost2_amt) THEN
-    RETURN jsonb_build_object('success', false, 'error', 'insufficient_cash');
-  END IF;
-  IF p_client_cost2_stat = 'activity' AND v_client_activity < (p_client_cost_amt + p_client_cost2_amt) THEN
-    RETURN jsonb_build_object('success', false, 'error', 'insufficient_activity');
+  -- Secondary cost check
+  IF p_client_cost2_stat = 'cash' AND v_cost2_amt > 0 THEN
+    IF p_client_cost_stat = 'cash' THEN
+      IF v_client_cash < (p_client_cost_amt + v_cost2_amt) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'insufficient_cash');
+      END IF;
+    ELSE
+      IF v_client_cash < v_cost2_amt THEN
+        RETURN jsonb_build_object('success', false, 'error', 'insufficient_cash');
+      END IF;
+    END IF;
+  ELSIF p_client_cost2_stat = 'activity' AND v_cost2_amt > 0 THEN
+    IF p_client_cost_stat = 'activity' THEN
+      IF v_client_activity < (p_client_cost_amt + v_cost2_amt) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'insufficient_activity');
+      END IF;
+    ELSE
+      IF v_client_activity < v_cost2_amt THEN
+        RETURN jsonb_build_object('success', false, 'error', 'insufficient_activity');
+      END IF;
+    END IF;
   END IF;
 
-  IF p_provider_activity_cost > 0 THEN
+  -- Provider activity check (skip for system transactions)
+  IF NOT v_is_system AND p_provider_activity_cost > 0 THEN
     SELECT activity INTO v_prov_activity
       FROM public.profiles WHERE id = v_owner_id FOR UPDATE;
     IF v_prov_activity < p_provider_activity_cost THEN
@@ -721,17 +768,18 @@ BEGIN
     END IF;
   END IF;
 
-  -- Apply client cost
+  -- Apply client primary cost
   IF p_client_cost_stat = 'cash' THEN
     UPDATE public.profiles SET cash     = cash     - p_client_cost_amt WHERE id = v_client_id;
   ELSE
     UPDATE public.profiles SET activity = activity - p_client_cost_amt WHERE id = v_client_id;
   END IF;
 
-  IF p_client_cost2_stat = 'cash' THEN
-    UPDATE public.profiles SET cash     = cash     - p_client_cost2_amt WHERE id = v_client_id;
-  ELSIF p_client_cost2_stat = 'activity' THEN
-    UPDATE public.profiles SET activity = activity - p_client_cost2_amt WHERE id = v_client_id;
+  -- Apply client secondary cost
+  IF p_client_cost2_stat = 'cash' AND v_cost2_amt > 0 THEN
+    UPDATE public.profiles SET cash     = cash     - v_cost2_amt WHERE id = v_client_id;
+  ELSIF p_client_cost2_stat = 'activity' AND v_cost2_amt > 0 THEN
+    UPDATE public.profiles SET activity = activity - v_cost2_amt WHERE id = v_client_id;
   END IF;
 
   -- Apply client gain
@@ -741,18 +789,20 @@ BEGIN
     UPDATE public.profiles SET cash  = cash  + p_client_gain_amt WHERE id = v_client_id;
   END IF;
 
-  -- Apply provider gains / costs
-  IF p_provider_activity_cost > 0 THEN
-    UPDATE public.profiles SET activity   = activity   - p_provider_activity_cost WHERE id = v_owner_id;
-  END IF;
-  IF p_provider_cash_share > 0 THEN
-    UPDATE public.profiles SET cash       = cash       + p_provider_cash_share     WHERE id = v_owner_id;
-  END IF;
-  IF p_provider_power_gain > 0 THEN
-    UPDATE public.profiles SET power      = power      + p_provider_power_gain     WHERE id = v_owner_id;
-  END IF;
-  IF p_provider_popularity_gain > 0 THEN
-    UPDATE public.profiles SET popularity = popularity + p_provider_popularity_gain WHERE id = v_owner_id;
+  -- Apply provider gains / costs (skip for system transactions)
+  IF NOT v_is_system THEN
+    IF p_provider_activity_cost > 0 THEN
+      UPDATE public.profiles SET activity   = activity   - p_provider_activity_cost WHERE id = v_owner_id;
+    END IF;
+    IF p_provider_cash_share > 0 THEN
+      UPDATE public.profiles SET cash       = cash       + p_provider_cash_share     WHERE id = v_owner_id;
+    END IF;
+    IF p_provider_power_gain > 0 THEN
+      UPDATE public.profiles SET power      = power      + p_provider_power_gain     WHERE id = v_owner_id;
+    END IF;
+    IF p_provider_popularity_gain > 0 THEN
+      UPDATE public.profiles SET popularity = popularity + p_provider_popularity_gain WHERE id = v_owner_id;
+    END IF;
   END IF;
 
   -- Log transaction (extended)
@@ -763,7 +813,8 @@ BEGIN
     provider_activity_spent, provider_cash_earned,
     provider_power_earned,   provider_popularity_earned
   ) VALUES (
-    p_asset_id, v_owner_id, v_client_id, p_institution_type,
+    CASE WHEN v_is_system THEN NULL ELSE p_asset_id END,
+    v_owner_id, v_client_id, p_institution_type,
     p_client_cost_stat,  p_client_cost_amt,
     p_client_gain_stat,  p_client_gain_amt,
     p_provider_activity_cost, p_provider_cash_share,
@@ -772,7 +823,7 @@ BEGIN
 
   INSERT INTO public.game_events (player_id, type, payload)
   VALUES (v_client_id, 'service_used', jsonb_build_object(
-    'asset_id',           p_asset_id,
+    'asset_id',           CASE WHEN v_is_system THEN NULL ELSE p_asset_id END,
     'institution_type',   p_institution_type,
     'client_cost_stat',   p_client_cost_stat,
     'client_cost_amount', p_client_cost_amt,
@@ -791,7 +842,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.use_institution(UUID, TEXT, TEXT, BIGINT, TEXT, BIGINT, INTEGER, BIGINT, INTEGER, INTEGER, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.use_institution(UUID, TEXT, TEXT, BIGINT, TEXT, BIGINT, TEXT, BIGINT, INTEGER, BIGINT, INTEGER, INTEGER, BOOLEAN) TO authenticated;
 
 -- ─── 14. RPC: reset_weekly_subsidy (pg_cron job) ──────────────
 -- Runs every Monday 00:00 UTC. Restores subsidy_quota to 5000 for all players.
@@ -855,124 +906,3 @@ BEGIN
   END IF;
 END $$;
 
--- ─── 17. RPC: buy_license ─────────────────────────────────────
--- Deducts cash from the caller and sets license_purchased = true on the asset.
-
-CREATE OR REPLACE FUNCTION public.buy_license(
-  p_asset_id UUID,
-  p_fee      BIGINT
-)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_player_id UUID := auth.uid();
-  v_cash      BIGINT;
-  v_owner_id  UUID;
-BEGIN
-  IF v_player_id IS NULL THEN RETURN FALSE; END IF;
-
-  SELECT owner_id INTO v_owner_id
-    FROM public.assets
-   WHERE id = p_asset_id;
-
-  IF v_owner_id IS NULL OR v_owner_id != v_player_id THEN
-    RETURN FALSE;
-  END IF;
-
-  IF p_fee > 0 THEN
-    SELECT cash INTO v_cash
-      FROM public.profiles
-     WHERE id = v_player_id
-     FOR UPDATE;
-    
-    IF v_cash < p_fee THEN
-      RETURN FALSE;
-    END IF;
-
-    UPDATE public.profiles
-       SET cash = cash - p_fee
-     WHERE id = v_player_id;
-  END IF;
-
-  UPDATE public.assets
-     SET license_purchased = TRUE
-   WHERE id = p_asset_id;
-
-  RETURN TRUE;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.buy_license(UUID, BIGINT) TO authenticated;
-
--- ─── 18. RPC: fill_warehouse ──────────────────────────────────
--- Links an Industrial asset to a Commercial asset to fill its warehouse.
--- Deducts activity from Industrial provider. Sets warehouse_filled = true.
--- Awards power to the Industrial provider based on p_provider_power_gain.
-
-CREATE OR REPLACE FUNCTION public.fill_warehouse(
-  p_industrial_asset_id UUID,
-  p_commercial_asset_id UUID,
-  p_cash_reward         BIGINT,
-  p_power_reward        INTEGER
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_provider_id UUID := auth.uid();
-  v_comm_owner  UUID;
-  v_ind_owner   UUID;
-  v_ind_type    TEXT;
-BEGIN
-  IF v_provider_id IS NULL THEN RETURN jsonb_build_object('success', false, 'error', 'not_authenticated'); END IF;
-
-  -- Validate industrial asset
-  SELECT owner_id, institution_type INTO v_ind_owner, v_ind_type
-    FROM public.assets
-   WHERE id = p_industrial_asset_id;
-   
-  IF v_ind_owner IS NULL OR v_ind_owner != v_provider_id THEN
-    RETURN jsonb_build_object('success', false, 'error', 'not_owner');
-  END IF;
-  IF v_ind_type NOT IN ('farm_supply', 'factory_supply', 'industrial_supply') THEN
-    RETURN jsonb_build_object('success', false, 'error', 'invalid_industrial_type');
-  END IF;
-
-  -- Validate commercial asset
-  SELECT owner_id INTO v_comm_owner
-    FROM public.assets
-   WHERE id = p_commercial_asset_id
-     FOR UPDATE;
-     
-  IF v_comm_owner IS NULL THEN
-    RETURN jsonb_build_object('success', false, 'error', 'commercial_not_found');
-  END IF;
-
-  -- Apply gains to provider
-  IF p_cash_reward > 0 THEN
-    UPDATE public.profiles SET cash = cash + p_cash_reward WHERE id = v_provider_id;
-  END IF;
-
-  IF p_power_reward > 0 THEN
-    UPDATE public.profiles SET power = power + p_power_reward WHERE id = v_provider_id;
-  END IF;
-
-  -- Fill the warehouse
-  UPDATE public.assets
-     SET warehouse_filled = TRUE
-   WHERE id = p_commercial_asset_id;
-
-  RETURN jsonb_build_object(
-    'success', true,
-    'cashEarned', p_cash_reward,
-    'powerEarned', p_power_reward
-  );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.fill_warehouse(UUID, UUID, BIGINT, INTEGER) TO authenticated;
