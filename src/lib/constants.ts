@@ -2,7 +2,7 @@
  * BuildIran — App-wide Constants
  */
 
-import type { InstitutionCategory } from '@/types/game.types';
+import type { InstitutionCategory } from "@/types/game.types";
 
 // ─── App Info ────────────────────────────────────────────────────────────────
 
@@ -169,12 +169,36 @@ export const IRAN_BOUNDS = {
 // XP is the unlock gate to advance to the next tier.
 
 export const POWER_TIERS = [
-  { tier: 1, nameFa: 'تازه‌کار', minPower: 0, maxPower: 20, xpRequired: 100 },
-  { tier: 2, nameFa: 'شهروند', minPower: 21, maxPower: 50, xpRequired: 500 },
-  { tier: 3, nameFa: 'استاندار', minPower: 51, maxPower: 150, xpRequired: 2000 },
-  { tier: 4, nameFa: 'فرماندار', minPower: 151, maxPower: 500, xpRequired: 10000 },
-  { tier: 5, nameFa: 'سلطان', minPower: 501, maxPower: 2000, xpRequired: 50000 },
-  { tier: 6, nameFa: 'شاهنشاه', minPower: 2001, maxPower: Infinity, xpRequired: Infinity },
+  { tier: 1, nameFa: "تازه‌کار", minPower: 0, maxPower: 20, xpRequired: 100 },
+  { tier: 2, nameFa: "شهروند", minPower: 21, maxPower: 50, xpRequired: 500 },
+  {
+    tier: 3,
+    nameFa: "استاندار",
+    minPower: 51,
+    maxPower: 150,
+    xpRequired: 2000,
+  },
+  {
+    tier: 4,
+    nameFa: "فرماندار",
+    minPower: 151,
+    maxPower: 500,
+    xpRequired: 10000,
+  },
+  {
+    tier: 5,
+    nameFa: "سلطان",
+    minPower: 501,
+    maxPower: 2000,
+    xpRequired: 50000,
+  },
+  {
+    tier: 6,
+    nameFa: "شاهنشاه",
+    minPower: 2001,
+    maxPower: Infinity,
+    xpRequired: Infinity,
+  },
 ] as const;
 
 export type PowerTierIndex = 1 | 2 | 3 | 4 | 5 | 6;
@@ -193,13 +217,13 @@ export function getPlayerTier(power: number) {
 export const BUILD_MODE_FAST_COST_MULTIPLIER = 1.0;
 
 /** Advanced (free-market) total cost is ~60% of fast mode */
-export const BUILD_MODE_ADVANCED_COST_RATIO = 0.60;
+export const BUILD_MODE_ADVANCED_COST_RATIO = 0.6;
 
 /** Advanced (subsidized) total cost is ~40% of fast mode */
-export const BUILD_MODE_SUBSIDIZED_COST_RATIO = 0.40;
+export const BUILD_MODE_SUBSIDIZED_COST_RATIO = 0.4;
 
 /** Power bonus ratio when using subsidized materials (weighted average) */
-export const SUBSIDIZED_POWER_RATIO = 0.70;
+export const SUBSIDIZED_POWER_RATIO = 0.7;
 
 /** Default weekly subsidy quota per player (resets every Monday 00:00 UTC) */
 export const SUBSIDY_QUOTA_DEFAULT = 5000;
@@ -210,9 +234,9 @@ export const SUBSIDY_QUOTA_DEFAULT = 5000;
  */
 export const LICENSE_FEE: Record<InstitutionCategory, number> = {
   residential: 0,
-  commercial:  500,
-  industrial:  800,
-  public:      1000,
+  commercial: 500,
+  industrial: 800,
+  public: 1000,
 };
 
 /** Radius in meters to search for nearby player shops in Advanced Build mode */
@@ -232,99 +256,237 @@ export interface BuildMaterialDef {
 }
 
 export const BUILD_MATERIALS: BuildMaterialDef[] = [
-  { itemId: 'cement',  nameFa: 'سیمان',  subsidizedUnitCost: 40,  subsidyQuotaCostPerUnit: 40  },
-  { itemId: 'steel',   nameFa: 'فولاد',  subsidizedUnitCost: 80,  subsidyQuotaCostPerUnit: 80  },
-  { itemId: 'brick',   nameFa: 'آجر',    subsidizedUnitCost: 20,  subsidyQuotaCostPerUnit: 20  },
-  { itemId: 'glass',   nameFa: 'شیشه',   subsidizedUnitCost: 50,  subsidyQuotaCostPerUnit: 50  },
-  { itemId: 'wood',    nameFa: 'چوب',    subsidizedUnitCost: 30,  subsidyQuotaCostPerUnit: 30  },
-  { itemId: 'sand',    nameFa: 'شن',     subsidizedUnitCost: 15,  subsidyQuotaCostPerUnit: 15  },
-  { itemId: 'tile',    nameFa: 'کاشی',   subsidizedUnitCost: 35,  subsidyQuotaCostPerUnit: 35  },
-  { itemId: 'pipe',    nameFa: 'لوله',   subsidizedUnitCost: 45,  subsidyQuotaCostPerUnit: 45  },
+  {
+    itemId: "cement",
+    nameFa: "سیمان",
+    subsidizedUnitCost: 40,
+    subsidyQuotaCostPerUnit: 40,
+  },
+  {
+    itemId: "steel",
+    nameFa: "فولاد",
+    subsidizedUnitCost: 80,
+    subsidyQuotaCostPerUnit: 80,
+  },
+  {
+    itemId: "brick",
+    nameFa: "آجر",
+    subsidizedUnitCost: 20,
+    subsidyQuotaCostPerUnit: 20,
+  },
+  {
+    itemId: "glass",
+    nameFa: "شیشه",
+    subsidizedUnitCost: 50,
+    subsidyQuotaCostPerUnit: 50,
+  },
+  {
+    itemId: "wood",
+    nameFa: "چوب",
+    subsidizedUnitCost: 30,
+    subsidyQuotaCostPerUnit: 30,
+  },
+  {
+    itemId: "sand",
+    nameFa: "شن",
+    subsidizedUnitCost: 15,
+    subsidyQuotaCostPerUnit: 15,
+  },
+  {
+    itemId: "tile",
+    nameFa: "کاشی",
+    subsidizedUnitCost: 35,
+    subsidyQuotaCostPerUnit: 35,
+  },
+  {
+    itemId: "pipe",
+    nameFa: "لوله",
+    subsidizedUnitCost: 45,
+    subsidyQuotaCostPerUnit: 45,
+  },
 ];
 
 /**
  * Required materials per building type for Advanced Build mode.
  * Each entry is an array of { itemId, qtyRequired }.
  */
-export const BUILD_MATERIAL_SLOTS: Record<string, Array<{ itemId: string; qtyRequired: number }>> = {
+export const BUILD_MATERIAL_SLOTS: Record<
+  string,
+  Array<{ itemId: string; qtyRequired: number }>
+> = {
   // ── Residential ──
-  house:      [{ itemId: 'cement', qtyRequired: 3 }, { itemId: 'brick', qtyRequired: 5 }, { itemId: 'wood', qtyRequired: 2 }],
-  villa:      [{ itemId: 'cement', qtyRequired: 6 }, { itemId: 'brick', qtyRequired: 8 }, { itemId: 'glass', qtyRequired: 3 }, { itemId: 'tile', qtyRequired: 4 }],
-  tower:      [{ itemId: 'cement', qtyRequired: 10 }, { itemId: 'steel', qtyRequired: 6 }, { itemId: 'glass', qtyRequired: 8 }, { itemId: 'pipe', qtyRequired: 4 }],
+  house: [
+    { itemId: "cement", qtyRequired: 3 },
+    { itemId: "brick", qtyRequired: 5 },
+    { itemId: "wood", qtyRequired: 2 },
+  ],
+  villa: [
+    { itemId: "cement", qtyRequired: 6 },
+    { itemId: "brick", qtyRequired: 8 },
+    { itemId: "glass", qtyRequired: 3 },
+    { itemId: "tile", qtyRequired: 4 },
+  ],
+  tower: [
+    { itemId: "cement", qtyRequired: 10 },
+    { itemId: "steel", qtyRequired: 6 },
+    { itemId: "glass", qtyRequired: 8 },
+    { itemId: "pipe", qtyRequired: 4 },
+  ],
   // ── Commercial ──
-  shop:       [{ itemId: 'cement', qtyRequired: 2 }, { itemId: 'brick', qtyRequired: 3 }, { itemId: 'glass', qtyRequired: 2 }],
-  cafe:       [{ itemId: 'cement', qtyRequired: 2 }, { itemId: 'tile',  qtyRequired: 4 }, { itemId: 'glass', qtyRequired: 3 }],
-  gym:        [{ itemId: 'cement', qtyRequired: 3 }, { itemId: 'steel', qtyRequired: 3 }, { itemId: 'tile',  qtyRequired: 3 }],
-  warehouse:  [{ itemId: 'cement', qtyRequired: 2 }, { itemId: 'steel', qtyRequired: 4 }, { itemId: 'sand',  qtyRequired: 4 }],
-  exchange:   [{ itemId: 'cement', qtyRequired: 4 }, { itemId: 'glass', qtyRequired: 4 }, { itemId: 'steel', qtyRequired: 2 }],
-  mall:       [{ itemId: 'cement', qtyRequired: 8 }, { itemId: 'steel', qtyRequired: 5 }, { itemId: 'glass', qtyRequired: 6 }, { itemId: 'tile', qtyRequired: 5 }],
-  restaurant: [{ itemId: 'cement', qtyRequired: 3 }, { itemId: 'tile',  qtyRequired: 5 }, { itemId: 'glass', qtyRequired: 2 }, { itemId: 'pipe', qtyRequired: 2 }],
+  shop: [
+    { itemId: "cement", qtyRequired: 2 },
+    { itemId: "brick", qtyRequired: 3 },
+    { itemId: "glass", qtyRequired: 2 },
+  ],
+  cafe: [
+    { itemId: "cement", qtyRequired: 2 },
+    { itemId: "tile", qtyRequired: 4 },
+    { itemId: "glass", qtyRequired: 3 },
+  ],
+  gym: [
+    { itemId: "cement", qtyRequired: 3 },
+    { itemId: "steel", qtyRequired: 3 },
+    { itemId: "tile", qtyRequired: 3 },
+  ],
+  warehouse: [
+    { itemId: "cement", qtyRequired: 2 },
+    { itemId: "steel", qtyRequired: 4 },
+    { itemId: "sand", qtyRequired: 4 },
+  ],
+  exchange: [
+    { itemId: "cement", qtyRequired: 4 },
+    { itemId: "glass", qtyRequired: 4 },
+    { itemId: "steel", qtyRequired: 2 },
+  ],
+  mall: [
+    { itemId: "cement", qtyRequired: 8 },
+    { itemId: "steel", qtyRequired: 5 },
+    { itemId: "glass", qtyRequired: 6 },
+    { itemId: "tile", qtyRequired: 5 },
+  ],
+  restaurant: [
+    { itemId: "cement", qtyRequired: 3 },
+    { itemId: "tile", qtyRequired: 5 },
+    { itemId: "glass", qtyRequired: 2 },
+    { itemId: "pipe", qtyRequired: 2 },
+  ],
   // ── Industrial ──
-  farm:       [{ itemId: 'wood',   qtyRequired: 4 }, { itemId: 'sand',  qtyRequired: 6 }, { itemId: 'pipe',  qtyRequired: 2 }],
-  factory:    [{ itemId: 'cement', qtyRequired: 6 }, { itemId: 'steel', qtyRequired: 8 }, { itemId: 'pipe',  qtyRequired: 5 }],
+  farm: [
+    { itemId: "wood", qtyRequired: 4 },
+    { itemId: "sand", qtyRequired: 6 },
+    { itemId: "pipe", qtyRequired: 2 },
+  ],
+  factory: [
+    { itemId: "cement", qtyRequired: 6 },
+    { itemId: "steel", qtyRequired: 8 },
+    { itemId: "pipe", qtyRequired: 5 },
+  ],
   // ── Public ──
-  hospital:   [{ itemId: 'cement', qtyRequired: 7 }, { itemId: 'steel', qtyRequired: 4 }, { itemId: 'glass', qtyRequired: 5 }, { itemId: 'pipe', qtyRequired: 4 }],
-  park:       [{ itemId: 'brick',  qtyRequired: 4 }, { itemId: 'sand',  qtyRequired: 6 }, { itemId: 'wood',  qtyRequired: 5 }],
-  university: [{ itemId: 'cement', qtyRequired: 9 }, { itemId: 'steel', qtyRequired: 5 }, { itemId: 'glass', qtyRequired: 6 }, { itemId: 'tile', qtyRequired: 4 }],
-  bank:       [{ itemId: 'cement', qtyRequired: 5 }, { itemId: 'steel', qtyRequired: 4 }, { itemId: 'glass', qtyRequired: 4 }],
+  hospital: [
+    { itemId: "cement", qtyRequired: 7 },
+    { itemId: "steel", qtyRequired: 4 },
+    { itemId: "glass", qtyRequired: 5 },
+    { itemId: "pipe", qtyRequired: 4 },
+  ],
+  park: [
+    { itemId: "brick", qtyRequired: 4 },
+    { itemId: "sand", qtyRequired: 6 },
+    { itemId: "wood", qtyRequired: 5 },
+  ],
+  university: [
+    { itemId: "cement", qtyRequired: 9 },
+    { itemId: "steel", qtyRequired: 5 },
+    { itemId: "glass", qtyRequired: 6 },
+    { itemId: "tile", qtyRequired: 4 },
+  ],
+  bank: [
+    { itemId: "cement", qtyRequired: 5 },
+    { itemId: "steel", qtyRequired: 4 },
+    { itemId: "glass", qtyRequired: 4 },
+  ],
   // Legacy types
-  market:     [{ itemId: 'cement', qtyRequired: 2 }, { itemId: 'brick', qtyRequired: 3 }],
-  office:     [{ itemId: 'cement', qtyRequired: 3 }, { itemId: 'glass', qtyRequired: 4 }, { itemId: 'steel', qtyRequired: 2 }],
-  barracks:   [{ itemId: 'cement', qtyRequired: 5 }, { itemId: 'steel', qtyRequired: 6 }, { itemId: 'sand',  qtyRequired: 4 }],
+  market: [
+    { itemId: "cement", qtyRequired: 2 },
+    { itemId: "brick", qtyRequired: 3 },
+  ],
+  office: [
+    { itemId: "cement", qtyRequired: 3 },
+    { itemId: "glass", qtyRequired: 4 },
+    { itemId: "steel", qtyRequired: 2 },
+  ],
+  barracks: [
+    { itemId: "cement", qtyRequired: 5 },
+    { itemId: "steel", qtyRequired: 6 },
+    { itemId: "sand", qtyRequired: 4 },
+  ],
 };
 
 // ─── Economy: Building Base Costs & Power ─────────────────────────────────────
 // Used for Fast Build mode and general building metadata.
 
-export const BUILDING_CONFIG: Record<string, { cost: number; power: number }> = {
-  // ── Residential ──
-  house:         { cost: 500,  power: 2 },
-  villa:         { cost: 3500, power: 5 },
-  tower:         { cost: 8000, power: 12 },
-  // ── Commercial ──
-  shop:          { cost: 1200, power: 3 },
-  cafe:          { cost: 1500, power: 4 },
-  gym:           { cost: 2000, power: 5 },
-  warehouse:     { cost: 1000, power: 2 },
-  exchange:      { cost: 4000, power: 8 },
-  mall:          { cost: 5000, power: 10 },
-  restaurant:    { cost: 3000, power: 6 },
-  market:        { cost: 1500, power: 3 },
-  office:        { cost: 2500, power: 6 },
-  // ── Industrial ──
-  farm:          { cost: 800,  power: 1 },
-  factory:       { cost: 4500, power: 7 },
-  // ── Public ──
-  hospital:      { cost: 6000, power: 15 },
-  park:          { cost: 2000, power: 5 },
-  university:    { cost: 7000, power: 18 },
-  bank:          { cost: 4000, power: 9 },
-  // ── Legacy ──
-  barracks:      { cost: 4000, power: 20 },
-  // ── v4: NPC Housing ──
-  // Note: actual cash cost is dynamic via compute_housing_cost RPC (area + floors).
-  // These are the minimum base costs (50m², 1 floor).
-  main_house:    { cost: 1500, power: 3 },
-  resident_house:{ cost: 2000, power: 2 },
-};
+export const BUILDING_CONFIG: Record<string, { cost: number; power: number }> =
+  {
+    // ── Residential ──
+    house: { cost: 500, power: 2 },
+    villa: { cost: 3500, power: 5 },
+    tower: { cost: 8000, power: 12 },
+    // ── Commercial ──
+    shop: { cost: 1200, power: 3 },
+    cafe: { cost: 1500, power: 4 },
+    gym: { cost: 2000, power: 5 },
+    warehouse: { cost: 1000, power: 2 },
+    exchange: { cost: 4000, power: 8 },
+    mall: { cost: 5000, power: 10 },
+    restaurant: { cost: 3000, power: 6 },
+    market: { cost: 1500, power: 3 },
+    office: { cost: 2500, power: 6 },
+    // ── Industrial ──
+    farm: { cost: 800, power: 1 },
+    factory: { cost: 4500, power: 7 },
+    // ── Public ──
+    hospital: { cost: 6000, power: 15 },
+    park: { cost: 2000, power: 5 },
+    university: { cost: 7000, power: 18 },
+    bank: { cost: 4000, power: 9 },
+    // ── Legacy ──
+    barracks: { cost: 4000, power: 20 },
+    // ── v4: NPC Housing ──
+    // Note: actual cash cost is dynamic via compute_housing_cost RPC (area + floors).
+    // These are the minimum base costs (50m², 1 floor).
+    main_house: { cost: 1500, power: 3 },
+    resident_house: { cost: 2000, power: 2 },
+  };
 
 // ─── Institution Category Map ─────────────────────────────────────────────────
 // Maps every building type to its institution category.
 
 export const INSTITUTION_CATEGORY: Record<string, InstitutionCategory> = {
   // Residential
-  house: 'residential', villa: 'residential', tower: 'residential',
-  main_house: 'residential', resident_house: 'residential',
+  house: "residential",
+  villa: "residential",
+  tower: "residential",
+  main_house: "residential",
+  resident_house: "residential",
   // Commercial
-  shop: 'commercial', mall: 'commercial', exchange: 'commercial',
-  gym: 'commercial', cafe: 'commercial', restaurant: 'commercial',
-  warehouse: 'commercial', market: 'commercial', office: 'commercial',
+  shop: "commercial",
+  mall: "commercial",
+  exchange: "commercial",
+  gym: "commercial",
+  cafe: "commercial",
+  restaurant: "commercial",
+  warehouse: "commercial",
+  market: "commercial",
+  office: "commercial",
   // Industrial
-  farm: 'industrial', factory: 'industrial',
+  farm: "industrial",
+  factory: "industrial",
   // Public
-  hospital: 'public', park: 'public', university: 'public', bank: 'public',
+  hospital: "public",
+  park: "public",
+  university: "public",
+  bank: "public",
   // Legacy / military (no category = no license)
-  barracks: 'residential',
+  barracks: "residential",
 };
 
 // ─── Economy: Institution Definitions ────────────────────────────────────────
@@ -334,8 +496,8 @@ export const INSTITUTION_CATEGORY: Record<string, InstitutionCategory> = {
 //
 // providerCost / providerGain are undefined for system-run institutions.
 
-export type InstitutionStatSource = 'cash' | 'activity';
-export type InstitutionStatTarget = 'power' | 'cash';
+export type InstitutionStatSource = "cash" | "activity";
+export type InstitutionStatTarget = "power" | "cash";
 
 export interface InstitutionDefinition {
   nameFa: string;
@@ -345,7 +507,7 @@ export interface InstitutionDefinition {
   /** Optional secondary cost for the client (e.g. library: cash + activity) */
   clientCost2?: { stat: InstitutionStatSource; amount: number };
   clientGain: { stat: InstitutionStatTarget; amount: number };
-  providerCost?: { stat: 'activity'; amount: number };
+  providerCost?: { stat: "activity"; amount: number };
   /** Percent (0–100) of client cash cost that goes to the provider */
   providerGainPercent?: number;
   /** Extra power earned by the provider per transaction (Industrial + Public) */
@@ -363,187 +525,187 @@ export interface InstitutionDefinition {
 export const INSTITUTION_DEFINITIONS: Record<string, InstitutionDefinition> = {
   // ── Residential ────────────────────────────────────────────────────────────
   home_rent: {
-    nameFa: 'اجاره مسکن',
-    emoji: '🏠',
-    category: 'residential',
-    clientCost: { stat: 'cash', amount: 200 },
-    clientGain: { stat: 'power', amount: 5 },
+    nameFa: "اجاره مسکن",
+    emoji: "🏠",
+    category: "residential",
+    clientCost: { stat: "cash", amount: 200 },
+    clientGain: { stat: "power", amount: 5 },
     licenseRequired: false,
-    buildingTypes: ['house', 'villa'],
+    buildingTypes: ["house", "villa"],
   },
 
   // ── Commercial (basic) ─────────────────────────────────────────────────────
   shopping: {
-    nameFa: 'خرید و پوشاک',
-    emoji: '🛍️',
-    category: 'commercial',
-    clientCost: { stat: 'cash', amount: 300 },
-    clientGain: { stat: 'power', amount: 6 },
-    providerCost: { stat: 'activity', amount: 10 },
+    nameFa: "خرید و پوشاک",
+    emoji: "🛍️",
+    category: "commercial",
+    clientCost: { stat: "cash", amount: 300 },
+    clientGain: { stat: "power", amount: 6 },
+    providerCost: { stat: "activity", amount: 10 },
     providerGainPercent: 60,
     licenseRequired: true,
-    buildingTypes: ['shop', 'market'],
+    buildingTypes: ["shop", "market"],
   },
   cafe: {
-    nameFa: 'کافه و نوشیدنی',
-    emoji: '☕',
-    category: 'commercial',
-    clientCost: { stat: 'cash', amount: 150 },
-    clientGain: { stat: 'power', amount: 3 },
-    providerCost: { stat: 'activity', amount: 8 },
+    nameFa: "کافه و نوشیدنی",
+    emoji: "☕",
+    category: "commercial",
+    clientCost: { stat: "cash", amount: 150 },
+    clientGain: { stat: "power", amount: 3 },
+    providerCost: { stat: "activity", amount: 8 },
     providerGainPercent: 65,
     licenseRequired: true,
-    buildingTypes: ['cafe'],
+    buildingTypes: ["cafe"],
   },
   gym: {
-    nameFa: 'باشگاه ورزشی',
-    emoji: '🏋️',
-    category: 'commercial',
-    clientCost: { stat: 'cash', amount: 250 },
-    clientGain: { stat: 'power', amount: 8 },
-    providerCost: { stat: 'activity', amount: 12 },
+    nameFa: "باشگاه ورزشی",
+    emoji: "🏋️",
+    category: "commercial",
+    clientCost: { stat: "cash", amount: 250 },
+    clientGain: { stat: "power", amount: 8 },
+    providerCost: { stat: "activity", amount: 12 },
     providerGainPercent: 58,
     licenseRequired: true,
-    buildingTypes: ['gym'],
+    buildingTypes: ["gym"],
   },
   restaurant: {
-    nameFa: 'رستوران',
-    emoji: '🍽️',
-    category: 'commercial',
-    clientCost: { stat: 'cash', amount: 200 },
-    clientGain: { stat: 'power', amount: 5 },
-    providerCost: { stat: 'activity', amount: 10 },
+    nameFa: "رستوران",
+    emoji: "🍽️",
+    category: "commercial",
+    clientCost: { stat: "cash", amount: 200 },
+    clientGain: { stat: "power", amount: 5 },
+    providerCost: { stat: "activity", amount: 10 },
     providerGainPercent: 62,
     requiresWarehouse: true,
     licenseRequired: true,
-    buildingTypes: ['restaurant'],
+    buildingTypes: ["restaurant"],
   },
   // ── Commercial: big (requires warehouse) ──────────────────────────────────
   mall_service: {
-    nameFa: 'مرکز خرید',
-    emoji: '🏬',
-    category: 'commercial',
-    clientCost: { stat: 'cash', amount: 400 },
-    clientGain: { stat: 'power', amount: 10 },
-    providerCost: { stat: 'activity', amount: 15 },
+    nameFa: "مرکز خرید",
+    emoji: "🏬",
+    category: "commercial",
+    clientCost: { stat: "cash", amount: 400 },
+    clientGain: { stat: "power", amount: 10 },
+    providerCost: { stat: "activity", amount: 15 },
     providerGainPercent: 60,
     requiresWarehouse: true,
     licenseRequired: true,
-    buildingTypes: ['mall'],
+    buildingTypes: ["mall"],
   },
   // ── Commercial: library (client also pays activity) ────────────────────────
   library: {
-    nameFa: 'کتابخانه و فرهنگسرا',
-    emoji: '📚',
-    category: 'commercial',
-    clientCost: { stat: 'cash', amount: 100 },
-    clientCost2: { stat: 'activity', amount: 5 },
-    clientGain: { stat: 'power', amount: 7 },   // higher than base because client also pays activity
-    providerCost: { stat: 'activity', amount: 6 },
+    nameFa: "کتابخانه و فرهنگسرا",
+    emoji: "📚",
+    category: "commercial",
+    clientCost: { stat: "cash", amount: 100 },
+    clientCost2: { stat: "activity", amount: 5 },
+    clientGain: { stat: "power", amount: 7 }, // higher than base because client also pays activity
+    providerCost: { stat: "activity", amount: 6 },
     providerGainPercent: 45,
     licenseRequired: true,
-    buildingTypes: ['library'],
+    buildingTypes: ["library"],
   },
   // ── Commercial: exchange (Activity → Cash) ─────────────────────────────────
   exchange: {
-    nameFa: 'بورس فعالیت',
-    emoji: '🏦',
-    category: 'commercial',
-    clientCost: { stat: 'activity', amount: 1 },
-    clientGain: { stat: 'cash', amount: 2 },  // base rate; overridden at runtime by EXCHANGE_RATES
+    nameFa: "بورس فعالیت",
+    emoji: "🏦",
+    category: "commercial",
+    clientCost: { stat: "activity", amount: 1 },
+    clientGain: { stat: "cash", amount: 2 }, // base rate; overridden at runtime by EXCHANGE_RATES
     licenseRequired: true,
-    buildingTypes: ['office', 'exchange'],
+    buildingTypes: ["office", "exchange"],
   },
 
   // ── Industrial ──────────────────────────────────────────────────────────────
   // Industrial providers fill warehouses; they do not have a direct client interaction.
   // Their reward comes from fill_warehouse RPC (cash + power).
   farm_supply: {
-    nameFa: 'تأمین کالای مزرعه',
-    emoji: '🌾',
-    category: 'industrial',
+    nameFa: "تأمین کالای مزرعه",
+    emoji: "🌾",
+    category: "industrial",
     // No client side — this is provider-only; amounts represent the warehouse fill reward
-    clientCost: { stat: 'cash', amount: 0 },
-    clientGain: { stat: 'power', amount: 0 },
+    clientCost: { stat: "cash", amount: 0 },
+    clientGain: { stat: "power", amount: 0 },
     providerGainPercent: 0,
-    providerGainPower: 2,     // +2 power per warehouse fill
+    providerGainPower: 2, // +2 power per warehouse fill
     licenseRequired: true,
-    buildingTypes: ['farm'],
+    buildingTypes: ["farm"],
   },
   factory_supply: {
-    nameFa: 'تأمین کالای کارخانه',
-    emoji: '🏭',
-    category: 'industrial',
-    clientCost: { stat: 'cash', amount: 0 },
-    clientGain: { stat: 'power', amount: 0 },
+    nameFa: "تأمین کالای کارخانه",
+    emoji: "🏭",
+    category: "industrial",
+    clientCost: { stat: "cash", amount: 0 },
+    clientGain: { stat: "power", amount: 0 },
     providerGainPercent: 0,
-    providerGainPower: 3,     // +3 power per warehouse fill
+    providerGainPower: 3, // +3 power per warehouse fill
     licenseRequired: true,
-    buildingTypes: ['factory'],
+    buildingTypes: ["factory"],
   },
   industrial_supply: {
-    nameFa: 'تأمین انبار صنعتی',
-    emoji: '📦',
-    category: 'industrial',
-    clientCost: { stat: 'cash', amount: 0 },
-    clientGain: { stat: 'power', amount: 0 },
+    nameFa: "تأمین انبار صنعتی",
+    emoji: "📦",
+    category: "industrial",
+    clientCost: { stat: "cash", amount: 0 },
+    clientGain: { stat: "power", amount: 0 },
     providerGainPower: 2,
     licenseRequired: true,
-    buildingTypes: ['farm', 'factory'],
+    buildingTypes: ["farm", "factory"],
   },
 
   // ── Public ──────────────────────────────────────────────────────────────────
   hospital: {
-    nameFa: 'خدمات درمانی',
-    emoji: '🏥',
-    category: 'public',
-    clientCost: { stat: 'cash', amount: 500 },
-    clientGain: { stat: 'power', amount: 15 },
-    providerCost: { stat: 'activity', amount: 20 },
+    nameFa: "خدمات درمانی",
+    emoji: "🏥",
+    category: "public",
+    clientCost: { stat: "cash", amount: 500 },
+    clientGain: { stat: "power", amount: 15 },
+    providerCost: { stat: "activity", amount: 20 },
     providerGainPercent: 55,
     providerGainPower: 3,
     providerGainPopularity: 2,
     licenseRequired: true,
-    buildingTypes: ['hospital'],
+    buildingTypes: ["hospital"],
   },
   university: {
-    nameFa: 'آموزش دانشگاهی',
-    emoji: '🎓',
-    category: 'public',
-    clientCost: { stat: 'cash', amount: 400 },
-    clientGain: { stat: 'power', amount: 12 },
-    providerCost: { stat: 'activity', amount: 15 },
+    nameFa: "آموزش دانشگاهی",
+    emoji: "🎓",
+    category: "public",
+    clientCost: { stat: "cash", amount: 400 },
+    clientGain: { stat: "power", amount: 12 },
+    providerCost: { stat: "activity", amount: 15 },
     providerGainPercent: 50,
     providerGainPower: 2,
     providerGainPopularity: 3,
     licenseRequired: true,
-    buildingTypes: ['university'],
+    buildingTypes: ["university"],
   },
   bank_service: {
-    nameFa: 'خدمات بانکی',
-    emoji: '🏦',
-    category: 'public',
-    clientCost: { stat: 'cash', amount: 300 },
-    clientGain: { stat: 'power', amount: 8 },
-    providerCost: { stat: 'activity', amount: 12 },
+    nameFa: "خدمات بانکی",
+    emoji: "🏦",
+    category: "public",
+    clientCost: { stat: "cash", amount: 300 },
+    clientGain: { stat: "power", amount: 8 },
+    providerCost: { stat: "activity", amount: 12 },
     providerGainPercent: 48,
     providerGainPower: 1,
     providerGainPopularity: 2,
     licenseRequired: true,
-    buildingTypes: ['bank'],
+    buildingTypes: ["bank"],
   },
   park_service: {
-    nameFa: 'پارک و فضای سبز',
-    emoji: '🌳',
-    category: 'public',
-    clientCost: { stat: 'cash', amount: 100 },
-    clientGain: { stat: 'power', amount: 4 },
-    providerCost: { stat: 'activity', amount: 8 },
+    nameFa: "پارک و فضای سبز",
+    emoji: "🌳",
+    category: "public",
+    clientCost: { stat: "cash", amount: 100 },
+    clientGain: { stat: "power", amount: 4 },
+    providerCost: { stat: "activity", amount: 8 },
     providerGainPercent: 40,
     providerGainPower: 1,
-    providerGainPopularity: 4,   // parks yield higher popularity
+    providerGainPopularity: 4, // parks yield higher popularity
     licenseRequired: true,
-    buildingTypes: ['park'],
+    buildingTypes: ["park"],
   },
 } as const;
 
@@ -571,29 +733,29 @@ export const ESTABLISHED_BIZ_DAYS = 7;
 
 export const DAILY_POWER_DRIP: Record<string, number> = {
   // ── Residential T1 ──
-  house:      1,
-  villa:      2,
-  tower:      5,
+  house: 1,
+  villa: 2,
+  tower: 5,
   // ── Commercial T2 ──
-  shop:       2,
-  cafe:       2,
-  gym:        2,
-  warehouse:  1,
-  exchange:   2,
-  mall:       3,
+  shop: 2,
+  cafe: 2,
+  gym: 2,
+  warehouse: 1,
+  exchange: 2,
+  mall: 3,
   restaurant: 2,
-  market:     2,
-  office:     2,
+  market: 2,
+  office: 2,
   // ── Industrial T3 ──
-  farm:       3,
-  factory:    4,
+  farm: 3,
+  factory: 4,
   // ── Public T4 ──
-  hospital:   4,
-  park:       2,
+  hospital: 4,
+  park: 2,
   university: 4,
-  bank:       3,
+  bank: 3,
   // ── Legacy ──
-  barracks:   8,
+  barracks: 8,
   // custom building types inherit the value from their custom_settings.daily_power_drip
 } as const;
 
@@ -639,12 +801,12 @@ export type ActivityEventKey = keyof typeof ACTIVITY_EVENTS;
 
 // ─── v4: NPC System Constants ─────────────────────────────────────────────────────────────
 
-import type { NpcClass } from '@/types/game.types';
+import type { NpcClass } from "@/types/game.types";
 
 export interface NpcClassConfig {
   nameFa: string;
   emoji: string;
-  hiringCost: number;           // base cash cost to hire
+  hiringCost: number; // base cash cost to hire
   maxLevel: number;
   activityContribution: number; // activity points per 5-min cron tick while working
   /** Which institution types this class trains best at (top XP) */
@@ -652,38 +814,83 @@ export interface NpcClassConfig {
 }
 
 export const NPC_CLASS_CONFIG: Record<NpcClass, NpcClassConfig> = {
-  worker:     { nameFa: 'کارگر',    emoji: '👷', hiringCost: 500,  maxLevel: 10, activityContribution: 1.0, primaryInstitutions: ['gym', 'farm_supply'] },
-  foreman:    { nameFa: 'سرکارگر', emoji: '🧑‍🏭', hiringCost: 1500, maxLevel: 10, activityContribution: 1.5, primaryInstitutions: ['gym', 'factory_supply'] },
-  engineer:   { nameFa: 'مهندس',   emoji: '👨‍💻', hiringCost: 2500, maxLevel: 10, activityContribution: 2.0, primaryInstitutions: ['university', 'bank_service'] },
-  doctor:     { nameFa: 'پزشک',    emoji: '👨‍⚕️', hiringCost: 4000, maxLevel: 10, activityContribution: 2.5, primaryInstitutions: ['hospital', 'university'] },
-  specialist: { nameFa: 'متخصص',  emoji: '🔬', hiringCost: 3000, maxLevel: 10, activityContribution: 2.0, primaryInstitutions: ['university', 'hospital'] },
-  physician:  { nameFa: 'طبیب',   emoji: '🩺', hiringCost: 5000, maxLevel: 10, activityContribution: 3.0, primaryInstitutions: ['hospital', 'university'] },
+  worker: {
+    nameFa: "کارگر",
+    emoji: "👷",
+    hiringCost: 500,
+    maxLevel: 10,
+    activityContribution: 1.0,
+    primaryInstitutions: ["gym", "farm_supply"],
+  },
+  foreman: {
+    nameFa: "سرکارگر",
+    emoji: "🧑‍🏭",
+    hiringCost: 1500,
+    maxLevel: 10,
+    activityContribution: 1.5,
+    primaryInstitutions: ["gym", "factory_supply"],
+  },
+  engineer: {
+    nameFa: "مهندس",
+    emoji: "👨‍💻",
+    hiringCost: 2500,
+    maxLevel: 10,
+    activityContribution: 2.0,
+    primaryInstitutions: ["university", "bank_service"],
+  },
+  doctor: {
+    nameFa: "پزشک",
+    emoji: "👨‍⚕️",
+    hiringCost: 4000,
+    maxLevel: 10,
+    activityContribution: 2.5,
+    primaryInstitutions: ["hospital", "university"],
+  },
+  specialist: {
+    nameFa: "متخصص",
+    emoji: "🔬",
+    hiringCost: 3000,
+    maxLevel: 10,
+    activityContribution: 2.0,
+    primaryInstitutions: ["university", "hospital"],
+  },
+  physician: {
+    nameFa: "طبیب",
+    emoji: "🩺",
+    hiringCost: 5000,
+    maxLevel: 10,
+    activityContribution: 3.0,
+    primaryInstitutions: ["hospital", "university"],
+  },
 };
 
 /** Cumulative XP needed to reach the NEXT level (index = current level - 1) */
 export const NPC_LEVEL_XP_TABLE: number[] = [
-  100,    // level 1 → 2
-  300,    // level 2 → 3
-  600,    // level 3 → 4
-  1200,   // level 4 → 5
-  2500,   // level 5 → 6
-  5000,   // level 6 → 7
-  10000,  // level 7 → 8
-  20000,  // level 8 → 9
-  50000,  // level 9 → 10
+  100, // level 1 → 2
+  300, // level 2 → 3
+  600, // level 3 → 4
+  1200, // level 4 → 5
+  2500, // level 5 → 6
+  5000, // level 6 → 7
+  10000, // level 7 → 8
+  20000, // level 8 → 9
+  50000, // level 9 → 10
   Infinity, // level 10 (max)
 ];
 
 /** Training reward lookup — XP + cash cost per institution type */
-export const NPC_TRAINING_INSTITUTIONS: Record<string, { xpGain: number; cashCost: number; specialty: string | null }> = {
-  gym:          { xpGain: 80,  cashCost: 200, specialty: 'قدرت بدنی' },
-  university:   { xpGain: 150, cashCost: 400, specialty: 'دانش فنی' },
-  hospital:     { xpGain: 120, cashCost: 500, specialty: 'مهارت پزشکی' },
-  bank_service: { xpGain: 100, cashCost: 300, specialty: 'مدیریت مالی' },
-  cafe:         { xpGain: 40,  cashCost: 100, specialty: null },
-  park_service: { xpGain: 50,  cashCost: 80,  specialty: null },
-  restaurant:   { xpGain: 60,  cashCost: 150, specialty: 'آشپزی حرفه‌ای' },
-  shopping:     { xpGain: 50,  cashCost: 120, specialty: 'بازاریابی' },
+export const NPC_TRAINING_INSTITUTIONS: Record<
+  string,
+  { xpGain: number; cashCost: number; specialty: string | null }
+> = {
+  gym: { xpGain: 80, cashCost: 200, specialty: "قدرت بدنی" },
+  university: { xpGain: 150, cashCost: 400, specialty: "دانش فنی" },
+  hospital: { xpGain: 120, cashCost: 500, specialty: "مهارت پزشکی" },
+  bank_service: { xpGain: 100, cashCost: 300, specialty: "مدیریت مالی" },
+  cafe: { xpGain: 40, cashCost: 100, specialty: null },
+  park_service: { xpGain: 50, cashCost: 80, specialty: null },
+  restaurant: { xpGain: 60, cashCost: 150, specialty: "آشپزی حرفه‌ای" },
+  shopping: { xpGain: 50, cashCost: 120, specialty: "بازاریابی" },
 };
 
 /**
@@ -710,11 +917,11 @@ export function computeResidentHouseCapacity(
  *   floor_mul = 1 + (floors - 1) * 0.4
  */
 export function computeHousingCost(
-  type: 'main_house' | 'resident_house',
+  type: "main_house" | "resident_house",
   areaM2: number,
   floorCount: number,
 ): number {
-  const base = type === 'main_house' ? 1500 : 2000;
+  const base = type === "main_house" ? 1500 : 2000;
   const areaFactor = areaM2 <= 50 ? 1.0 : areaM2 <= 100 ? 1.5 : 2.0;
   const floorMul = 1.0 + (floorCount - 1) * 0.4;
   return Math.floor(base * areaFactor * floorMul);
