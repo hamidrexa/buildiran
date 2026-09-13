@@ -278,29 +278,34 @@ export const BUILD_MATERIAL_SLOTS: Record<string, Array<{ itemId: string; qtyReq
 
 export const BUILDING_CONFIG: Record<string, { cost: number; power: number }> = {
   // ── Residential ──
-  house:      { cost: 500,  power: 2 },
-  villa:      { cost: 3500, power: 5 },
-  tower:      { cost: 8000, power: 12 },
+  house:         { cost: 500,  power: 2 },
+  villa:         { cost: 3500, power: 5 },
+  tower:         { cost: 8000, power: 12 },
   // ── Commercial ──
-  shop:       { cost: 1200, power: 3 },
-  cafe:       { cost: 1500, power: 4 },
-  gym:        { cost: 2000, power: 5 },
-  warehouse:  { cost: 1000, power: 2 },
-  exchange:   { cost: 4000, power: 8 },
-  mall:       { cost: 5000, power: 10 },
-  restaurant: { cost: 3000, power: 6 },
-  market:     { cost: 1500, power: 3 },
-  office:     { cost: 2500, power: 6 },
+  shop:          { cost: 1200, power: 3 },
+  cafe:          { cost: 1500, power: 4 },
+  gym:           { cost: 2000, power: 5 },
+  warehouse:     { cost: 1000, power: 2 },
+  exchange:      { cost: 4000, power: 8 },
+  mall:          { cost: 5000, power: 10 },
+  restaurant:    { cost: 3000, power: 6 },
+  market:        { cost: 1500, power: 3 },
+  office:        { cost: 2500, power: 6 },
   // ── Industrial ──
-  farm:       { cost: 800,  power: 1 },
-  factory:    { cost: 4500, power: 7 },
+  farm:          { cost: 800,  power: 1 },
+  factory:       { cost: 4500, power: 7 },
   // ── Public ──
-  hospital:   { cost: 6000, power: 15 },
-  park:       { cost: 2000, power: 5 },
-  university: { cost: 7000, power: 18 },
-  bank:       { cost: 4000, power: 9 },
+  hospital:      { cost: 6000, power: 15 },
+  park:          { cost: 2000, power: 5 },
+  university:    { cost: 7000, power: 18 },
+  bank:          { cost: 4000, power: 9 },
   // ── Legacy ──
-  barracks:   { cost: 4000, power: 20 },
+  barracks:      { cost: 4000, power: 20 },
+  // ── v4: NPC Housing ──
+  // Note: actual cash cost is dynamic via compute_housing_cost RPC (area + floors).
+  // These are the minimum base costs (50m², 1 floor).
+  main_house:    { cost: 1500, power: 3 },
+  resident_house:{ cost: 2000, power: 2 },
 };
 
 // ─── Institution Category Map ─────────────────────────────────────────────────
@@ -309,6 +314,7 @@ export const BUILDING_CONFIG: Record<string, { cost: number; power: number }> = 
 export const INSTITUTION_CATEGORY: Record<string, InstitutionCategory> = {
   // Residential
   house: 'residential', villa: 'residential', tower: 'residential',
+  main_house: 'residential', resident_house: 'residential',
   // Commercial
   shop: 'commercial', mall: 'commercial', exchange: 'commercial',
   gym: 'commercial', cafe: 'commercial', restaurant: 'commercial',
@@ -622,6 +628,97 @@ export const ACTIVITY_EVENTS = {
   service_used: 5,
   exchange_used: 4,
   proposal_submitted: 5,
+  // v4 — NPC events
+  npc_hired: 5,
+  npc_trained: 3,
+  npc_leveled_up: 10,
+  npc_worked: 1,
 } as const;
 
 export type ActivityEventKey = keyof typeof ACTIVITY_EVENTS;
+
+// ─── v4: NPC System Constants ─────────────────────────────────────────────────────────────
+
+import type { NpcClass } from '@/types/game.types';
+
+export interface NpcClassConfig {
+  nameFa: string;
+  emoji: string;
+  hiringCost: number;           // base cash cost to hire
+  maxLevel: number;
+  activityContribution: number; // activity points per 5-min cron tick while working
+  /** Which institution types this class trains best at (top XP) */
+  primaryInstitutions: string[];
+}
+
+export const NPC_CLASS_CONFIG: Record<NpcClass, NpcClassConfig> = {
+  worker:     { nameFa: 'کارگر',    emoji: '👷', hiringCost: 500,  maxLevel: 10, activityContribution: 1.0, primaryInstitutions: ['gym', 'farm_supply'] },
+  foreman:    { nameFa: 'سرکارگر', emoji: '🧑‍🏭', hiringCost: 1500, maxLevel: 10, activityContribution: 1.5, primaryInstitutions: ['gym', 'factory_supply'] },
+  engineer:   { nameFa: 'مهندس',   emoji: '👨‍💻', hiringCost: 2500, maxLevel: 10, activityContribution: 2.0, primaryInstitutions: ['university', 'bank_service'] },
+  doctor:     { nameFa: 'پزشک',    emoji: '👨‍⚕️', hiringCost: 4000, maxLevel: 10, activityContribution: 2.5, primaryInstitutions: ['hospital', 'university'] },
+  specialist: { nameFa: 'متخصص',  emoji: '🔬', hiringCost: 3000, maxLevel: 10, activityContribution: 2.0, primaryInstitutions: ['university', 'hospital'] },
+  physician:  { nameFa: 'طبیب',   emoji: '🩺', hiringCost: 5000, maxLevel: 10, activityContribution: 3.0, primaryInstitutions: ['hospital', 'university'] },
+};
+
+/** Cumulative XP needed to reach the NEXT level (index = current level - 1) */
+export const NPC_LEVEL_XP_TABLE: number[] = [
+  100,    // level 1 → 2
+  300,    // level 2 → 3
+  600,    // level 3 → 4
+  1200,   // level 4 → 5
+  2500,   // level 5 → 6
+  5000,   // level 6 → 7
+  10000,  // level 7 → 8
+  20000,  // level 8 → 9
+  50000,  // level 9 → 10
+  Infinity, // level 10 (max)
+];
+
+/** Training reward lookup — XP + cash cost per institution type */
+export const NPC_TRAINING_INSTITUTIONS: Record<string, { xpGain: number; cashCost: number; specialty: string | null }> = {
+  gym:          { xpGain: 80,  cashCost: 200, specialty: 'قدرت بدنی' },
+  university:   { xpGain: 150, cashCost: 400, specialty: 'دانش فنی' },
+  hospital:     { xpGain: 120, cashCost: 500, specialty: 'مهارت پزشکی' },
+  bank_service: { xpGain: 100, cashCost: 300, specialty: 'مدیریت مالی' },
+  cafe:         { xpGain: 40,  cashCost: 100, specialty: null },
+  park_service: { xpGain: 50,  cashCost: 80,  specialty: null },
+  restaurant:   { xpGain: 60,  cashCost: 150, specialty: 'آشپزی حرفه‌ای' },
+  shopping:     { xpGain: 50,  cashCost: 120, specialty: 'بازاریابی' },
+};
+
+/**
+ * Housing capacity formula (client-side mirror of DB function):
+ *   capacity = floor(tier^2 * area_factor * floor_factor)
+ *   tier        = asset.level (1–4+)
+ *   area_factor = 50m²→1.0 | 100m²→1.5 | 200m²→2.0
+ *   floor_factor= 1 + (floors - 1) * 0.5
+ */
+export function computeResidentHouseCapacity(
+  tier: number,
+  areaM2: number,
+  floorCount: number,
+): number {
+  const areaFactor = areaM2 <= 50 ? 1.0 : areaM2 <= 100 ? 1.5 : 2.0;
+  const floorFactor = 1.0 + (floorCount - 1) * 0.5;
+  return Math.max(1, Math.floor(Math.pow(tier, 2) * areaFactor * floorFactor));
+}
+
+/**
+ * Housing build cost formula (client-side mirror of DB function):
+ *   cost = floor(base * area_factor * floor_mul)
+ *   base: main_house=1500, resident_house=2000
+ *   floor_mul = 1 + (floors - 1) * 0.4
+ */
+export function computeHousingCost(
+  type: 'main_house' | 'resident_house',
+  areaM2: number,
+  floorCount: number,
+): number {
+  const base = type === 'main_house' ? 1500 : 2000;
+  const areaFactor = areaM2 <= 50 ? 1.0 : areaM2 <= 100 ? 1.5 : 2.0;
+  const floorMul = 1.0 + (floorCount - 1) * 0.4;
+  return Math.floor(base * areaFactor * floorMul);
+}
+
+/** NPC activity tick interval in ms (client polls DB for latest activity) */
+export const NPC_ACTIVITY_TICK_MS = 5 * 60 * 1000; // 5 minutes

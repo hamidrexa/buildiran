@@ -11,6 +11,7 @@ import { INSTITUTION_DEFINITIONS } from "@/lib/constants";
 import { supabase } from "@/lib/supabase";
 import { BUILDING_CONFIG, useAssetStore } from "@/store/useAssetStore";
 import { useEconomyStore } from "@/store/useEconomyStore";
+import { useNpcStore } from "@/store/useNpcStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { Colors, Radii } from "@/theme";
 import type { Asset, InstitutionType } from "@/types/game.types";
@@ -77,6 +78,10 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const updateStats = usePlayerStore((s) => s.updateStats);
   const isAssetBoosted = useEconomyStore((s) => s.isAssetBoosted);
   const { track } = useActivityTracker();
+  
+  // NPC logic
+  const allNpcs = useNpcStore((s) => s.npcs);
+  const assetWorkers = Object.values(allNpcs).filter((n) => n.currentBusinessAssetId === asset?.id);
 
   // Track asset inspection for activity points
   useEffect(() => {
@@ -426,6 +431,23 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 {asset.longitude.toFixed(4)}
               </Text>
             </View>
+
+            {/* Workers Info */}
+            {!['main_house', 'resident_house'].includes(asset.type) && (
+              <View style={styles.workersCard}>
+                <View style={styles.workersHeader}>
+                  <Text variant="body" weight="semibold" color="primary">👷 کارگران مشغول به کار</Text>
+                  <View style={styles.workersBadge}>
+                    <Text variant="caption" weight="bold" color="inverse">{assetWorkers.length} نفر</Text>
+                  </View>
+                </View>
+                <Text variant="caption" color="secondary" style={{ marginTop: 4 }}>
+                  {assetWorkers.length > 0 
+                    ? 'کارگران به این کسب‌وکار کمک می‌کنند تا حتی در زمان آفلاین نیز فعالیت تولید کند.' 
+                    : 'هیچ کارگری در این کسب‌وکار مشغول نیست.'}
+                </Text>
+              </View>
+            )}
 
             {/* Action Area */}
             <View style={styles.actionsContainer}>
@@ -873,6 +895,25 @@ const styles = StyleSheet.create({
     color: "#000000",
     fontWeight: "800",
     fontSize: 12,
+  },
+  workersCard: {
+    backgroundColor: "rgba(108,99,255,0.08)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(108,99,255,0.2)",
+    padding: 12,
+    marginTop: 12,
+  },
+  workersHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  workersBadge: {
+    backgroundColor: "#6C63FF",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   otherActionBox: {
     width: "100%",

@@ -1,7 +1,7 @@
 /**
  * BuildIran — Assets Screen
  * Lists all assets owned by the current player.
- * Allows upgrading and listing for sale.
+ * Includes nested Workers sub-screen (NPC management) as a tab inside Assets.
  */
 
 import { Text } from '@/components/ui/Text';
@@ -25,22 +25,30 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WorkersPanel } from '@/components/game/WorkersPanel';
 
-const BUILDING_EMOJI: Record<BuildingType, string> = {
+export const BUILDING_EMOJI: Record<string, string> = {
   house: '🏠', villa: '🏡', tower: '🏢',
   shop: '🏪', cafe: '☕', gym: '🏋️', restaurant: '🍽️', mall: '🏬', exchange: '💱', warehouse: '🏭', market: '🏦', office: '🏢',
   farm: '🌾', factory: '🏗️',
   hospital: '🏥', park: '🌳', university: '🎓', bank: '🏦',
   barracks: '⚔️',
+  // v4 — NPC housing
+  main_house: '🏡', resident_house: '🏘️',
 };
 
-const BUILDING_LABEL: Record<BuildingType, string> = {
+export const BUILDING_LABEL: Record<string, string> = {
   house: 'خانه', villa: 'ویلا', tower: 'برج',
   shop: 'مغازه', cafe: 'کافه', gym: 'باشگاه', restaurant: 'رستوران', mall: 'مرکز خرید', exchange: 'صرافی', warehouse: 'انبار', market: 'بازار', office: 'اداره',
   farm: 'مزرعه', factory: 'کارخانه',
   hospital: 'بیمارستان', park: 'پارک', university: 'دانشگاه', bank: 'بانک',
   barracks: 'پادگان',
+  // v4 — NPC housing
+  main_house: 'خانه اصلی', resident_house: 'خوابگاه کارگران',
 };
+
+// Active tab type for the Assets screen
+type AssetsTab = 'assets' | 'workers';
 
 export default function AssetsScreen() {
   const insets = useSafeAreaInsets();
@@ -49,6 +57,7 @@ export default function AssetsScreen() {
   const [saleModal, setSaleModal] = useState<Asset | null>(null);
   const [salePrice, setSalePrice] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<AssetsTab>('assets');
 
   const assets = useAssetStore((s) => s.assets);
   const fetchMyAssets = useAssetStore((s) => s.fetchMyAssets);
@@ -144,10 +153,36 @@ export default function AssetsScreen() {
         style={StyleSheet.absoluteFill}
       />
 
+      {/* Top Tab Switcher: Assets | Workers */}
+      <View style={[styles.tabSwitcher, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'assets' && styles.tabBtnActive]}
+          onPress={() => { setActiveTab('assets'); GameAudio.playTap(); }}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'assets' }}
+        >
+          <Text variant="body" weight={activeTab === 'assets' ? 'bold' : 'regular'}
+            color={activeTab === 'assets' ? 'brand' : 'secondary'}>🏛️ دارایی‌ها</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'workers' && styles.tabBtnActive]}
+          onPress={() => { setActiveTab('workers'); GameAudio.playTap(); }}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'workers' }}
+        >
+          <Text variant="body" weight={activeTab === 'workers' ? 'bold' : 'regular'}
+            color={activeTab === 'workers' ? 'brand' : 'secondary'}>👷 کارگران</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Workers Panel (sub-screen, no new tab) */}
+      {activeTab === 'workers' ? (
+        <WorkersPanel userId={userId} />
+      ) : (
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 16 },
+          { paddingTop: 12 },
         ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />
@@ -208,6 +243,7 @@ export default function AssetsScreen() {
           ))
         )}
       </ScrollView>
+      )}
 
       {/* List for Sale Modal */}
       <Modal visible={!!saleModal} transparent animationType="slide" onRequestClose={() => setSaleModal(null)}>
@@ -307,6 +343,27 @@ const AssetCard: React.FC<{
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  tabSwitcher: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 14,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(108,99,255,0.2)',
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  tabBtnActive: {
+    backgroundColor: 'rgba(108,99,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(108,99,255,0.4)',
+  },
   content: { padding: 16, gap: 12, paddingBottom: 32 },
   header: { gap: 4, marginBottom: 4 },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
@@ -328,6 +385,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
   emptySub: { color: 'rgba(255,255,255,0.4)', textAlign: 'center', lineHeight: 22, fontSize: 14 },
 });
+
 
 const cardStyles = StyleSheet.create({
   card: {

@@ -11,6 +11,7 @@ import { useGameStore } from '@/store/useGameStore';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useEconomyStore } from '@/store/useEconomyStore';
+import { useNpcStore } from '@/store/useNpcStore';
 import { getPlayerTier } from '@/lib/constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -66,6 +67,7 @@ export const HUD: React.FC = () => {
   const tiles = useGameStore((s) => s.tiles);
   const currentNeighborhood = useNeighborhoodStore((s) => s.currentNeighborhood);
   const activeBoosts = useEconomyStore((s) => s.activeBoosts);
+  const activeNpcCount = useNpcStore((s) => Object.values(s.npcs).filter((n) => n.isWorking).length);
 
   const [showEditorModal, setShowEditorModal] = useState(false);
 
@@ -118,6 +120,9 @@ export const HUD: React.FC = () => {
           <View style={styles.resourceChips}>
             <ResourceChip icon="💰" value={player.cash ?? 0} color="#FFD700" />
             <ResourceChip icon="⚔️" value={player.power ?? 0} color="#A78BFA" />
+            {activeNpcCount > 0 && (
+              <ResourceChip icon="👷" value={activeNpcCount} color="#10B981" />
+            )}
             {hasAnyBoost && (
               <View style={styles.boostChip}>
                 <Text variant="caption" weight="bold" style={{ color: '#FB923C' }}>🔥 ۲×</Text>

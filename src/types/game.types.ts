@@ -52,7 +52,10 @@ export type StandardBuildingType =
   | 'hospital'
   | 'park'
   | 'university'
-  | 'bank';
+  | 'bank'
+  // v4 — NPC housing types
+  | 'main_house'
+  | 'resident_house';
 
 export type BuildingType = StandardBuildingType | (string & {});
 
@@ -357,6 +360,11 @@ export interface Asset {
   institutionCategory: InstitutionCategory | null;
   licensePurchased: boolean;
   warehouseFilled: boolean;
+  // v4 — NPC housing fields
+  maxCapacity: number;          // for resident_house: max NPC residents
+  floorCount: number;           // number of floors
+  areaM2: number;               // plot area (50/100/200 m²)
+  currentWorkerCount: number;   // cached active worker count for businesses
   // Joined owner data
   ownerUsername?: string;
   ownerAvatarColor?: string;
@@ -400,7 +408,12 @@ export type GameEventType =
   | 'power_tier_advanced'
   // v3
   | 'license_purchased'
-  | 'warehouse_filled';
+  | 'warehouse_filled'
+  // v4 — NPC events
+  | 'npc_hired'
+  | 'npc_assigned'
+  | 'npc_trained'
+  | 'npc_leveled_up';
 
 export interface GameEvent {
   id: string;
@@ -417,4 +430,58 @@ export interface WorldState {
   buildings: Record<string, Building>;
   players: Record<string, Player>;
   recentEvents: GameEvent[];
+}
+
+// ─── NPC System (v4) ─────────────────────────────────────────────────────────
+
+export type NpcClass =
+  | 'worker'
+  | 'foreman'
+  | 'engineer'
+  | 'doctor'
+  | 'specialist'
+  | 'physician';
+
+export type NpcAssignmentStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
+
+export interface Npc {
+  id: string;
+  ownerId: string;
+  nameFa: string;
+  class: NpcClass;
+  level: number;                         // 1–10
+  experience: number;
+  specialties: string[];
+  currentBusinessAssetId: string | null; // null = idle
+  homeAssetId: string | null;
+  isWorking: boolean;
+  hiredAt: string;
+  lastWorkedAt: string | null;
+}
+
+export interface NpcAssignment {
+  id: string;
+  npcId: string;
+  businessAssetId: string;
+  requesterId: string;
+  businessOwnerId: string;
+  status: NpcAssignmentStatus;
+  requestedAt: string;
+  respondedAt: string | null;
+  // Joined data
+  npc?: Npc;
+  requesterUsername?: string;
+  businessAssetType?: string;
+}
+
+export interface NpcTrainingSession {
+  id: string;
+  npcId: string;
+  institutionAssetId: string;
+  institutionType: string;
+  xpGained: number;
+  specialtyLearned: string | null;
+  cashCost: number;
+  startedAt: string;
+  completedAt: string;
 }

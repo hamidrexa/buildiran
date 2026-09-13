@@ -99,6 +99,11 @@ function dbRowToAsset(row: Record<string, any>): Asset {
     institutionCategory: (row.institution_category ?? null) as InstitutionCategory | null,
     licensePurchased: row.license_purchased ?? false,
     warehouseFilled: row.warehouse_filled ?? false,
+    // v4 — NPC housing fields
+    maxCapacity: row.max_capacity ?? 0,
+    floorCount: row.floor_count ?? 1,
+    areaM2: row.area_m2 ?? 50,
+    currentWorkerCount: row.current_worker_count ?? 0,
     // Joined owner data
     ownerUsername: row.owner?.username ?? row.profiles?.username ?? undefined,
     ownerAvatarColor: row.owner?.avatar_color ?? row.profiles?.avatar_color ?? undefined,
