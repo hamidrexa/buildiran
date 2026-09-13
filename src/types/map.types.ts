@@ -79,6 +79,8 @@ export interface GameMapProps {
   onRegionChange?: (viewport: MapViewport) => void;
   /** Built assets to display on the map */
   assets?: Asset[];
+  /** Districts data for the map overlay */
+  neighborhoods?: any[];
   /** Current user ID to determine building ownership */
   currentUserId?: string | null;
   /** Currently selected asset ID */

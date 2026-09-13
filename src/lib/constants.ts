@@ -163,6 +163,11 @@ export const IRAN_BOUNDS = {
   southWest: { latitude: 25.06, longitude: 44.03 },
 } as const;
 
+export const TEHRAN_BOUNDS = {
+  northEast: { latitude: 35.850, longitude: 51.650 },
+  southWest: { latitude: 35.500, longitude: 51.150 },
+} as const;
+
 // ─── Economy: Power Tiers ─────────────────────────────────────────────────────
 // 6-tier progression. XP grows ~5x per tier to sustain long-term engagement.
 // Power within a tier accumulates via asset ownership, services, and daily drip.

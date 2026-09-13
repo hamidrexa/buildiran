@@ -111,6 +111,9 @@ export interface Neighborhood {
   radiusKm: number;
   minEditorPower: number;
   createdAt: string;
+  areaNumber?: number;
+  areaName?: string;
+  isLocked?: boolean;
 }
 
 export interface NeighborhoodEditor {

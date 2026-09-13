@@ -167,6 +167,9 @@ export const useNeighborhoodStore = create<NeighborhoodState>()((set, get) => ({
           radiusKm: n.radius_km,
           minEditorPower: n.min_editor_power,
           createdAt: n.created_at,
+          areaNumber: n.area_number,
+          areaName: n.area_name,
+          isLocked: n.is_locked,
         }));
         set({ neighborhoods: list });
         if (!get().currentNeighborhood) {

@@ -7,3 +7,8 @@ declare module 'maplibre-gl/dist/maplibre-gl.css' {
   const content: string;
   export default content;
 }
+
+declare module '*.geojson' {
+  const content: any;
+  export default content;
+}

@@ -21,7 +21,9 @@ import {
   MAP_DEFAULT_ZOOM,
   MAP_MIN_ZOOM,
   MAP_MAX_ZOOM,
+  TEHRAN_BOUNDS,
 } from '@/lib/constants';
+import tehranDistrictsRaw from '../../../assets/maps/Tehran Districts.json';
 
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
@@ -30,6 +32,7 @@ export const GameMap: React.FC<GameMapProps> = ({
   onMapPress,
   onRegionChange,
   assets = [],
+  neighborhoods = [],
   currentUserId,
   selectedAssetId,
   onAssetPress,
@@ -87,6 +90,24 @@ export const GameMap: React.FC<GameMapProps> = ({
     return '#F59E0B';
   }, [buildingZone]);
 
+  const districtsGeoJSON = useMemo(() => {
+    if (!neighborhoods || neighborhoods.length === 0) {
+      return tehranDistrictsRaw;
+    }
+    const features = tehranDistrictsRaw.features.map((f: any) => {
+      const name = f.properties.name;
+      const neighborhood = neighborhoods.find(n => n.nameFa === name);
+      return {
+        ...f,
+        properties: {
+          ...f.properties,
+          isLocked: neighborhood?.isLocked ?? true
+        }
+      };
+    });
+    return { ...tehranDistrictsRaw, features };
+  }, [neighborhoods]);
+
   const flatStyle = (style ? StyleSheet.flatten(style) : {}) as React.CSSProperties;
 
   return (
@@ -112,6 +133,12 @@ export const GameMap: React.FC<GameMapProps> = ({
         mapStyle={mapStyle as any}
         minZoom={MAP_MIN_ZOOM}
         maxZoom={MAP_MAX_ZOOM}
+        maxBounds={[
+          TEHRAN_BOUNDS.southWest.longitude,
+          TEHRAN_BOUNDS.southWest.latitude,
+          TEHRAN_BOUNDS.northEast.longitude,
+          TEHRAN_BOUNDS.northEast.latitude,
+        ]}
         onClick={handleClick}
         onMove={handleMove}
         style={{ width: '100%', height: '100%' }}
@@ -119,6 +146,62 @@ export const GameMap: React.FC<GameMapProps> = ({
       >
         <NavigationControl position="top-left" />
         <ScaleControl position="bottom-left" unit="metric" />
+
+        {/* Tehran Districts Overlay */}
+        <Source id="tehran-districts-source" type="geojson" data={districtsGeoJSON as any}>
+          <Layer
+            id="tehran-districts-fill"
+            type="fill"
+            paint={{
+              'fill-color': [
+                'case',
+                ['==', ['get', 'isLocked'], true],
+                'rgba(120, 120, 120, 0.8)',
+                'rgba(108, 99, 255, 0.4)'
+              ],
+              'fill-opacity': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                10, 0.6,
+                14, 0.0
+              ],
+            }}
+          />
+          <Layer
+            id="tehran-districts-line"
+            type="line"
+            paint={{
+              'line-color': [
+                'case',
+                ['==', ['get', 'isLocked'], true],
+                'rgba(150, 150, 150, 0.8)',
+                'rgba(108, 99, 255, 0.8)'
+              ],
+              'line-width': 2,
+            }}
+          />
+          <Layer
+            id="tehran-districts-symbol"
+            type="symbol"
+            layout={{
+              'text-field': '{name}\n{area_name}',
+              'text-size': 12,
+            }}
+            paint={{
+              'text-color': '#FFFFFF',
+              'text-halo-color': 'rgba(0, 0, 0, 0.8)',
+              'text-halo-width': 1,
+              'text-opacity': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                10, 1.0,
+                13, 0.0
+              ],
+            }}
+          />
+        </Source>
 
         {/* 5-Meter Building Zone Overlay */}
         {circleGeoJSON && (

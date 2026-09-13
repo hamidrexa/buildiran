@@ -13,6 +13,7 @@ import { useAssetStore } from "@/store/useAssetStore";
 import { useEconomyStore } from "@/store/useEconomyStore";
 import { useGameStore } from "@/store/useGameStore";
 import { useMapStore } from "@/store/useMapStore";
+import { useNeighborhoodStore } from "@/store/useNeighborhoodStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { useViewportTracker } from "@/hooks/useViewportTracker";
 import type { Asset, LatLng } from "@/types/game.types";
@@ -32,6 +33,8 @@ export default function MapScreen() {
   const fetchListings = useAssetStore((s) => s.fetchListings);
   const subscribeToAssets = useAssetStore((s) => s.subscribeToAssets);
   const fetchActiveBoosts = useEconomyStore((s) => s.fetchActiveBoosts);
+  const neighborhoods = useNeighborhoodStore((s) => s.neighborhoods);
+  const fetchNeighborhoods = useNeighborhoodStore((s) => s.fetchNeighborhoods);
 
   // ─── Modals and Flow States ───────────────────────────────────────────────
   const [actionModalVisible, setActionModalVisible] = useState(false);
@@ -79,6 +82,8 @@ export default function MapScreen() {
       await fetchListings();
       // Load active popularity 2x boosts
       await fetchActiveBoosts(session.user.id);
+      // Load neighborhoods (districts lock state)
+      await fetchNeighborhoods();
 
       // Subscribe to live changes
       unsubscribeAssets = subscribeToAssets();
@@ -213,6 +218,7 @@ export default function MapScreen() {
       {/* Full-screen map with built assets & 5m real-size building zone */}
       <GameMap
         assets={assetsList}
+        neighborhoods={neighborhoods}
         currentUserId={player?.id ?? null}
         selectedAssetId={activeSelectedAsset?.id ?? null}
         onAssetPress={handleAssetPress}
