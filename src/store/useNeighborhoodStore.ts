@@ -174,7 +174,10 @@ export const useNeighborhoodStore = create<NeighborhoodState>()((set, get) => ({
           createdAt: n.created_at,
           areaNumber: n.area_number,
           areaName: n.area_name,
-          isLocked: n.is_locked,
+          isLocked: n.is_locked ?? true,
+          communityCenterLat: n.community_center_lat,
+          communityCenterLot: n.community_center_lot,
+          communityCenterClearanceToBoundary: n.community_center_clearance_to_boundary,
         }));
         set({ neighborhoods: list });
         if (!get().currentNeighborhood) {
@@ -244,7 +247,7 @@ export const useNeighborhoodStore = create<NeighborhoodState>()((set, get) => ({
   isDistrictLocked: (nameFa: string, areaNumber?: number) => {
     const { neighborhoods } = get();
     if (!neighborhoods || neighborhoods.length === 0) {
-      return nameFa !== 'میدان ولیعصر';
+      return true; // Default locked until neighborhoods table data loads from Supabase
     }
     const match =
       neighborhoods.find(

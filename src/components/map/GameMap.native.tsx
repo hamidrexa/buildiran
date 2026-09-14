@@ -122,13 +122,12 @@ export const GameMap: React.FC<GameMapProps> = ({
     const features = tehranDistrictsRaw.features.map((f: any) => {
       const name = f.properties?.name || '';
       const areaNumber = f.properties?.area_number;
-      const areaName = f.properties?.area_name || '';
-
       const nb =
         neighborhoodMap[`${name}_${areaNumber}`] ||
         neighborhoodMap[name];
 
-      const isLocked = nb ? (nb.isLocked ?? true) : (name !== 'میدان ولیعصر');
+      // Rely strictly on Supabase neighborhoods table isLocked flag (default true if not yet found)
+      const isLocked = nb ? (nb.isLocked ?? true) : true;
 
       const labelFar = name;
       const labelMedium = isLocked ? `🔒 ${name}` : name;

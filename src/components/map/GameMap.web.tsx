@@ -118,8 +118,8 @@ export const GameMap: React.FC<GameMapProps> = ({
         neighborhoodMap[`${name}_${areaNumber}`] ||
         neighborhoodMap[name];
 
-      // 'میدان ولیعصر' is unlocked. If neighborhood is known, use its isLocked status; otherwise default to locked.
-      const isLocked = nb ? (nb.isLocked ?? true) : (name !== "میدان ولیعصر");
+      // Rely strictly on Supabase neighborhoods table isLocked flag (default true if not yet found)
+      const isLocked = nb ? (nb.isLocked ?? true) : true;
 
       // Progressive zoom-dependent labels
       const labelFar = name;

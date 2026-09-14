@@ -41,6 +41,7 @@ export const DEFAULT_ASSET_SPACING_METERS = 10;
 export const MAP_STREET_STYLE = {
   version: 8,
   name: "BuildIran Streets",
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
   sources: {
     "carto-voyager": {
       type: "raster",
@@ -69,6 +70,7 @@ export const MAP_STREET_STYLE = {
 export const MAP_OSM_STYLE = {
   version: 8,
   name: "OpenStreetMap",
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
   sources: {
     osm: {
       type: "raster",

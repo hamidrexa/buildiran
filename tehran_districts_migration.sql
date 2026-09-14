@@ -14,7 +14,10 @@
 ALTER TABLE public.neighborhoods 
   ADD COLUMN IF NOT EXISTS area_number INTEGER,
   ADD COLUMN IF NOT EXISTS area_name TEXT,
-  ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT TRUE;
+  ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS community_center_lat DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS community_center_lot DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS community_center_clearance_to_boundary DOUBLE PRECISION;
 
 -- Insert Districts
 INSERT INTO public.neighborhoods (id, city, name_fa, description_fa, center_lat, center_lng, radius_km, min_editor_power, area_number, area_name, is_locked)

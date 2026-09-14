@@ -114,6 +114,9 @@ export interface Neighborhood {
   areaNumber?: number;
   areaName?: string;
   isLocked?: boolean;
+  communityCenterLat?: number | null;
+  communityCenterLot?: number | null;
+  communityCenterClearanceToBoundary?: number | null;
 }
 
 export interface NeighborhoodEditor {
