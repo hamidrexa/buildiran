@@ -16,6 +16,20 @@ import type {
 // Default Iranian neighborhoods fallback if Supabase table is not yet seeded
 export const DEFAULT_NEIGHBORHOODS: Neighborhood[] = [
   {
+    id: 'tehran_dist_6_میدان ولیعصر',
+    city: 'تهران',
+    nameFa: 'میدان ولیعصر',
+    descriptionFa: 'محله میدان ولیعصر واقع در منطقه ۶ شهر تهران',
+    centerLat: 35.7118,
+    centerLng: 51.4069,
+    radiusKm: 2.0,
+    minEditorPower: 100,
+    areaNumber: 6,
+    areaName: 'منطقه ۶ شهر تهران',
+    isLocked: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'tehran_vanak',
     city: 'تهران',
     nameFa: 'ونک',
@@ -24,6 +38,9 @@ export const DEFAULT_NEIGHBORHOODS: Neighborhood[] = [
     centerLng: 51.4099,
     radiusKm: 4.0,
     minEditorPower: 150,
+    areaNumber: 3,
+    areaName: 'منطقه ۳ شهر تهران',
+    isLocked: true,
     createdAt: new Date().toISOString(),
   },
   {
@@ -35,6 +52,9 @@ export const DEFAULT_NEIGHBORHOODS: Neighborhood[] = [
     centerLng: 51.4312,
     radiusKm: 4.5,
     minEditorPower: 200,
+    areaNumber: 1,
+    areaName: 'منطقه ۱ شهر تهران',
+    isLocked: true,
     createdAt: new Date().toISOString(),
   },
   {
@@ -46,6 +66,9 @@ export const DEFAULT_NEIGHBORHOODS: Neighborhood[] = [
     centerLng: 51.3740,
     radiusKm: 4.0,
     minEditorPower: 180,
+    areaNumber: 2,
+    areaName: 'منطقه ۲ شهر تهران',
+    isLocked: true,
     createdAt: new Date().toISOString(),
   },
   {
@@ -57,28 +80,9 @@ export const DEFAULT_NEIGHBORHOODS: Neighborhood[] = [
     centerLng: 51.3912,
     radiusKm: 3.5,
     minEditorPower: 120,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'isfahan_jolfa',
-    city: 'اصفهان',
-    nameFa: 'جلفا',
-    descriptionFa: 'محله تاریخی، گردشگری و کافه‌های سنتی',
-    centerLat: 32.6288,
-    centerLng: 51.6565,
-    radiusKm: 3.0,
-    minEditorPower: 140,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'shiraz_eram',
-    city: 'شیراز',
-    nameFa: 'ارم',
-    descriptionFa: 'محله سرسبز دانشگاهی و توریستی باغ ارم',
-    centerLat: 29.6358,
-    centerLng: 52.5256,
-    radiusKm: 3.5,
-    minEditorPower: 130,
+    areaNumber: 6,
+    areaName: 'منطقه ۶ شهر تهران',
+    isLocked: true,
     createdAt: new Date().toISOString(),
   },
 ];
@@ -97,6 +101,7 @@ interface NeighborhoodState {
   fetchPendingProposals: (neighborhoodId: string) => Promise<void>;
   
   isEditorForNeighborhood: (playerPower: number, playerId: string, neighborhoodId: string) => boolean;
+  isDistrictLocked: (nameFa: string, areaNumber?: number) => boolean;
 
   proposeCustomBuilding: (params: {
     userId: string;
@@ -234,6 +239,19 @@ export const useNeighborhoodStore = create<NeighborhoodState>()((set, get) => ({
     if (!neighborhood) return playerPower >= 150;
     // Player has high power qualifying them as editor
     return playerPower >= neighborhood.minEditorPower;
+  },
+
+  isDistrictLocked: (nameFa: string, areaNumber?: number) => {
+    const { neighborhoods } = get();
+    if (!neighborhoods || neighborhoods.length === 0) {
+      return nameFa !== 'میدان ولیعصر';
+    }
+    const match =
+      neighborhoods.find(
+        (n) => n.nameFa === nameFa && (areaNumber === undefined || n.areaNumber === areaNumber)
+      ) || neighborhoods.find((n) => n.nameFa === nameFa);
+
+    return match ? (match.isLocked ?? true) : true;
   },
 
   proposeCustomBuilding: async (params) => {

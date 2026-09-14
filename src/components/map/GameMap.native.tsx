@@ -11,6 +11,7 @@
 
 import { BuildingMarker } from "@/components/game/BuildingMarker";
 import {
+  DISTRICT_MAP_CONFIG,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
   MAP_MAX_ZOOM,
@@ -106,20 +107,45 @@ export const GameMap: React.FC<GameMapProps> = ({
   }, [buildingZone]);
 
   const districtsGeoJSON = useMemo(() => {
-    if (!neighborhoods || neighborhoods.length === 0) {
-      return tehranDistrictsRaw;
+    const neighborhoodMap: Record<string, any> = {};
+    if (neighborhoods && neighborhoods.length > 0) {
+      neighborhoods.forEach((n) => {
+        if (n.areaNumber) {
+          neighborhoodMap[`${n.nameFa}_${n.areaNumber}`] = n;
+        }
+        if (!neighborhoodMap[n.nameFa]) {
+          neighborhoodMap[n.nameFa] = n;
+        }
+      });
     }
+
     const features = tehranDistrictsRaw.features.map((f: any) => {
-      const name = f.properties.name;
-      const neighborhood = neighborhoods.find(n => n.nameFa === name);
+      const name = f.properties?.name || '';
+      const areaNumber = f.properties?.area_number;
+      const areaName = f.properties?.area_name || '';
+
+      const nb =
+        neighborhoodMap[`${name}_${areaNumber}`] ||
+        neighborhoodMap[name];
+
+      const isLocked = nb ? (nb.isLocked ?? true) : (name !== 'میدان ولیعصر');
+
+      const labelFar = name;
+      const labelMedium = isLocked ? `🔒 ${name}` : name;
+      const labelClose = isLocked ? `🔒 ${name}\nمحله قفل است` : `${name}\n(محله فعال)`;
+
       return {
         ...f,
         properties: {
           ...f.properties,
-          isLocked: neighborhood?.isLocked ?? true
-        }
+          isLocked,
+          labelFar,
+          labelMedium,
+          labelClose,
+        },
       };
     });
+
     return { ...tehranDistrictsRaw, features };
   }, [neighborhoods]);
 
@@ -162,15 +188,21 @@ export const GameMap: React.FC<GameMapProps> = ({
               fillColor: [
                 'case',
                 ['==', ['get', 'isLocked'], true],
-                'rgba(120, 120, 120, 0.8)', // Locked color
-                'rgba(108, 99, 255, 0.4)'   // Unlocked color (primary brand)
+                DISTRICT_MAP_CONFIG.COLOR_LOCKED,
+                DISTRICT_MAP_CONFIG.COLOR_ACTIVE,
               ],
               fillOpacity: [
                 'interpolate',
                 ['linear'],
                 ['zoom'],
-                10, 0.6,
-                14, 0.0
+                DISTRICT_MAP_CONFIG.ZOOM_FAR,
+                DISTRICT_MAP_CONFIG.OPACITY_FAR, // 10 -> 0.20
+                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                DISTRICT_MAP_CONFIG.OPACITY_MEDIUM, // 11.5 -> 0.10
+                DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
+                DISTRICT_MAP_CONFIG.OPACITY_CLOSE, // 13 -> 0.04
+                DISTRICT_MAP_CONFIG.ZOOM_STREET,
+                DISTRICT_MAP_CONFIG.OPACITY_STREET, // 14 -> 0.0
               ],
             } as any}
           />
@@ -181,27 +213,62 @@ export const GameMap: React.FC<GameMapProps> = ({
               lineColor: [
                 'case',
                 ['==', ['get', 'isLocked'], true],
-                'rgba(150, 150, 150, 0.8)',
-                'rgba(108, 99, 255, 0.8)'
+                DISTRICT_MAP_CONFIG.COLOR_LOCKED_BORDER,
+                DISTRICT_MAP_CONFIG.COLOR_ACTIVE_BORDER,
               ],
-              lineWidth: 2,
+              lineWidth: [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                DISTRICT_MAP_CONFIG.ZOOM_FAR,
+                DISTRICT_MAP_CONFIG.BORDER_WIDTH_FAR,
+                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                DISTRICT_MAP_CONFIG.BORDER_WIDTH_MEDIUM,
+                DISTRICT_MAP_CONFIG.ZOOM_STREET,
+                DISTRICT_MAP_CONFIG.BORDER_WIDTH_STREET,
+              ],
+              lineOpacity: [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                9, 0.7,
+                10, 0.9,
+                15, 0.85,
+              ],
             } as any}
           />
           <Layer
             id="tehran-districts-symbol"
             type="symbol"
             style={{
-              textField: '{name}\n{area_name}',
-              textColor: '#FFFFFF',
-              textSize: 12,
-              textHaloColor: 'rgba(0, 0, 0, 0.8)',
-              textHaloWidth: 1,
+              textField: [
+                'step',
+                ['zoom'],
+                ['get', 'labelFar'],
+                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                ['get', 'labelMedium'],
+                DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
+                ['get', 'labelClose'],
+              ],
+              textColor: DISTRICT_MAP_CONFIG.LABEL_COLOR,
+              textSize: [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                9, DISTRICT_MAP_CONFIG.LABEL_SIZE_FAR,
+                11.5, DISTRICT_MAP_CONFIG.LABEL_SIZE_MEDIUM,
+                13, DISTRICT_MAP_CONFIG.LABEL_SIZE_CLOSE,
+              ],
+              textHaloColor: DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
+              textHaloWidth: DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
               textOpacity: [
                 'interpolate',
                 ['linear'],
                 ['zoom'],
+                9, 0.6,
                 10, 1.0,
-                13, 0.0
+                13.2, 0.9,
+                DISTRICT_MAP_CONFIG.LABEL_FADE_ZOOM, 0.0,
               ],
             } as any}
           />

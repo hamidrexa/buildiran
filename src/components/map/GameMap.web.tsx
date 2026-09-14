@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { StyleSheet } from 'react-native';
+import "maplibre-gl/dist/maplibre-gl.css";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import Map, {
   Layer,
   Marker,
@@ -9,21 +9,22 @@ import Map, {
   type MapMouseEvent,
   type MapRef,
   type ViewStateChangeEvent,
-} from 'react-map-gl/maplibre';
-import 'maplibre-gl/dist/maplibre-gl.css';
+} from "react-map-gl/maplibre";
+import { StyleSheet } from "react-native";
 
-import type { GameMapProps } from '@/types/map.types';
-import { BuildingMarker } from '@/components/game/BuildingMarker';
-import { createGeoJSONCircle } from '@/utils/geo';
+import { BuildingMarker } from "@/components/game/BuildingMarker";
 import {
-  MAP_STYLE,
+  DISTRICT_MAP_CONFIG,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
-  MAP_MIN_ZOOM,
   MAP_MAX_ZOOM,
+  MAP_MIN_ZOOM,
+  MAP_STYLE,
   TEHRAN_BOUNDS,
-} from '@/lib/constants';
-import tehranDistrictsRaw from '../../../assets/maps/Tehran Districts.json';
+} from "@/lib/constants";
+import type { GameMapProps } from "@/types/map.types";
+import { createGeoJSONCircle } from "@/utils/geo";
+import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
 
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
@@ -80,46 +81,80 @@ export const GameMap: React.FC<GameMapProps> = ({
   // GeoJSON 5-meter circle feature
   const circleGeoJSON = useMemo(() => {
     if (!buildingZone) return null;
-    return createGeoJSONCircle(buildingZone.center, buildingZone.radiusMeters, 64);
+    return createGeoJSONCircle(
+      buildingZone.center,
+      buildingZone.radiusMeters,
+      64,
+    );
   }, [buildingZone]);
 
   const zoneColor = useMemo(() => {
-    if (!buildingZone) return '#6C63FF';
-    if (buildingZone.status === 'valid') return '#10B981';
-    if (buildingZone.status === 'invalid') return '#EF4444';
-    return '#F59E0B';
+    if (!buildingZone) return "#6C63FF";
+    if (buildingZone.status === "valid") return "#10B981";
+    if (buildingZone.status === "invalid") return "#EF4444";
+    return "#F59E0B";
   }, [buildingZone]);
 
   const districtsGeoJSON = useMemo(() => {
-    if (!neighborhoods || neighborhoods.length === 0) {
-      return tehranDistrictsRaw;
+    const neighborhoodMap: Record<string, any> = {};
+    if (neighborhoods && neighborhoods.length > 0) {
+      neighborhoods.forEach((n) => {
+        if (n.areaNumber) {
+          neighborhoodMap[`${n.nameFa}_${n.areaNumber}`] = n;
+        }
+        if (!neighborhoodMap[n.nameFa]) {
+          neighborhoodMap[n.nameFa] = n;
+        }
+      });
     }
+
     const features = tehranDistrictsRaw.features.map((f: any) => {
-      const name = f.properties.name;
-      const neighborhood = neighborhoods.find(n => n.nameFa === name);
+      const name = f.properties?.name || "";
+      const areaNumber = f.properties?.area_number;
+      const areaName = f.properties?.area_name || "";
+
+      // Lookup matching neighborhood from DB
+      const nb =
+        neighborhoodMap[`${name}_${areaNumber}`] ||
+        neighborhoodMap[name];
+
+      // 'میدان ولیعصر' is unlocked. If neighborhood is known, use its isLocked status; otherwise default to locked.
+      const isLocked = nb ? (nb.isLocked ?? true) : (name !== "میدان ولیعصر");
+
+      // Progressive zoom-dependent labels
+      const labelFar = name;
+      const labelMedium = isLocked ? `🔒 ${name}` : name;
+      const labelClose = isLocked ? `🔒 ${name}\nمحله قفل است` : `${name}\n(محله فعال)`;
+
       return {
         ...f,
         properties: {
           ...f.properties,
-          isLocked: neighborhood?.isLocked ?? true
-        }
+          isLocked,
+          labelFar,
+          labelMedium,
+          labelClose,
+        },
       };
     });
+
     return { ...tehranDistrictsRaw, features };
   }, [neighborhoods]);
 
-  const flatStyle = (style ? StyleSheet.flatten(style) : {}) as React.CSSProperties;
+  const flatStyle = (
+    style ? StyleSheet.flatten(style) : {}
+  ) as React.CSSProperties;
 
   return (
     <div
       style={{
-        position: 'absolute',
+        position: "absolute",
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        width: '100%',
-        height: '100%',
+        width: "100%",
+        height: "100%",
         ...flatStyle,
       }}
     >
@@ -141,30 +176,40 @@ export const GameMap: React.FC<GameMapProps> = ({
         ]}
         onClick={handleClick}
         onMove={handleMove}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: "100%", height: "100%" }}
         attributionControl={{ compact: true }}
       >
         <NavigationControl position="top-left" />
         <ScaleControl position="bottom-left" unit="metric" />
 
         {/* Tehran Districts Overlay */}
-        <Source id="tehran-districts-source" type="geojson" data={districtsGeoJSON as any}>
+        <Source
+          id="tehran-districts-source"
+          type="geojson"
+          data={districtsGeoJSON as any}
+        >
           <Layer
             id="tehran-districts-fill"
             type="fill"
             paint={{
-              'fill-color': [
-                'case',
-                ['==', ['get', 'isLocked'], true],
-                'rgba(120, 120, 120, 0.8)',
-                'rgba(108, 99, 255, 0.4)'
+              "fill-color": [
+                "case",
+                ["==", ["get", "isLocked"], true],
+                DISTRICT_MAP_CONFIG.COLOR_LOCKED,
+                DISTRICT_MAP_CONFIG.COLOR_ACTIVE,
               ],
-              'fill-opacity': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                10, 0.6,
-                14, 0.0
+              "fill-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                DISTRICT_MAP_CONFIG.ZOOM_FAR,
+                DISTRICT_MAP_CONFIG.OPACITY_FAR, // 10 -> 0.20 (20% opacity colored fill)
+                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                DISTRICT_MAP_CONFIG.OPACITY_MEDIUM, // 11.5 -> 0.10 (10% opacity transitional)
+                DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
+                DISTRICT_MAP_CONFIG.OPACITY_CLOSE, // 13 -> 0.04 (4% opacity)
+                DISTRICT_MAP_CONFIG.ZOOM_STREET,
+                DISTRICT_MAP_CONFIG.OPACITY_STREET, // 14 -> 0.0 (fully transparent fill)
               ],
             }}
           />
@@ -172,32 +217,78 @@ export const GameMap: React.FC<GameMapProps> = ({
             id="tehran-districts-line"
             type="line"
             paint={{
-              'line-color': [
-                'case',
-                ['==', ['get', 'isLocked'], true],
-                'rgba(150, 150, 150, 0.8)',
-                'rgba(108, 99, 255, 0.8)'
+              "line-color": [
+                "case",
+                ["==", ["get", "isLocked"], true],
+                DISTRICT_MAP_CONFIG.COLOR_LOCKED_BORDER,
+                DISTRICT_MAP_CONFIG.COLOR_ACTIVE_BORDER,
               ],
-              'line-width': 2,
+              "line-width": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                DISTRICT_MAP_CONFIG.ZOOM_FAR,
+                DISTRICT_MAP_CONFIG.BORDER_WIDTH_FAR,
+                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                DISTRICT_MAP_CONFIG.BORDER_WIDTH_MEDIUM,
+                DISTRICT_MAP_CONFIG.ZOOM_STREET,
+                DISTRICT_MAP_CONFIG.BORDER_WIDTH_STREET,
+              ],
+              "line-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                9,
+                0.7,
+                10,
+                0.9,
+                15,
+                0.85,
+              ],
             }}
           />
           <Layer
             id="tehran-districts-symbol"
             type="symbol"
             layout={{
-              'text-field': '{name}\n{area_name}',
-              'text-size': 12,
+              "text-field": [
+                "step",
+                ["zoom"],
+                ["get", "labelFar"],
+                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                ["get", "labelMedium"],
+                DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
+                ["get", "labelClose"],
+              ],
+              "text-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                9,
+                DISTRICT_MAP_CONFIG.LABEL_SIZE_FAR,
+                11.5,
+                DISTRICT_MAP_CONFIG.LABEL_SIZE_MEDIUM,
+                13,
+                DISTRICT_MAP_CONFIG.LABEL_SIZE_CLOSE,
+              ],
+              "text-anchor": "center",
             }}
             paint={{
-              'text-color': '#FFFFFF',
-              'text-halo-color': 'rgba(0, 0, 0, 0.8)',
-              'text-halo-width': 1,
-              'text-opacity': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                10, 1.0,
-                13, 0.0
+              "text-color": DISTRICT_MAP_CONFIG.LABEL_COLOR,
+              "text-halo-color": DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
+              "text-halo-width": DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
+              "text-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                9,
+                0.6,
+                10,
+                1.0,
+                13.2,
+                0.9,
+                DISTRICT_MAP_CONFIG.LABEL_FADE_ZOOM,
+                0.0,
               ],
             }}
           />
@@ -205,22 +296,27 @@ export const GameMap: React.FC<GameMapProps> = ({
 
         {/* 5-Meter Building Zone Overlay */}
         {circleGeoJSON && (
-          <Source id="building-zone-source" type="geojson" data={circleGeoJSON as any}>
+          <Source
+            id="building-zone-source"
+            type="geojson"
+            data={circleGeoJSON as any}
+          >
             <Layer
               id="building-zone-fill"
               type="fill"
               paint={{
-                'fill-color': zoneColor,
-                'fill-opacity': 0.32,
+                "fill-color": zoneColor,
+                "fill-opacity": 0.32,
               }}
             />
             <Layer
               id="building-zone-stroke"
               type="line"
               paint={{
-                'line-color': zoneColor,
-                'line-width': 3,
-                'line-dasharray': buildingZone?.status === 'invalid' ? [3, 2] : [1, 0],
+                "line-color": zoneColor,
+                "line-width": 3,
+                "line-dasharray":
+                  buildingZone?.status === "invalid" ? [3, 2] : [1, 0],
               }}
             />
           </Source>
@@ -235,40 +331,46 @@ export const GameMap: React.FC<GameMapProps> = ({
           >
             <div
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                pointerEvents: 'none',
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                pointerEvents: "none",
               }}
             >
               <div
                 style={{
-                  background: 'rgba(8, 12, 26, 0.9)',
-                  color: '#fff',
-                  padding: '3px 8px',
-                  borderRadius: '12px',
-                  fontSize: '11px',
+                  background: "rgba(8, 12, 26, 0.9)",
+                  color: "#fff",
+                  padding: "3px 8px",
+                  borderRadius: "12px",
+                  fontSize: "11px",
                   fontWeight: 700,
                   border: `1.5px solid ${zoneColor}`,
                   boxShadow: `0 0 10px ${zoneColor}66`,
-                  whiteSpace: 'nowrap',
-                  marginBottom: '4px',
-                  direction: 'rtl',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  whiteSpace: "nowrap",
+                  marginBottom: "4px",
+                  direction: "rtl",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
                 }}
               >
-                <span>{buildingZone.status === 'valid' ? '✅' : buildingZone.status === 'invalid' ? '🚫' : '⏳'}</span>
+                <span>
+                  {buildingZone.status === "valid"
+                    ? "✅"
+                    : buildingZone.status === "invalid"
+                      ? "🚫"
+                      : "⏳"}
+                </span>
                 <span>شعاع ۵ متر</span>
               </div>
               <div
                 style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "50%",
                   backgroundColor: zoneColor,
-                  border: '2px solid #fff',
+                  border: "2px solid #fff",
                   boxShadow: `0 0 8px ${zoneColor}`,
                 }}
               />
@@ -278,7 +380,9 @@ export const GameMap: React.FC<GameMapProps> = ({
 
         {/* On-Map Built Assets */}
         {assets.map((asset) => {
-          const isOwned = currentUserId ? asset.ownerId === currentUserId : false;
+          const isOwned = currentUserId
+            ? asset.ownerId === currentUserId
+            : false;
           const isSelected = selectedAssetId === asset.id;
 
           return (

@@ -479,7 +479,7 @@ const HireModal: React.FC<{
 };
 
 const hireStyles = StyleSheet.create({
-  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 100 },
+  overlay: { ...(StyleSheet.absoluteFill as any), justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 100 },
   sheet: {
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

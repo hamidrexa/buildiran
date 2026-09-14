@@ -52,6 +52,15 @@ const fa = {
       out: 'کوچک‌نمایی',
       myLocation: 'موقعیت من',
     },
+    districts: {
+      lockedTitle: 'محله قفل است',
+      lockedDesc: 'جهت تمرکز و تعامل بازیکنان، این محله در مراحل آغازین قفل است و به‌زودی بازگشایی خواهد شد.',
+      lockedActionNotice: 'ساخت‌وساز در محله‌های قفل‌شده مجاز نیست.',
+      activeTitle: 'محله فعال',
+      lockedBadge: '🔒 قفل',
+      activeBadge: '⚡ فعال',
+      evaluateOnly: 'فقط امکان ارزیابی و مشاهده محله وجود دارد.',
+    },
   },
 
   buildings: {

@@ -30,7 +30,7 @@ const BUILDING_EMOJI: Record<BuildingType, string> = {
   shop: "🏪", cafe: "☕", gym: "🏋️", restaurant: "🍽️", mall: "🏬", exchange: "💱", warehouse: "🏭", market: "🏦", office: "🏢",
   farm: "🌾", factory: "🏗️",
   hospital: "🏥", park: "🌳", university: "🎓", bank: "🏦",
-  barracks: "⚔️",
+  barracks: "⚔️", main_house: "🏛️", resident_house: "🏘️",
 };
 
 const BUILDING_LABEL: Record<BuildingType, string> = {
@@ -38,7 +38,7 @@ const BUILDING_LABEL: Record<BuildingType, string> = {
   shop: "مغازه", cafe: "کافه", gym: "باشگاه", restaurant: "رستوران", mall: "مرکز خرید", exchange: "صرافی", warehouse: "انبار", market: "بازار", office: "اداره",
   farm: "مزرعه", factory: "کارخانه",
   hospital: "بیمارستان", park: "پارک", university: "دانشگاه", bank: "بانک",
-  barracks: "پادگان",
+  barracks: "پادگان", main_house: "خانه اصلی", resident_house: "خوابگاه کارگران",
 };
 
 export default function MarketplaceScreen() {

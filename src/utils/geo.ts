@@ -3,6 +3,7 @@
  */
 
 import type { Bounds, LatLng } from '@/types/game.types';
+import tehranDistrictsRaw from '../../assets/maps/Tehran Districts.json';
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -294,4 +295,69 @@ export async function checkStreetProximity(
       ? `موقعیت مجاز برای ساخت (فاصله از «${closestStreetName}»: ${formattedDist.toLocaleString('fa-IR')} متر)`
       : `خطا: فاصله با معبر («${closestStreetName}») کمتر از ۵ متر است (${formattedDist.toLocaleString('fa-IR')} متر). ساخت روی خیابان مجاز نیست.`,
   };
+}
+
+// ─── District Detection (Point-in-Polygon via Local GeoJSON) ──────────────────
+
+/**
+ * Ray-casting algorithm to test if a point (lat/lng) is inside a 2D polygon ring.
+ * Polygon ring coordinates are in [longitude, latitude] format (GeoJSON order).
+ */
+export function isPointInPolygon(point: LatLng, ring: number[][]): boolean {
+  const x = point.longitude;
+  const y = point.latitude;
+  let inside = false;
+
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+
+    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
+export interface DetectedDistrict {
+  name: string;
+  areaNumber?: number;
+  areaName?: string;
+}
+
+/**
+ * Finds the Tehran district containing the given coordinate from the local GeoJSON dataset.
+ */
+export function findDistrictByCoordinate(coord: LatLng): DetectedDistrict | null {
+  const features = (tehranDistrictsRaw as any)?.features;
+  if (!features || !Array.isArray(features)) return null;
+
+  for (const feature of features) {
+    if (!feature.geometry || !feature.properties?.name) continue;
+    const { type, coordinates } = feature.geometry;
+
+    if (type === 'Polygon' && Array.isArray(coordinates)) {
+      if (isPointInPolygon(coord, coordinates[0])) {
+        return {
+          name: feature.properties.name,
+          areaNumber: feature.properties.area_number,
+          areaName: feature.properties.area_name,
+        };
+      }
+    } else if (type === 'MultiPolygon' && Array.isArray(coordinates)) {
+      for (const polygon of coordinates) {
+        if (Array.isArray(polygon) && isPointInPolygon(coord, polygon[0])) {
+          return {
+            name: feature.properties.name,
+            areaNumber: feature.properties.area_number,
+            areaName: feature.properties.area_name,
+          };
+        }
+      }
+    }
+  }
+
+  return null;
 }

@@ -6,15 +6,14 @@
 
 import { Text } from '@/components/ui/Text';
 import { GameAudio } from '@/lib/audio';
+import { getPlayerTier } from '@/lib/constants';
 import { useStatBarFill } from '@/lib/effects';
+import { useEconomyStore } from '@/store/useEconomyStore';
 import { useGameStore } from '@/store/useGameStore';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
-import { usePlayerStore } from '@/store/usePlayerStore';
-import { useEconomyStore } from '@/store/useEconomyStore';
 import { useNpcStore } from '@/store/useNpcStore';
-import { getPlayerTier } from '@/lib/constants';
+import { usePlayerStore } from '@/store/usePlayerStore';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -94,27 +93,6 @@ export const HUD: React.FC = () => {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          {/* Player avatar + name + tier */}
-          <TouchableOpacity
-            style={styles.playerBadge}
-            onPress={() => {
-              GameAudio.playTap();
-              router.push('/(game)/profile');
-            }}
-          >
-            <View style={[styles.avatar, { backgroundColor: player.avatarColor ?? '#6C63FF' }]}>
-              <Text variant="heading" weight="bold" color="inverse">
-                {player.username.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.playerInfo}>
-              <Text variant="body" weight="semibold" color="primary" numberOfLines={1}>{player.username}</Text>
-              {/* Tier badge */}
-              <View style={styles.tierBadge}>
-                <Text variant="caption" color="secondary">⚔️ {tier.nameFa}</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
 
           {/* Resources */}
           <View style={styles.resourceChips}>
@@ -174,10 +152,10 @@ export const HUD: React.FC = () => {
           colors={['rgba(8,12,26,0.9)', 'rgba(13,21,51,0.85)']}
           style={styles.statsPanelInner}
         >
-          <StatBar icon="⚔️" label="قدرت"    value={player.power ?? 0}       maxValue={500}  color="#A78BFA" delay={0}   />
-          <StatBar icon="💰" label="ثروت"     value={Math.min(player.wealth ?? 0, 999999)} maxValue={100000} color="#FFD700" delay={100} />
-          <StatBar icon="🔥" label="فعالیت"   value={player.activity ?? 0}    maxValue={100}  color="#FB923C" delay={200} />
-          <StatBar icon="⭐" label="محبوبیت"  value={player.popularity ?? 0}  maxValue={200}  color="#34D399" delay={300} />
+          <StatBar icon="⚔️" label="قدرت" value={player.power ?? 0} maxValue={500} color="#A78BFA" delay={0} />
+          <StatBar icon="💰" label="ثروت" value={Math.min(player.wealth ?? 0, 999999)} maxValue={100000} color="#FFD700" delay={100} />
+          <StatBar icon="🔥" label="فعالیت" value={player.activity ?? 0} maxValue={100} color="#FB923C" delay={200} />
+          <StatBar icon="⭐" label="محبوبیت" value={player.popularity ?? 0} maxValue={200} color="#34D399" delay={300} />
         </LinearGradient>
       </View>
 
@@ -192,8 +170,8 @@ export const HUD: React.FC = () => {
               {selectedTile.status === 'available'
                 ? '🟢 زمین آزاد — ضربه بزنید تا بسازید'
                 : selectedTile.status === 'owned'
-                ? '🟡 قلمرو شما'
-                : '🔴 قلمرو بازیکن دیگر'}
+                  ? '🟡 قلمرو شما'
+                  : '🔴 قلمرو بازیکن دیگر'}
             </Text>
             <Text variant="caption" color="secondary" numberOfLines={1}>{selectedTile.id}</Text>
           </LinearGradient>
