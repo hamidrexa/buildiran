@@ -1,5 +1,11 @@
 import "maplibre-gl/dist/maplibre-gl.css";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Map, {
   Layer,
   Marker,
@@ -95,6 +101,9 @@ export const GameMap: React.FC<GameMapProps> = ({
     return "#F59E0B";
   }, [buildingZone]);
 
+  // Toggle for the Tehran districts border layer
+  const [showDistricts, setShowDistricts] = useState(true);
+
   const districtsGeoJSON = useMemo(() => {
     const neighborhoodMap: Record<string, any> = {};
     if (neighborhoods && neighborhoods.length > 0) {
@@ -115,8 +124,7 @@ export const GameMap: React.FC<GameMapProps> = ({
 
       // Lookup matching neighborhood from DB
       const nb =
-        neighborhoodMap[`${name}_${areaNumber}`] ||
-        neighborhoodMap[name];
+        neighborhoodMap[`${name}_${areaNumber}`] || neighborhoodMap[name];
 
       // Rely strictly on Supabase neighborhoods table isLocked flag (default true if not yet found)
       const isLocked = nb ? (nb.isLocked ?? true) : true;
@@ -124,7 +132,9 @@ export const GameMap: React.FC<GameMapProps> = ({
       // Progressive zoom-dependent labels
       const labelFar = name;
       const labelMedium = isLocked ? `🔒 ${name}` : name;
-      const labelClose = isLocked ? `🔒 ${name}\nمحله قفل است` : `${name}\n(محله فعال)`;
+      const labelClose = isLocked
+        ? `🔒 ${name}\nمحله قفل است`
+        : `${name}\n(محله فعال)`;
 
       return {
         ...f,
@@ -176,123 +186,88 @@ export const GameMap: React.FC<GameMapProps> = ({
         ]}
         onClick={handleClick}
         onMove={handleMove}
+        onLoad={(e: any) => {
+          const mapInstance = e?.target ?? mapRef.current;
+          (window as any).__mapLoadFired = true;
+          (window as any).__map = mapInstance;
+        }}
         style={{ width: "100%", height: "100%" }}
         attributionControl={{ compact: true }}
       >
         <NavigationControl position="top-left" />
         <ScaleControl position="bottom-left" unit="metric" />
 
-        {/* Tehran Districts Overlay */}
-        <Source
-          id="tehran-districts-source"
-          type="geojson"
-          data={districtsGeoJSON as any}
-        >
-          <Layer
-            id="tehran-districts-fill"
-            type="fill"
-            paint={{
-              "fill-color": [
-                "case",
-                ["==", ["get", "isLocked"], true],
-                DISTRICT_MAP_CONFIG.COLOR_LOCKED,
-                DISTRICT_MAP_CONFIG.COLOR_ACTIVE,
-              ],
-              "fill-opacity": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                DISTRICT_MAP_CONFIG.ZOOM_FAR,
-                DISTRICT_MAP_CONFIG.OPACITY_FAR, // 10 -> 0.20 (20% opacity colored fill)
-                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
-                DISTRICT_MAP_CONFIG.OPACITY_MEDIUM, // 11.5 -> 0.10 (10% opacity transitional)
-                DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
-                DISTRICT_MAP_CONFIG.OPACITY_CLOSE, // 13 -> 0.04 (4% opacity)
-                DISTRICT_MAP_CONFIG.ZOOM_STREET,
-                DISTRICT_MAP_CONFIG.OPACITY_STREET, // 14 -> 0.0 (fully transparent fill)
-              ],
-            }}
-          />
-          <Layer
-            id="tehran-districts-line"
-            type="line"
-            paint={{
-              "line-color": [
-                "case",
-                ["==", ["get", "isLocked"], true],
-                DISTRICT_MAP_CONFIG.COLOR_LOCKED_BORDER,
-                DISTRICT_MAP_CONFIG.COLOR_ACTIVE_BORDER,
-              ],
-              "line-width": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                DISTRICT_MAP_CONFIG.ZOOM_FAR,
-                DISTRICT_MAP_CONFIG.BORDER_WIDTH_FAR,
-                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
-                DISTRICT_MAP_CONFIG.BORDER_WIDTH_MEDIUM,
-                DISTRICT_MAP_CONFIG.ZOOM_STREET,
-                DISTRICT_MAP_CONFIG.BORDER_WIDTH_STREET,
-              ],
-              "line-opacity": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                9,
-                0.7,
-                10,
-                0.9,
-                15,
-                0.85,
-              ],
-            }}
-          />
-          <Layer
-            id="tehran-districts-symbol"
-            type="symbol"
-            layout={{
-              "text-field": [
-                "step",
-                ["zoom"],
-                ["get", "labelFar"],
-                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
-                ["get", "labelMedium"],
-                DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
-                ["get", "labelClose"],
-              ],
-              "text-size": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                9,
-                DISTRICT_MAP_CONFIG.LABEL_SIZE_FAR,
-                11.5,
-                DISTRICT_MAP_CONFIG.LABEL_SIZE_MEDIUM,
-                13,
-                DISTRICT_MAP_CONFIG.LABEL_SIZE_CLOSE,
-              ],
-              "text-anchor": "center",
-            }}
-            paint={{
-              "text-color": DISTRICT_MAP_CONFIG.LABEL_COLOR,
-              "text-halo-color": DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
-              "text-halo-width": DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
-              "text-opacity": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                9,
-                0.6,
-                10,
-                1.0,
-                13.2,
-                0.9,
-                DISTRICT_MAP_CONFIG.LABEL_FADE_ZOOM,
-                0.0,
-              ],
-            }}
-          />
-        </Source>
+        {/* Tehran Districts Border Layer (toggleable) */}
+        {showDistricts && (
+          <Source
+            id="tehran-districts-source"
+            type="geojson"
+            data={districtsGeoJSON as any}
+          >
+            <Layer
+              id="tehran-districts-fill"
+              type="fill"
+              paint={{
+                "fill-color": "#0EA5E9",
+                "fill-opacity": 0.15,
+              }}
+            />
+            <Layer
+              id="tehran-districts-line"
+              type="line"
+              paint={{
+                "line-color": "#0EA5E9",
+                "line-width": 2.5,
+                "line-opacity": 0.9,
+              }}
+            />
+            <Layer
+              id="tehran-districts-symbol"
+              type="symbol"
+              layout={{
+                "text-field": [
+                  "step",
+                  ["zoom"],
+                  ["get", "labelFar"],
+                  DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                  ["get", "labelMedium"],
+                  DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
+                  ["get", "labelClose"],
+                ],
+                "text-size": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  9,
+                  DISTRICT_MAP_CONFIG.LABEL_SIZE_FAR,
+                  11.5,
+                  DISTRICT_MAP_CONFIG.LABEL_SIZE_MEDIUM,
+                  13,
+                  DISTRICT_MAP_CONFIG.LABEL_SIZE_CLOSE,
+                ],
+                "text-anchor": "center",
+              }}
+              paint={{
+                "text-color": DISTRICT_MAP_CONFIG.LABEL_COLOR,
+                "text-halo-color": DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
+                "text-halo-width": DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
+                "text-opacity": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  9,
+                  0.6,
+                  10,
+                  1.0,
+                  13.2,
+                  0.9,
+                  DISTRICT_MAP_CONFIG.LABEL_FADE_ZOOM,
+                  0.0,
+                ],
+              }}
+            />
+          </Source>
+        )}
 
         {/* 5-Meter Building Zone Overlay */}
         {circleGeoJSON && (
@@ -405,6 +380,43 @@ export const GameMap: React.FC<GameMapProps> = ({
           );
         })}
       </Map>
+
+      {/* District borders layer toggle — bottom-left of the page */}
+      <button
+        type="button"
+        onClick={() => setShowDistricts((v) => !v)}
+        style={{
+          position: "absolute",
+          left: 10,
+          bottom: 40,
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "8px 12px",
+          borderRadius: 10,
+          border: `1.5px solid ${showDistricts ? "#0EA5E9" : "rgba(255,255,255,0.25)"}`,
+          background: "rgba(8, 12, 26, 0.85)",
+          color: showDistricts ? "#0EA5E9" : "rgba(255,255,255,0.6)",
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+          direction: "rtl",
+          boxShadow: showDistricts ? "0 0 10px rgba(14,165,233,0.4)" : "none",
+        }}
+        title={showDistricts ? "پنهان کردن محدوده مناطق" : "نمایش محدوده مناطق"}
+      >
+        <span
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: 3,
+            background: showDistricts ? "#0EA5E9" : "rgba(255,255,255,0.3)",
+            border: showDistricts ? "none" : "1px solid rgba(255,255,255,0.4)",
+          }}
+        />
+        مناطق تهران
+      </button>
     </div>
   );
 };

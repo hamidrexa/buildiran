@@ -174,27 +174,33 @@ export const TEHRAN_BOUNDS = {
 
 export const DISTRICT_MAP_CONFIG = {
   /** Zoom milestones */
-  ZOOM_FAR: 14,       // Far zoom: colored layer (20% opacity) + border highlight
-  ZOOM_MEDIUM: 15.5,  // Medium zoom: more transparent (10% opacity) + lock icon appears
-  ZOOM_CLOSE: 17,     // Closer zoom: even more transparent (4% opacity) + 'محله قفل است' appears
-  ZOOM_STREET: 18,    // Street zoom: 0% opacity (fully transparent fill, only borders visible)
+  ZOOM_FAR: 9,        // Far zoom: colored layer (strong visibility) + border highlight
+  ZOOM_MEDIUM: 12,    // Medium zoom: more visible (moderate opacity) + lock icon appears
+  ZOOM_CLOSE: 15,     // Closer zoom: still visible (good opacity) + 'محله قفل است' appears
+  ZOOM_STREET: 18,    // Street zoom: subtle (lower opacity, borders visible)
 
   /** Fill opacity milestones */
-  OPACITY_FAR: 0.20,    // 20% opacity fill (80% transparency)
-  OPACITY_MEDIUM: 0.10, // 10% opacity fill (90% transparency)
-  OPACITY_CLOSE: 0.04,  // 4% opacity fill (96% transparency)
-  OPACITY_STREET: 0.0,  // 0% opacity (fully transparent fill)
+  OPACITY_FAR: 0.50,    // 50% opacity fill - strong at far zoom
+  OPACITY_MEDIUM: 0.40, // 40% opacity fill - clearly visible at medium zoom
+  OPACITY_CLOSE: 0.30,  // 30% opacity fill - still distinct at close zoom
+  OPACITY_STREET: 0.10, // 10% opacity - subtle at street level
 
   /** District Fill & Border Colors */
-  COLOR_ACTIVE: '#3B82F6',         // Vibrant Blue for active/unlocked districts
-  COLOR_ACTIVE_BORDER: '#1D4ED8',  // Crisp deep Blue border highlight
-  COLOR_LOCKED: '#64748B',         // Sleek Slate Gray for locked districts
-  COLOR_LOCKED_BORDER: '#475569',  // Elegant Slate Gray border highlight
+  COLOR_ACTIVE: '#2563EB',         // Bright Blue for active/unlocked districts
+  COLOR_ACTIVE_BORDER: '#0EA5E9',  // Vivid Sky Blue border - highly visible
+  COLOR_LOCKED: '#94A3B8',         // Light Gray for locked districts (more visible than before)
+  COLOR_LOCKED_BORDER: '#334155',  // Dark Slate Gray border - strong contrast
 
-  /** Border widths */
-  BORDER_WIDTH_FAR: 1.5,
-  BORDER_WIDTH_MEDIUM: 2.0,
-  BORDER_WIDTH_STREET: 2.5,
+  /** Border widths - significantly increased for visibility */
+  BORDER_WIDTH_FAR: 3.5,     // 3.5px at far zoom (very noticeable)
+  BORDER_WIDTH_MEDIUM: 4.5,  // 4.5px at medium zoom (prominent)
+  BORDER_WIDTH_STREET: 5.0,  // 5.0px at street level (always visible)
+
+  /** Border opacity - high opacity at all levels for maximum visibility */
+  BORDER_OPACITY_FAR: 1.0,     // 100% opacity fill at far zoom
+  BORDER_OPACITY_MEDIUM: 1.0,  // 100% opacity at medium zoom
+  BORDER_OPACITY_CLOSE: 0.95,  // 95% opacity at close zoom
+  BORDER_OPACITY_STREET: 0.9,  // 90% opacity at street level
 
   /** Label typography & halo styling */
   LABEL_COLOR: '#FFFFFF',
