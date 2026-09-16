@@ -91,6 +91,8 @@ export interface GameMapProps {
   buildingZone?: BuildingZoneOverlay | null;
   /** Imperative camera fly-to target */
   flyToTarget?: { center: LatLng; zoom: number; duration?: number } | null;
+  /** Whether to show the district borders layer */
+  showDistricts?: boolean;
   style?: object;
 }
 

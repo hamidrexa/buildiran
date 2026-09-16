@@ -50,6 +50,7 @@ export const GameMap: React.FC<GameMapProps> = ({
   onAssetPress,
   buildingZone,
   flyToTarget,
+  showDistricts = true,
   style,
 }) => {
   const cameraRef = useRef<CameraRef>(null);
@@ -179,99 +180,101 @@ export const GameMap: React.FC<GameMapProps> = ({
         />
 
         {/* Tehran Districts Overlay */}
-        <GeoJSONSource id="tehran-districts-source" data={districtsGeoJSON as any}>
-          <Layer
-            id="tehran-districts-fill"
-            type="fill"
-            style={{
-              fillColor: [
-                'case',
-                ['==', ['get', 'isLocked'], true],
-                DISTRICT_MAP_CONFIG.COLOR_LOCKED,
-                DISTRICT_MAP_CONFIG.COLOR_ACTIVE,
-              ],
-              fillOpacity: [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                DISTRICT_MAP_CONFIG.ZOOM_FAR,
-                DISTRICT_MAP_CONFIG.OPACITY_FAR, // 10 -> 0.20
-                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
-                DISTRICT_MAP_CONFIG.OPACITY_MEDIUM, // 11.5 -> 0.10
-                DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
-                DISTRICT_MAP_CONFIG.OPACITY_CLOSE, // 13 -> 0.04
-                DISTRICT_MAP_CONFIG.ZOOM_STREET,
-                DISTRICT_MAP_CONFIG.OPACITY_STREET, // 14 -> 0.0
-              ],
-            } as any}
-          />
-          <Layer
-            id="tehran-districts-line"
-            type="line"
-            style={{
-              lineColor: [
-                'case',
-                ['==', ['get', 'isLocked'], true],
-                DISTRICT_MAP_CONFIG.COLOR_LOCKED_BORDER,
-                DISTRICT_MAP_CONFIG.COLOR_ACTIVE_BORDER,
-              ],
-              lineWidth: [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                DISTRICT_MAP_CONFIG.ZOOM_FAR,
-                DISTRICT_MAP_CONFIG.BORDER_WIDTH_FAR,
-                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
-                DISTRICT_MAP_CONFIG.BORDER_WIDTH_MEDIUM,
-                DISTRICT_MAP_CONFIG.ZOOM_STREET,
-                DISTRICT_MAP_CONFIG.BORDER_WIDTH_STREET,
-              ],
-              lineOpacity: [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                9, 0.7,
-                10, 0.9,
-                15, 0.85,
-              ],
-            } as any}
-          />
-          <Layer
-            id="tehran-districts-symbol"
-            type="symbol"
-            style={{
-              textField: [
-                'step',
-                ['zoom'],
-                ['get', 'labelFar'],
-                DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
-                ['get', 'labelMedium'],
-                DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
-                ['get', 'labelClose'],
-              ],
-              textColor: DISTRICT_MAP_CONFIG.LABEL_COLOR,
-              textSize: [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                9, DISTRICT_MAP_CONFIG.LABEL_SIZE_FAR,
-                11.5, DISTRICT_MAP_CONFIG.LABEL_SIZE_MEDIUM,
-                13, DISTRICT_MAP_CONFIG.LABEL_SIZE_CLOSE,
-              ],
-              textHaloColor: DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
-              textHaloWidth: DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
-              textOpacity: [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                9, 0.6,
-                10, 1.0,
-                13.2, 0.9,
-                DISTRICT_MAP_CONFIG.LABEL_FADE_ZOOM, 0.0,
-              ],
-            } as any}
-          />
-        </GeoJSONSource>
+        {showDistricts && (
+          <GeoJSONSource id="tehran-districts-source" data={districtsGeoJSON as any}>
+            <Layer
+              id="tehran-districts-fill"
+              type="fill"
+              style={{
+                fillColor: [
+                  'case',
+                  ['==', ['get', 'isLocked'], true],
+                  DISTRICT_MAP_CONFIG.COLOR_LOCKED,
+                  DISTRICT_MAP_CONFIG.COLOR_ACTIVE,
+                ],
+                fillOpacity: [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  DISTRICT_MAP_CONFIG.ZOOM_FAR,
+                  DISTRICT_MAP_CONFIG.OPACITY_FAR, // 10 -> 0.20
+                  DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                  DISTRICT_MAP_CONFIG.OPACITY_MEDIUM, // 11.5 -> 0.10
+                  DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
+                  DISTRICT_MAP_CONFIG.OPACITY_CLOSE, // 13 -> 0.04
+                  DISTRICT_MAP_CONFIG.ZOOM_STREET,
+                  DISTRICT_MAP_CONFIG.OPACITY_STREET, // 14 -> 0.0
+                ],
+              } as any}
+            />
+            <Layer
+              id="tehran-districts-line"
+              type="line"
+              style={{
+                lineColor: [
+                  'case',
+                  ['==', ['get', 'isLocked'], true],
+                  DISTRICT_MAP_CONFIG.COLOR_LOCKED_BORDER,
+                  DISTRICT_MAP_CONFIG.COLOR_ACTIVE_BORDER,
+                ],
+                lineWidth: [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  DISTRICT_MAP_CONFIG.ZOOM_FAR,
+                  DISTRICT_MAP_CONFIG.BORDER_WIDTH_FAR,
+                  DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                  DISTRICT_MAP_CONFIG.BORDER_WIDTH_MEDIUM,
+                  DISTRICT_MAP_CONFIG.ZOOM_STREET,
+                  DISTRICT_MAP_CONFIG.BORDER_WIDTH_STREET,
+                ],
+                lineOpacity: [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  9, 0.7,
+                  10, 0.9,
+                  15, 0.85,
+                ],
+              } as any}
+            />
+            <Layer
+              id="tehran-districts-symbol"
+              type="symbol"
+              style={{
+                textField: [
+                  'step',
+                  ['zoom'],
+                  ['get', 'labelFar'],
+                  DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                  ['get', 'labelMedium'],
+                  DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
+                  ['get', 'labelClose'],
+                ],
+                textColor: DISTRICT_MAP_CONFIG.LABEL_COLOR,
+                textSize: [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  9, DISTRICT_MAP_CONFIG.LABEL_SIZE_FAR,
+                  11.5, DISTRICT_MAP_CONFIG.LABEL_SIZE_MEDIUM,
+                  13, DISTRICT_MAP_CONFIG.LABEL_SIZE_CLOSE,
+                ],
+                textHaloColor: DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
+                textHaloWidth: DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
+                textOpacity: [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  9, 0.6,
+                  10, 1.0,
+                  13.2, 0.9,
+                  DISTRICT_MAP_CONFIG.LABEL_FADE_ZOOM, 0.0,
+                ],
+              } as any}
+            />
+          </GeoJSONSource>
+        )}
 
         {/* 5-Meter Building Zone Overlay */}
         {circleGeoJSON && (
