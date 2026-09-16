@@ -166,50 +166,50 @@ export const IRAN_BOUNDS = {
 } as const;
 
 export const TEHRAN_BOUNDS = {
-  northEast: { latitude: 35.850, longitude: 51.650 },
-  southWest: { latitude: 35.565, longitude: 51.050 },
+  northEast: { latitude: 35.85, longitude: 51.65 },
+  southWest: { latitude: 35.565, longitude: 51.05 },
 } as const;
 
 // ─── District Map Overlay Config (Zoom-Dependent Transparency & Colors) ───────
 
 export const DISTRICT_MAP_CONFIG = {
   /** Zoom milestones */
-  ZOOM_FAR: 9,        // Far zoom: colored layer (strong visibility) + border highlight
-  ZOOM_MEDIUM: 12,    // Medium zoom: more visible (moderate opacity) + lock icon appears
-  ZOOM_CLOSE: 15,     // Closer zoom: still visible (good opacity) + 'محله قفل است' appears
-  ZOOM_STREET: 18,    // Street zoom: subtle (lower opacity, borders visible)
+  ZOOM_FAR: 9, // Far zoom: colored layer (strong visibility) + border highlight
+  ZOOM_MEDIUM: 12, // Medium zoom: more visible (moderate opacity) + lock icon appears
+  ZOOM_CLOSE: 15, // Closer zoom: still visible (good opacity) + 'محله قفل است' appears
+  ZOOM_STREET: 18, // Street zoom: subtle (lower opacity, borders visible)
 
   /** Fill opacity milestones */
-  OPACITY_FAR: 0.50,    // 50% opacity fill - strong at far zoom
-  OPACITY_MEDIUM: 0.40, // 40% opacity fill - clearly visible at medium zoom
-  OPACITY_CLOSE: 0.30,  // 30% opacity fill - still distinct at close zoom
-  OPACITY_STREET: 0.10, // 10% opacity - subtle at street level
+  OPACITY_FAR: 0.5, // 50% opacity fill - strong at far zoom
+  OPACITY_MEDIUM: 0.4, // 40% opacity fill - clearly visible at medium zoom
+  OPACITY_CLOSE: 0.3, // 30% opacity fill - still distinct at close zoom
+  OPACITY_STREET: 0.1, // 10% opacity - subtle at street level
 
   /** District Fill & Border Colors */
-  COLOR_ACTIVE: '#2563EB',         // Bright Blue for active/unlocked districts
-  COLOR_ACTIVE_BORDER: '#0EA5E9',  // Vivid Sky Blue border - highly visible
-  COLOR_LOCKED: '#94A3B8',         // Light Gray for locked districts (more visible than before)
-  COLOR_LOCKED_BORDER: '#334155',  // Dark Slate Gray border - strong contrast
+  COLOR_ACTIVE: "#2563EB", // Bright Blue for active/unlocked districts
+  COLOR_ACTIVE_BORDER: "#0EA5E9", // Vivid Sky Blue border - highly visible
+  COLOR_LOCKED: "#94A3B8", // Light Gray for locked districts (more visible than before)
+  COLOR_LOCKED_BORDER: "#334155", // Dark Slate Gray border - strong contrast
 
   /** Border widths - significantly increased for visibility */
-  BORDER_WIDTH_FAR: 3.5,     // 3.5px at far zoom (very noticeable)
-  BORDER_WIDTH_MEDIUM: 4.5,  // 4.5px at medium zoom (prominent)
-  BORDER_WIDTH_STREET: 5.0,  // 5.0px at street level (always visible)
+  BORDER_WIDTH_FAR: 3.5, // 3.5px at far zoom (very noticeable)
+  BORDER_WIDTH_MEDIUM: 4.5, // 4.5px at medium zoom (prominent)
+  BORDER_WIDTH_STREET: 5.0, // 5.0px at street level (always visible)
 
   /** Border opacity - high opacity at all levels for maximum visibility */
-  BORDER_OPACITY_FAR: 1.0,     // 100% opacity fill at far zoom
-  BORDER_OPACITY_MEDIUM: 1.0,  // 100% opacity at medium zoom
-  BORDER_OPACITY_CLOSE: 0.95,  // 95% opacity at close zoom
-  BORDER_OPACITY_STREET: 0.9,  // 90% opacity at street level
+  BORDER_OPACITY_FAR: 1.0, // 100% opacity fill at far zoom
+  BORDER_OPACITY_MEDIUM: 1.0, // 100% opacity at medium zoom
+  BORDER_OPACITY_CLOSE: 0.95, // 95% opacity at close zoom
+  BORDER_OPACITY_STREET: 0.9, // 90% opacity at street level
 
   /** Label typography & halo styling */
-  LABEL_COLOR: '#FFFFFF',
-  LABEL_HALO_COLOR: 'rgba(0, 0, 0, 0.85)',
+  LABEL_COLOR: "#FFFFFF",
+  LABEL_HALO_COLOR: "rgba(0, 0, 0, 0.85)",
   LABEL_HALO_WIDTH: 1.5,
   LABEL_SIZE_FAR: 10,
   LABEL_SIZE_MEDIUM: 11.5,
   LABEL_SIZE_CLOSE: 12.5,
-  LABEL_FADE_ZOOM: 14,             // Labels gracefully disappear at street level
+  LABEL_FADE_ZOOM: 14, // Labels gracefully disappear at street level
 } as const;
 
 // ─── Economy: Power Tiers ─────────────────────────────────────────────────────
@@ -474,37 +474,37 @@ export const BUILD_MATERIAL_SLOTS: Record<
 // Used for Fast Build mode and general building metadata.
 
 export const BUILDING_CONFIG: Record<string, { cost: number; power: number }> =
-{
-  // ── Residential ──
-  house: { cost: 500, power: 2 },
-  villa: { cost: 3500, power: 5 },
-  tower: { cost: 8000, power: 12 },
-  // ── Commercial ──
-  shop: { cost: 1200, power: 3 },
-  cafe: { cost: 1500, power: 4 },
-  gym: { cost: 2000, power: 5 },
-  warehouse: { cost: 1000, power: 2 },
-  exchange: { cost: 4000, power: 8 },
-  mall: { cost: 5000, power: 10 },
-  restaurant: { cost: 3000, power: 6 },
-  market: { cost: 1500, power: 3 },
-  office: { cost: 2500, power: 6 },
-  // ── Industrial ──
-  farm: { cost: 800, power: 1 },
-  factory: { cost: 4500, power: 7 },
-  // ── Public ──
-  hospital: { cost: 6000, power: 15 },
-  park: { cost: 2000, power: 5 },
-  university: { cost: 7000, power: 18 },
-  bank: { cost: 4000, power: 9 },
-  // ── Legacy ──
-  barracks: { cost: 4000, power: 20 },
-  // ── v4: NPC Housing ──
-  // Note: actual cash cost is dynamic via compute_housing_cost RPC (area + floors).
-  // These are the minimum base costs (50m², 1 floor).
-  main_house: { cost: 1500, power: 3 },
-  resident_house: { cost: 2000, power: 2 },
-};
+  {
+    // ── Residential ──
+    house: { cost: 500, power: 2 },
+    villa: { cost: 3500, power: 5 },
+    tower: { cost: 8000, power: 12 },
+    // ── Commercial ──
+    shop: { cost: 1200, power: 3 },
+    cafe: { cost: 1500, power: 4 },
+    gym: { cost: 2000, power: 5 },
+    warehouse: { cost: 1000, power: 2 },
+    exchange: { cost: 4000, power: 8 },
+    mall: { cost: 5000, power: 10 },
+    restaurant: { cost: 3000, power: 6 },
+    market: { cost: 1500, power: 3 },
+    office: { cost: 2500, power: 6 },
+    // ── Industrial ──
+    farm: { cost: 800, power: 1 },
+    factory: { cost: 4500, power: 7 },
+    // ── Public ──
+    hospital: { cost: 6000, power: 15 },
+    park: { cost: 2000, power: 5 },
+    university: { cost: 7000, power: 18 },
+    bank: { cost: 4000, power: 9 },
+    // ── Legacy ──
+    barracks: { cost: 4000, power: 20 },
+    // ── v4: NPC Housing ──
+    // Note: actual cash cost is dynamic via compute_housing_cost RPC (area + floors).
+    // These are the minimum base costs (50m², 1 floor).
+    main_house: { cost: 1500, power: 3 },
+    resident_house: { cost: 2000, power: 2 },
+  };
 
 // ─── Institution Category Map ─────────────────────────────────────────────────
 // Maps every building type to its institution category.
