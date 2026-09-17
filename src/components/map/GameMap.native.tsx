@@ -33,7 +33,7 @@ import {
     type ViewStateChangeEvent,
 } from "@maplibre/maplibre-react-native";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { NativeSyntheticEvent, StyleSheet, Text, View } from "react-native";
+import { NativeSyntheticEvent, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
 
 export const GameMap: React.FC<GameMapProps> = ({
@@ -47,6 +47,7 @@ export const GameMap: React.FC<GameMapProps> = ({
   currentUserId,
   selectedAssetId,
   onAssetPress,
+  onPressNCC,
   buildingZone,
   flyToTarget,
   showDistricts = true,
@@ -143,6 +144,7 @@ export const GameMap: React.FC<GameMapProps> = ({
           labelClose,
           communityCenterLat: nb?.communityCenterLat,
           communityCenterLot: nb?.communityCenterLot,
+          neighborhoodId: nb?.id,
         },
       };
     });
@@ -289,12 +291,17 @@ export const GameMap: React.FC<GameMapProps> = ({
                 lngLat={[props.communityCenterLot, props.communityCenterLat]}
                 anchor="center"
               >
-                <View style={styles.communityCenterContainer}>
-                  <View style={styles.communityCenterBadge}>
-                    <Text style={styles.communityCenterBadgeText}>🏛️ مرکز محله</Text>
+                <TouchableOpacity
+                  onPress={() => props.neighborhoodId && onPressNCC?.(props.neighborhoodId)}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.communityCenterContainer}>
+                    <View style={styles.communityCenterBadge}>
+                      <Text style={styles.communityCenterBadgeText}>🏛️ مرکز محله</Text>
+                    </View>
+                    <View style={styles.communityCenterDot} />
                   </View>
-                  <View style={styles.communityCenterDot} />
-                </View>
+                </TouchableOpacity>
               </Marker>
             );
           }

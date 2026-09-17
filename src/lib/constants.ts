@@ -180,7 +180,7 @@ export const DISTRICT_MAP_CONFIG = {
   ZOOM_STREET: 18, // Street zoom: subtle (lower opacity, borders visible)
 
   /** Fill opacity milestones */
-  OPACITY_FAR: 0.5, // 50% opacity fill - strong at far zoom
+  OPACITY_FAR: 0.15, // 50% opacity fill - strong at far zoom
   OPACITY_MEDIUM: 0.4, // 40% opacity fill - clearly visible at medium zoom
   OPACITY_CLOSE: 0.3, // 30% opacity fill - still distinct at close zoom
   OPACITY_STREET: 0.1, // 10% opacity - subtle at street level
@@ -474,37 +474,37 @@ export const BUILD_MATERIAL_SLOTS: Record<
 // Used for Fast Build mode and general building metadata.
 
 export const BUILDING_CONFIG: Record<string, { cost: number; power: number }> =
-  {
-    // ── Residential ──
-    house: { cost: 500, power: 2 },
-    villa: { cost: 3500, power: 5 },
-    tower: { cost: 8000, power: 12 },
-    // ── Commercial ──
-    shop: { cost: 1200, power: 3 },
-    cafe: { cost: 1500, power: 4 },
-    gym: { cost: 2000, power: 5 },
-    warehouse: { cost: 1000, power: 2 },
-    exchange: { cost: 4000, power: 8 },
-    mall: { cost: 5000, power: 10 },
-    restaurant: { cost: 3000, power: 6 },
-    market: { cost: 1500, power: 3 },
-    office: { cost: 2500, power: 6 },
-    // ── Industrial ──
-    farm: { cost: 800, power: 1 },
-    factory: { cost: 4500, power: 7 },
-    // ── Public ──
-    hospital: { cost: 6000, power: 15 },
-    park: { cost: 2000, power: 5 },
-    university: { cost: 7000, power: 18 },
-    bank: { cost: 4000, power: 9 },
-    // ── Legacy ──
-    barracks: { cost: 4000, power: 20 },
-    // ── v4: NPC Housing ──
-    // Note: actual cash cost is dynamic via compute_housing_cost RPC (area + floors).
-    // These are the minimum base costs (50m², 1 floor).
-    main_house: { cost: 1500, power: 3 },
-    resident_house: { cost: 2000, power: 2 },
-  };
+{
+  // ── Residential ──
+  house: { cost: 500, power: 2 },
+  villa: { cost: 3500, power: 5 },
+  tower: { cost: 8000, power: 12 },
+  // ── Commercial ──
+  shop: { cost: 1200, power: 3 },
+  cafe: { cost: 1500, power: 4 },
+  gym: { cost: 2000, power: 5 },
+  warehouse: { cost: 1000, power: 2 },
+  exchange: { cost: 4000, power: 8 },
+  mall: { cost: 5000, power: 10 },
+  restaurant: { cost: 3000, power: 6 },
+  market: { cost: 1500, power: 3 },
+  office: { cost: 2500, power: 6 },
+  // ── Industrial ──
+  farm: { cost: 800, power: 1 },
+  factory: { cost: 4500, power: 7 },
+  // ── Public ──
+  hospital: { cost: 6000, power: 15 },
+  park: { cost: 2000, power: 5 },
+  university: { cost: 7000, power: 18 },
+  bank: { cost: 4000, power: 9 },
+  // ── Legacy ──
+  barracks: { cost: 4000, power: 20 },
+  // ── v4: NPC Housing ──
+  // Note: actual cash cost is dynamic via compute_housing_cost RPC (area + floors).
+  // These are the minimum base costs (50m², 1 floor).
+  main_house: { cost: 1500, power: 3 },
+  resident_house: { cost: 2000, power: 2 },
+};
 
 // ─── Institution Category Map ─────────────────────────────────────────────────
 // Maps every building type to its institution category.

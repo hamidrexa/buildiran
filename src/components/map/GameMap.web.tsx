@@ -48,6 +48,7 @@ export const GameMap: React.FC<GameMapProps> = ({
   currentUserId,
   selectedAssetId,
   onAssetPress,
+  onPressNCC,
   buildingZone,
   flyToTarget,
   showDistricts = true,
@@ -149,6 +150,7 @@ export const GameMap: React.FC<GameMapProps> = ({
           labelClose,
           communityCenterLat: nb?.communityCenterLat,
           communityCenterLot: nb?.communityCenterLot,
+          neighborhoodId: nb?.id,
         },
       };
     });
@@ -325,13 +327,20 @@ export const GameMap: React.FC<GameMapProps> = ({
                 longitude={props.communityCenterLot}
                 latitude={props.communityCenterLat}
                 anchor="center"
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation();
+                  if (props.neighborhoodId && onPressNCC) {
+                    onPressNCC(props.neighborhoodId);
+                  }
+                }}
+                style={{ cursor: "pointer", pointerEvents: "auto" }}
               >
                 <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    pointerEvents: "none",
+                    pointerEvents: "auto",
                   }}
                 >
                   <div

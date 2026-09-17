@@ -9,7 +9,7 @@ import { Colors, Typography } from '@/theme';
 
 type TextVariant = 'display' | 'heading' | 'title' | 'body' | 'caption' | 'label';
 type TextWeight = 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold';
-type TextColor = 'primary' | 'secondary' | 'muted' | 'brand' | 'inverse';
+type TextColor = 'primary' | 'secondary' | 'muted' | 'brand' | 'inverse' | 'error';
 
 interface Props extends TextProps {
   variant?: TextVariant;
@@ -33,6 +33,7 @@ const colorMap: Record<TextColor, string> = {
   muted: Colors.text.muted,
   brand: Colors.text.brand,
   inverse: Colors.text.inverse,
+  error: Colors.semantic.error,
 };
 
 // Map weight to specific font family names that match the loaded fonts

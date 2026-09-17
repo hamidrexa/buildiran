@@ -117,6 +117,24 @@ export interface Neighborhood {
   communityCenterLat?: number | null;
   communityCenterLot?: number | null;
   communityCenterClearanceToBoundary?: number | null;
+  // NCC fields
+  areaSqkm?: number | null;
+  councilMemberCapacity?: number;
+  minCouncilPopularity?: number;
+  councilChairId?: string | null;
+  lastChairSelectionAt?: string | null;
+}
+
+export interface CouncilMember {
+  neighborhoodId: string;
+  playerId: string;
+  joinedAt: string;
+  // Joined profile data
+  username?: string;
+  avatarColor?: string;
+  avatarUrl?: string | null;
+  power?: number;
+  popularity?: number;
 }
 
 export interface NeighborhoodEditor {

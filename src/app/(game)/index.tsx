@@ -3,6 +3,7 @@ import { BuildingPlacementHUD } from "@/components/game/BuildingPlacementHUD";
 import { BuildModal } from "@/components/game/BuildModal";
 import { HUD } from "@/components/game/HUD";
 import { LocationActionModal } from "@/components/game/LocationActionModal";
+import { NCCDashboardModal } from "@/components/game/NCCDashboardModal";
 import { NeighborhoodEditorModal } from "@/components/game/NeighborhoodEditorModal";
 import { NeighborhoodEvaluationModal } from "@/components/game/NeighborhoodEvaluationModal";
 import { GameMap } from "@/components/map/GameMap";
@@ -41,6 +42,8 @@ export default function MapScreen() {
   const [evalModalVisible, setEvalModalVisible] = useState(false);
   const [editorModalVisible, setEditorModalVisible] = useState(false);
   const [buildModalVisible, setBuildModalVisible] = useState(false);
+  const [nccModalVisible, setNccModalVisible] = useState(false);
+  const [selectedNccNeighborhoodId, setSelectedNccNeighborhoodId] = useState<string | null>(null);
 
   // ─── 5-Meter Building Zone & Placement States ─────────────────────────────
   const [isPlacementMode, setIsPlacementMode] = useState(false);
@@ -184,6 +187,13 @@ export default function MapScreen() {
     GameAudio.playTap();
   }, [isPlacementMode]);
 
+  const handlePressNCC = useCallback((neighborhoodId: string) => {
+    if (isPlacementMode) return;
+    setSelectedNccNeighborhoodId(neighborhoodId);
+    setNccModalVisible(true);
+    GameAudio.playTap();
+  }, [isPlacementMode]);
+
   const handleRegionChange = useCallback(
     (viewport: Parameters<typeof setViewport>[0]) => {
       setViewport(viewport);
@@ -222,6 +232,7 @@ export default function MapScreen() {
         currentUserId={player?.id ?? null}
         selectedAssetId={activeSelectedAsset?.id ?? null}
         onAssetPress={handleAssetPress}
+        onPressNCC={handlePressNCC}
         onMapPress={handleMapPress}
         onRegionChange={handleRegionChange}
         buildingZone={activeBuildingZone}
@@ -286,6 +297,13 @@ export default function MapScreen() {
         asset={activeSelectedAsset}
         visible={!!activeSelectedAsset}
         onClose={handleAssetDetailClose}
+      />
+
+      {/* NCC Dashboard Modal */}
+      <NCCDashboardModal
+        visible={nccModalVisible}
+        neighborhood={neighborhoods.find(n => n.id === selectedNccNeighborhoodId) || null}
+        onClose={() => setNccModalVisible(false)}
       />
     </View>
   );

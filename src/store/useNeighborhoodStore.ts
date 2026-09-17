@@ -11,6 +11,7 @@ import type {
   CustomBuildingType,
   ProposalStatus,
   BuildingCategory,
+  CouncilMember,
 } from '@/types/game.types';
 
 // Default Iranian neighborhoods fallback if Supabase table is not yet seeded
@@ -92,11 +93,15 @@ interface NeighborhoodState {
   currentNeighborhood: Neighborhood | null;
   approvedCustomTypes: CustomBuildingType[];
   pendingProposals: CustomBuildingType[];
+  councilMembers: CouncilMember[];
   isLoading: boolean;
 
   // Actions
   fetchNeighborhoods: () => Promise<void>;
   setCurrentNeighborhood: (neighborhood: Neighborhood) => void;
+  fetchCouncilMembers: (neighborhoodId: string) => Promise<void>;
+  requestCouncilMembership: (neighborhoodId: string) => Promise<any>;
+  triggerChairSelection: (neighborhoodId: string) => Promise<any>;
   fetchCustomBuildings: (neighborhoodId?: string) => Promise<void>;
   fetchPendingProposals: (neighborhoodId: string) => Promise<void>;
   
@@ -156,6 +161,7 @@ export const useNeighborhoodStore = create<NeighborhoodState>()((set, get) => ({
   currentNeighborhood: DEFAULT_NEIGHBORHOODS[0],
   approvedCustomTypes: [],
   pendingProposals: [],
+  councilMembers: [],
   isLoading: false,
 
   fetchNeighborhoods: async () => {
@@ -178,6 +184,11 @@ export const useNeighborhoodStore = create<NeighborhoodState>()((set, get) => ({
           communityCenterLat: n.community_center_lat,
           communityCenterLot: n.community_center_lot,
           communityCenterClearanceToBoundary: n.community_center_clearance_to_boundary,
+          areaSqkm: n.area_sqkm,
+          councilMemberCapacity: n.council_member_capacity ?? 5,
+          minCouncilPopularity: n.min_council_popularity ?? 50,
+          councilChairId: n.council_chair_id,
+          lastChairSelectionAt: n.last_chair_selection_at,
         }));
         set({ neighborhoods: list });
         if (!get().currentNeighborhood) {
@@ -192,6 +203,72 @@ export const useNeighborhoodStore = create<NeighborhoodState>()((set, get) => ({
   setCurrentNeighborhood: (neighborhood: Neighborhood) => {
     set({ currentNeighborhood: neighborhood });
     get().fetchCustomBuildings(neighborhood.id);
+    get().fetchCouncilMembers(neighborhood.id);
+  },
+
+  fetchCouncilMembers: async (neighborhoodId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('neighborhood_council_members')
+        .select(`
+          neighborhood_id,
+          player_id,
+          joined_at,
+          profiles:player_id (username, avatar_color, avatar_url, power, popularity)
+        `)
+        .eq('neighborhood_id', neighborhoodId);
+      
+      if (!error && data) {
+        const members: CouncilMember[] = data.map((row: any) => ({
+          neighborhoodId: row.neighborhood_id,
+          playerId: row.player_id,
+          joinedAt: row.joined_at,
+          username: row.profiles?.username,
+          avatarColor: row.profiles?.avatar_color,
+          avatarUrl: row.profiles?.avatar_url,
+          power: row.profiles?.power,
+          popularity: row.profiles?.popularity,
+        }));
+        set({ councilMembers: members });
+      }
+    } catch (err) {
+      console.warn('[NeighborhoodStore] fetchCouncilMembers err:', err);
+    }
+  },
+
+  requestCouncilMembership: async (neighborhoodId: string) => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.rpc('request_council_membership', {
+        p_neighborhood_id: neighborhoodId,
+      });
+      if (error) throw error;
+      await get().fetchCouncilMembers(neighborhoodId);
+      await get().fetchNeighborhoods(); // to potentially refresh chair_id
+      return data;
+    } catch (err) {
+      console.warn('[NeighborhoodStore] requestCouncilMembership err:', err);
+      return { success: false, error: 'network_error' };
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  triggerChairSelection: async (neighborhoodId: string) => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.rpc('trigger_chair_selection', {
+        p_neighborhood_id: neighborhoodId,
+      });
+      if (error) throw error;
+      await get().fetchNeighborhoods(); // refresh chair_id and last_chair_selection_at
+      return data;
+    } catch (err) {
+      console.warn('[NeighborhoodStore] triggerChairSelection err:', err);
+      return { success: false, error: 'network_error' };
+    } finally {
+      set({ isLoading: false });
+    }
   },
 
   fetchCustomBuildings: async (neighborhoodId?: string) => {

@@ -87,6 +87,8 @@ export interface GameMapProps {
   selectedAssetId?: string | null;
   /** Called when user taps/clicks an asset marker */
   onAssetPress?: (asset: Asset) => void;
+  /** Called when user taps/clicks an NCC marker */
+  onPressNCC?: (neighborhoodId: string) => void;
   /** Active 5-meter building zone overlay */
   buildingZone?: BuildingZoneOverlay | null;
   /** Imperative camera fly-to target */
