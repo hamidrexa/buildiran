@@ -4,21 +4,21 @@
  * + Neighborhood indicator & Neighborhood Editor Panel trigger for high-power players.
  */
 
-import { Text } from '@/components/ui/Text';
-import { GameAudio } from '@/lib/audio';
-import { getPlayerTier } from '@/lib/constants';
-import { useStatBarFill } from '@/lib/effects';
-import { useEconomyStore } from '@/store/useEconomyStore';
-import { useGameStore } from '@/store/useGameStore';
-import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
-import { useNpcStore } from '@/store/useNpcStore';
-import { usePlayerStore } from '@/store/usePlayerStore';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import Animated from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NeighborhoodEditorModal } from './NeighborhoodEditorModal';
+import { Text } from "@/components/ui/Text";
+import { GameAudio } from "@/lib/audio";
+import { getPlayerTier } from "@/lib/constants";
+import { useStatBarFill } from "@/lib/effects";
+import { useEconomyStore } from "@/store/useEconomyStore";
+import { useGameStore } from "@/store/useGameStore";
+import { useNeighborhoodStore } from "@/store/useNeighborhoodStore";
+import { useNpcStore } from "@/store/useNpcStore";
+import { usePlayerStore } from "@/store/usePlayerStore";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useState } from "react";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
+import Animated from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NeighborhoodEditorModal } from "./NeighborhoodEditorModal";
 
 // ─── 4-Factor Stat Bar ────────────────────────────────────────────────────────
 
@@ -35,25 +35,35 @@ const StatBar: React.FC<{
 
   return (
     <View style={statStyles.statRow}>
-      <Text variant="body" color="primary">{icon}</Text>
+      <Text variant="body" color="primary">
+        {icon}
+      </Text>
       <View style={statStyles.statBarBg}>
-        <Animated.View style={[statStyles.statBarFill, { backgroundColor: color }, barStyle]} />
+        <Animated.View
+          style={[statStyles.statBarFill, { backgroundColor: color }, barStyle]}
+        />
       </View>
-      <Text variant="caption" color="primary">{value.toLocaleString('fa-IR')}</Text>
+      <Text variant="caption" color="primary">
+        {value.toLocaleString("fa-IR")}
+      </Text>
     </View>
   );
 };
 
 // ─── Resource Chip ────────────────────────────────────────────────────────────
 
-const ResourceChip: React.FC<{ icon: string; value: number; color?: string }> = ({
-  icon,
-  value,
-  color = '#FFFFFF',
-}) => (
+const ResourceChip: React.FC<{
+  icon: string;
+  value: number;
+  color?: string;
+}> = ({ icon, value, color = "#FFFFFF" }) => (
   <View style={chipStyles.chip}>
-    <Text variant="body" color="primary">{icon}</Text>
-    <Text variant="caption" color="primary">{value.toLocaleString('fa-IR')}</Text>
+    <Text variant="body" color="primary">
+      {icon}
+    </Text>
+    <Text variant="caption" color="primary">
+      {value.toLocaleString("fa-IR")}
+    </Text>
   </View>
 );
 
@@ -64,9 +74,13 @@ export const HUD: React.FC = () => {
   const player = usePlayerStore((s) => s.player);
   const selectedTileId = useGameStore((s) => s.selectedTileId);
   const tiles = useGameStore((s) => s.tiles);
-  const currentNeighborhood = useNeighborhoodStore((s) => s.currentNeighborhood);
+  const currentNeighborhood = useNeighborhoodStore(
+    (s) => s.currentNeighborhood,
+  );
   const activeBoosts = useEconomyStore((s) => s.activeBoosts);
-  const activeNpcCount = useNpcStore((s) => Object.values(s.npcs).filter((n) => n.isWorking).length);
+  const activeNpcCount = useNpcStore(
+    (s) => Object.values(s.npcs).filter((n) => n.isWorking).length,
+  );
 
   const [showEditorModal, setShowEditorModal] = useState(false);
 
@@ -85,31 +99,6 @@ export const HUD: React.FC = () => {
 
   return (
     <>
-      {/* Top: Cash + Resources */}
-      <View style={[styles.topBar, { top: insets.top + 8 }]}>
-        <LinearGradient
-          colors={['rgba(8,12,26,0.92)', 'rgba(13,21,51,0.88)']}
-          style={styles.topBarInner}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-
-          {/* Resources */}
-          <View style={styles.resourceChips}>
-            <ResourceChip icon="💰" value={player.cash ?? 0} color="#FFD700" />
-            <ResourceChip icon="⚔️" value={player.power ?? 0} color="#A78BFA" />
-            {activeNpcCount > 0 && (
-              <ResourceChip icon="👷" value={activeNpcCount} color="#10B981" />
-            )}
-            {hasAnyBoost && (
-              <View style={styles.boostChip}>
-                <Text variant="caption" weight="bold" style={{ color: '#FB923C' }}>🔥 ۲×</Text>
-              </View>
-            )}
-          </View>
-        </LinearGradient>
-      </View>
-
       {/* Sub-bar: Neighborhood & Editor Panel Access */}
       <View style={[styles.subBar, { top: insets.top + 68 }]}>
         <TouchableOpacity
@@ -121,7 +110,7 @@ export const HUD: React.FC = () => {
           activeOpacity={0.8}
         >
           <Text variant="body" color="primary">
-            📍 {currentNeighborhood?.nameFa ?? 'محله بازی'}
+            📍 {currentNeighborhood?.nameFa ?? "محله بازی"}
           </Text>
         </TouchableOpacity>
 
@@ -135,12 +124,14 @@ export const HUD: React.FC = () => {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#F59E0B', '#D97706']}
+              colors={["#F59E0B", "#D97706"]}
               style={styles.editorPillGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text variant="body" weight="semibold" color="inverse">🎖️ ویرایشگر محله</Text>
+              <Text variant="body" weight="semibold" color="inverse">
+                🎖️ ویرایشگر محله
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -149,13 +140,41 @@ export const HUD: React.FC = () => {
       {/* Right side: 4-Factor Stats Panel */}
       <View style={[styles.statsPanel, { top: insets.top + 112 }]}>
         <LinearGradient
-          colors={['rgba(8,12,26,0.9)', 'rgba(13,21,51,0.85)']}
+          colors={["rgba(8,12,26,0.9)", "rgba(13,21,51,0.85)"]}
           style={styles.statsPanelInner}
         >
-          <StatBar icon="⚔️" label="قدرت" value={player.power ?? 0} maxValue={500} color="#A78BFA" delay={0} />
-          <StatBar icon="💰" label="ثروت" value={Math.min(player.wealth ?? 0, 999999)} maxValue={100000} color="#FFD700" delay={100} />
-          <StatBar icon="🔥" label="فعالیت" value={player.activity ?? 0} maxValue={100} color="#FB923C" delay={200} />
-          <StatBar icon="⭐" label="محبوبیت" value={player.popularity ?? 0} maxValue={200} color="#34D399" delay={300} />
+          <StatBar
+            icon="⚔️"
+            label="قدرت"
+            value={player.power ?? 0}
+            maxValue={500}
+            color="#A78BFA"
+            delay={0}
+          />
+          <StatBar
+            icon="💰"
+            label="ثروت"
+            value={Math.min(player.wealth ?? 0, 999999)}
+            maxValue={100000}
+            color="#FFD700"
+            delay={100}
+          />
+          <StatBar
+            icon="🔥"
+            label="فعالیت"
+            value={player.activity ?? 0}
+            maxValue={100}
+            color="#FB923C"
+            delay={200}
+          />
+          <StatBar
+            icon="⭐"
+            label="محبوبیت"
+            value={player.popularity ?? 0}
+            maxValue={200}
+            color="#34D399"
+            delay={300}
+          />
         </LinearGradient>
       </View>
 
@@ -163,17 +182,19 @@ export const HUD: React.FC = () => {
       {selectedTile && (
         <View style={[styles.tilePanel, { bottom: insets.bottom + 76 }]}>
           <LinearGradient
-            colors={['rgba(8,12,26,0.95)', 'rgba(13,21,51,0.9)']}
+            colors={["rgba(8,12,26,0.95)", "rgba(13,21,51,0.9)"]}
             style={styles.tilePanelInner}
           >
             <Text variant="body" color="primary">
-              {selectedTile.status === 'available'
-                ? '🟢 زمین آزاد — ضربه بزنید تا بسازید'
-                : selectedTile.status === 'owned'
-                  ? '🟡 قلمرو شما'
-                  : '🔴 قلمرو بازیکن دیگر'}
+              {selectedTile.status === "available"
+                ? "🟢 زمین آزاد — ضربه بزنید تا بسازید"
+                : selectedTile.status === "owned"
+                  ? "🟡 قلمرو شما"
+                  : "🔴 قلمرو بازیکن دیگر"}
             </Text>
-            <Text variant="caption" color="secondary" numberOfLines={1}>{selectedTile.id}</Text>
+            <Text variant="caption" color="secondary" numberOfLines={1}>
+              {selectedTile.id}
+            </Text>
           </LinearGradient>
         </View>
       )}
@@ -191,66 +212,66 @@ export const HUD: React.FC = () => {
 
 const styles = StyleSheet.create({
   topBar: {
-    position: 'absolute',
+    position: "absolute",
     left: 12,
     right: 12,
     zIndex: 10,
   },
   topBarInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.3)',
-    shadowColor: '#6C63FF',
+    borderColor: "rgba(108,99,255,0.3)",
+    shadowColor: "#6C63FF",
     shadowRadius: 12,
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
-  playerBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  playerBadge: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
   avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: "rgba(255,255,255,0.3)",
   },
-  avatarText: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  avatarText: { fontSize: 16, fontWeight: "800", color: "#fff" },
   playerInfo: { flex: 1 },
-  playerName: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
-  playerLevel: { color: 'rgba(255,255,255,0.5)', fontSize: 10 },
-  resourceChips: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  playerName: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
+  playerLevel: { color: "rgba(255,255,255,0.5)", fontSize: 10 },
+  resourceChips: { flexDirection: "row", gap: 12, alignItems: "center" },
 
   subBar: {
-    position: 'absolute',
+    position: "absolute",
     left: 12,
     right: 12,
     zIndex: 9,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   neighborhoodPill: {
-    backgroundColor: 'rgba(8,12,26,0.85)',
+    backgroundColor: "rgba(8,12,26,0.85)",
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.25)',
+    borderColor: "rgba(108,99,255,0.25)",
   },
-  neighborhoodText: { color: '#CBD5E1', fontSize: 11, fontWeight: '700' },
+  neighborhoodText: { color: "#CBD5E1", fontSize: 11, fontWeight: "700" },
 
   editorPill: {
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     elevation: 6,
-    shadowColor: '#F59E0B',
+    shadowColor: "#F59E0B",
     shadowOpacity: 0.4,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -259,35 +280,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  editorPillText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+  editorPillText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
 
   // Tier badge under player name
   tierBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
-    backgroundColor: 'rgba(167,139,250,0.12)',
+    backgroundColor: "rgba(167,139,250,0.12)",
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.25)',
-    alignSelf: 'flex-start',
+    borderColor: "rgba(167,139,250,0.25)",
+    alignSelf: "flex-start",
     marginTop: 2,
   },
 
   // 2× boost active indicator chip
   boostChip: {
-    backgroundColor: 'rgba(251,146,60,0.15)',
+    backgroundColor: "rgba(251,146,60,0.15)",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: 'rgba(251,146,60,0.4)',
+    borderColor: "rgba(251,146,60,0.4)",
   },
 
   statsPanel: {
-    position: 'absolute',
+    position: "absolute",
     right: 12,
     zIndex: 10,
     width: 135,
@@ -297,8 +318,8 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.2)',
-    shadowColor: '#000',
+    borderColor: "rgba(108,99,255,0.2)",
+    shadowColor: "#000",
     shadowRadius: 8,
     shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 2 },
@@ -306,7 +327,7 @@ const styles = StyleSheet.create({
   },
 
   tilePanel: {
-    position: 'absolute',
+    position: "absolute",
     left: 12,
     right: 12,
     zIndex: 10,
@@ -316,30 +337,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.3)',
+    borderColor: "rgba(108,99,255,0.3)",
     gap: 4,
   },
-  tileStatus: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-  tileId: { color: 'rgba(255,255,255,0.4)', fontSize: 11 },
+  tileStatus: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  tileId: { color: "rgba(255,255,255,0.4)", fontSize: 11 },
 });
 
-
 const statStyles = StyleSheet.create({
-  statRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   statIcon: { fontSize: 12 },
   statBarBg: {
     flex: 1,
     height: 5,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  statBarFill: { height: '100%', borderRadius: 3 },
-  statValue: { color: '#FFFFFF', fontSize: 10, fontWeight: '600', minWidth: 26, textAlign: 'right' },
+  statBarFill: { height: "100%", borderRadius: 3 },
+  statValue: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "600",
+    minWidth: 26,
+    textAlign: "right",
+  },
 });
 
 const chipStyles = StyleSheet.create({
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  chip: { flexDirection: "row", alignItems: "center", gap: 4 },
   icon: { fontSize: 15 },
-  value: { fontSize: 13, fontWeight: '700' },
+  value: { fontSize: 13, fontWeight: "700" },
 });

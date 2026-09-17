@@ -11,31 +11,30 @@
 
 import { BuildingMarker } from "@/components/game/BuildingMarker";
 import {
-  DISTRICT_MAP_CONFIG,
-  MAP_DEFAULT_CENTER,
-  MAP_DEFAULT_ZOOM,
-  MAP_MAX_ZOOM,
-  MAP_MIN_ZOOM,
-  MAP_STYLE,
-  TEHRAN_BOUNDS,
+    DISTRICT_MAP_CONFIG,
+    MAP_DEFAULT_CENTER,
+    MAP_DEFAULT_ZOOM,
+    MAP_MIN_ZOOM,
+    MAP_STYLE,
+    TEHRAN_BOUNDS
 } from "@/lib/constants";
 import type { LatLng } from "@/types/game.types";
 import type { GameMapProps } from "@/types/map.types";
 import { createGeoJSONCircle } from "@/utils/geo";
-import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
 import {
-  Camera,
-  GeoJSONSource,
-  Layer,
-  Map,
-  Marker,
-  type CameraRef,
-  type PressEvent,
-  type PressEventWithFeatures,
-  type ViewStateChangeEvent,
+    Camera,
+    GeoJSONSource,
+    Layer,
+    Map,
+    Marker,
+    type CameraRef,
+    type PressEvent,
+    type PressEventWithFeatures,
+    type ViewStateChangeEvent,
 } from "@maplibre/maplibre-react-native";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { NativeSyntheticEvent, StyleSheet, Text, View } from "react-native";
+import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
 
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
@@ -142,6 +141,8 @@ export const GameMap: React.FC<GameMapProps> = ({
           labelFar,
           labelMedium,
           labelClose,
+          communityCenterLat: nb?.communityCenterLat,
+          communityCenterLot: nb?.communityCenterLot,
         },
       };
     });
@@ -204,6 +205,8 @@ export const GameMap: React.FC<GameMapProps> = ({
                   DISTRICT_MAP_CONFIG.OPACITY_CLOSE, // 13 -> 0.04
                   DISTRICT_MAP_CONFIG.ZOOM_STREET,
                   DISTRICT_MAP_CONFIG.OPACITY_STREET, // 14 -> 0.0
+                  17,
+                  0.0, // 100% transparent at zoom 17
                 ],
               } as any}
             />
@@ -275,6 +278,28 @@ export const GameMap: React.FC<GameMapProps> = ({
             />
           </GeoJSONSource>
         )}
+
+        {/* Community Center Markers for Active Districts */}
+        {showDistricts && districtsGeoJSON.features.map((feature: any) => {
+          const props = feature.properties;
+          if (!props.isLocked && props.communityCenterLat && props.communityCenterLot) {
+            return (
+              <Marker
+                key={`community-center-${props.name}`}
+                lngLat={[props.communityCenterLot, props.communityCenterLat]}
+                anchor="center"
+              >
+                <View style={styles.communityCenterContainer}>
+                  <View style={styles.communityCenterBadge}>
+                    <Text style={styles.communityCenterBadgeText}>🏛️ مرکز محله</Text>
+                  </View>
+                  <View style={styles.communityCenterDot} />
+                </View>
+              </Marker>
+            );
+          }
+          return null;
+        })}
 
         {/* 5-Meter Building Zone Overlay */}
         {circleGeoJSON && (
@@ -372,6 +397,31 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  communityCenterContainer: {
+    alignItems: 'center',
+  },
+  communityCenterBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#10B981',
+    marginBottom: 4,
+  },
+  communityCenterBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  communityCenterDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
     borderWidth: 2,
     borderColor: '#fff',
   },

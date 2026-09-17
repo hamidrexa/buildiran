@@ -187,7 +187,7 @@ export const DISTRICT_MAP_CONFIG = {
 
   /** District Fill & Border Colors */
   COLOR_ACTIVE: "#2563EB", // Bright Blue for active/unlocked districts
-  COLOR_ACTIVE_BORDER: "#0EA5E9", // Vivid Sky Blue border - highly visible
+  COLOR_ACTIVE_BORDER: "#10B981", // Vivid Green border - highly visible
   COLOR_LOCKED: "#94A3B8", // Light Gray for locked districts (more visible than before)
   COLOR_LOCKED_BORDER: "#334155", // Dark Slate Gray border - strong contrast
 
