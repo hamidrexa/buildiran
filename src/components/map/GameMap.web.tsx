@@ -233,8 +233,6 @@ export const GameMap: React.FC<GameMapProps> = ({
                   DISTRICT_MAP_CONFIG.OPACITY_CLOSE,
                   DISTRICT_MAP_CONFIG.ZOOM_STREET,
                   DISTRICT_MAP_CONFIG.OPACITY_STREET,
-                  17,
-                  0.0,
                 ],
               }}
             />

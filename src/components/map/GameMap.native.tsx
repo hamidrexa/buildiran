@@ -207,8 +207,6 @@ export const GameMap: React.FC<GameMapProps> = ({
                   DISTRICT_MAP_CONFIG.OPACITY_CLOSE, // 13 -> 0.04
                   DISTRICT_MAP_CONFIG.ZOOM_STREET,
                   DISTRICT_MAP_CONFIG.OPACITY_STREET, // 14 -> 0.0
-                  17,
-                  0.0, // 100% transparent at zoom 17
                 ],
               } as any}
             />
