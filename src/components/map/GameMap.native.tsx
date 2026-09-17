@@ -11,29 +11,35 @@
 
 import { BuildingMarker } from "@/components/game/BuildingMarker";
 import {
-    DISTRICT_MAP_CONFIG,
-    MAP_DEFAULT_CENTER,
-    MAP_DEFAULT_ZOOM,
-    MAP_MIN_ZOOM,
-    MAP_STYLE,
-    TEHRAN_BOUNDS
+  DISTRICT_MAP_CONFIG,
+  MAP_DEFAULT_CENTER,
+  MAP_DEFAULT_ZOOM,
+  MAP_MIN_ZOOM,
+  MAP_STYLE,
+  TEHRAN_BOUNDS,
 } from "@/lib/constants";
 import type { LatLng } from "@/types/game.types";
 import type { GameMapProps } from "@/types/map.types";
 import { createGeoJSONCircle } from "@/utils/geo";
 import {
-    Camera,
-    GeoJSONSource,
-    Layer,
-    Map,
-    Marker,
-    type CameraRef,
-    type PressEvent,
-    type PressEventWithFeatures,
-    type ViewStateChangeEvent,
+  Camera,
+  GeoJSONSource,
+  Layer,
+  Map,
+  Marker,
+  type CameraRef,
+  type PressEvent,
+  type PressEventWithFeatures,
+  type ViewStateChangeEvent,
 } from "@maplibre/maplibre-react-native";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { NativeSyntheticEvent, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  NativeSyntheticEvent,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
 
 export const GameMap: React.FC<GameMapProps> = ({
@@ -97,14 +103,18 @@ export const GameMap: React.FC<GameMapProps> = ({
   // GeoJSON 5-meter circle
   const circleGeoJSON = useMemo(() => {
     if (!buildingZone) return null;
-    return createGeoJSONCircle(buildingZone.center, buildingZone.radiusMeters, 64);
+    return createGeoJSONCircle(
+      buildingZone.center,
+      buildingZone.radiusMeters,
+      64,
+    );
   }, [buildingZone]);
 
   const zoneColor = useMemo(() => {
-    if (!buildingZone) return '#6C63FF';
-    if (buildingZone.status === 'valid') return '#10B981';
-    if (buildingZone.status === 'invalid') return '#EF4444';
-    return '#F59E0B';
+    if (!buildingZone) return "#6C63FF";
+    if (buildingZone.status === "valid") return "#10B981";
+    if (buildingZone.status === "invalid") return "#EF4444";
+    return "#F59E0B";
   }, [buildingZone]);
 
   const districtsGeoJSON = useMemo(() => {
@@ -121,18 +131,19 @@ export const GameMap: React.FC<GameMapProps> = ({
     }
 
     const features = tehranDistrictsRaw.features.map((f: any) => {
-      const name = f.properties?.name || '';
+      const name = f.properties?.name || "";
       const areaNumber = f.properties?.area_number;
       const nb =
-        neighborhoodMap[`${name}_${areaNumber}`] ||
-        neighborhoodMap[name];
+        neighborhoodMap[`${name}_${areaNumber}`] || neighborhoodMap[name];
 
       // Rely strictly on Supabase neighborhoods table isLocked flag (default true if not yet found)
       const isLocked = nb ? (nb.isLocked ?? true) : true;
 
       const labelFar = name;
       const labelMedium = isLocked ? `🔒 ${name}` : name;
-      const labelClose = isLocked ? `🔒 ${name}\nمحله قفل است` : `${name}\n(محله فعال)`;
+      const labelClose = isLocked
+        ? `🔒 ${name}\nمحله قفل است`
+        : `${name}\n(محله فعال)`;
 
       return {
         ...f,
@@ -184,127 +195,155 @@ export const GameMap: React.FC<GameMapProps> = ({
 
         {/* Tehran Districts Overlay */}
         {showDistricts && (
-          <GeoJSONSource id="tehran-districts-source" data={districtsGeoJSON as any}>
+          <GeoJSONSource
+            id="tehran-districts-source"
+            data={districtsGeoJSON as any}
+          >
             <Layer
               id="tehran-districts-fill"
               type="fill"
-              style={{
-                fillColor: [
-                  'case',
-                  ['==', ['get', 'isLocked'], true],
-                  DISTRICT_MAP_CONFIG.COLOR_LOCKED,
-                  DISTRICT_MAP_CONFIG.COLOR_ACTIVE,
-                ],
-                fillOpacity: [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  DISTRICT_MAP_CONFIG.ZOOM_FAR,
-                  DISTRICT_MAP_CONFIG.OPACITY_FAR, // 10 -> 0.20
-                  DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
-                  DISTRICT_MAP_CONFIG.OPACITY_MEDIUM, // 11.5 -> 0.10
-                  DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
-                  DISTRICT_MAP_CONFIG.OPACITY_CLOSE, // 13 -> 0.04
-                  DISTRICT_MAP_CONFIG.ZOOM_STREET,
-                  DISTRICT_MAP_CONFIG.OPACITY_STREET, // 14 -> 0.0
-                ],
-              } as any}
+              style={
+                {
+                  fillColor: [
+                    "case",
+                    ["==", ["get", "isLocked"], true],
+                    DISTRICT_MAP_CONFIG.COLOR_LOCKED,
+                    DISTRICT_MAP_CONFIG.COLOR_ACTIVE,
+                  ],
+                  fillOpacity: [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    DISTRICT_MAP_CONFIG.ZOOM_FAR,
+                    DISTRICT_MAP_CONFIG.OPACITY_FAR, // 10 -> 0.20
+                    DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                    DISTRICT_MAP_CONFIG.OPACITY_MEDIUM, // 11.5 -> 0.10
+                    DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
+                    DISTRICT_MAP_CONFIG.OPACITY_CLOSE, // 13 -> 0.04
+                    DISTRICT_MAP_CONFIG.ZOOM_STREET,
+                    DISTRICT_MAP_CONFIG.OPACITY_STREET, // 14 -> 0.0
+                  ],
+                } as any
+              }
             />
             <Layer
               id="tehran-districts-line"
               type="line"
-              style={{
-                lineColor: [
-                  'case',
-                  ['==', ['get', 'isLocked'], true],
-                  DISTRICT_MAP_CONFIG.COLOR_LOCKED_BORDER,
-                  DISTRICT_MAP_CONFIG.COLOR_ACTIVE_BORDER,
-                ],
-                lineWidth: [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  DISTRICT_MAP_CONFIG.ZOOM_FAR,
-                  DISTRICT_MAP_CONFIG.BORDER_WIDTH_FAR,
-                  DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
-                  DISTRICT_MAP_CONFIG.BORDER_WIDTH_MEDIUM,
-                  DISTRICT_MAP_CONFIG.ZOOM_STREET,
-                  DISTRICT_MAP_CONFIG.BORDER_WIDTH_STREET,
-                ],
-                lineOpacity: [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  9, 0.7,
-                  10, 0.9,
-                  15, 0.85,
-                ],
-              } as any}
+              style={
+                {
+                  lineColor: [
+                    "case",
+                    ["==", ["get", "isLocked"], true],
+                    DISTRICT_MAP_CONFIG.COLOR_LOCKED_BORDER,
+                    DISTRICT_MAP_CONFIG.COLOR_ACTIVE_BORDER,
+                  ],
+                  lineWidth: [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    DISTRICT_MAP_CONFIG.ZOOM_FAR,
+                    DISTRICT_MAP_CONFIG.BORDER_WIDTH_FAR,
+                    DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                    DISTRICT_MAP_CONFIG.BORDER_WIDTH_MEDIUM,
+                    DISTRICT_MAP_CONFIG.ZOOM_STREET,
+                    DISTRICT_MAP_CONFIG.BORDER_WIDTH_STREET,
+                  ],
+                  lineOpacity: [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    9,
+                    0.7,
+                    10,
+                    0.9,
+                    15,
+                    0.85,
+                  ],
+                } as any
+              }
             />
             <Layer
               id="tehran-districts-symbol"
               type="symbol"
-              style={{
-                textField: [
-                  'step',
-                  ['zoom'],
-                  ['get', 'labelFar'],
-                  DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
-                  ['get', 'labelMedium'],
-                  DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
-                  ['get', 'labelClose'],
-                ],
-                textColor: DISTRICT_MAP_CONFIG.LABEL_COLOR,
-                textSize: [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  9, DISTRICT_MAP_CONFIG.LABEL_SIZE_FAR,
-                  11.5, DISTRICT_MAP_CONFIG.LABEL_SIZE_MEDIUM,
-                  13, DISTRICT_MAP_CONFIG.LABEL_SIZE_CLOSE,
-                ],
-                textHaloColor: DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
-                textHaloWidth: DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
-                textOpacity: [
-                  'interpolate',
-                  ['linear'],
-                  ['zoom'],
-                  9, 0.6,
-                  10, 1.0,
-                  13.2, 0.9,
-                  DISTRICT_MAP_CONFIG.LABEL_FADE_ZOOM, 0.0,
-                ],
-              } as any}
+              style={
+                {
+                  textField: [
+                    "step",
+                    ["zoom"],
+                    ["get", "labelFar"],
+                    DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                    ["get", "labelMedium"],
+                    DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
+                    ["get", "labelClose"],
+                  ],
+                  textColor: DISTRICT_MAP_CONFIG.LABEL_COLOR,
+                  textSize: [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    9,
+                    DISTRICT_MAP_CONFIG.LABEL_SIZE_FAR,
+                    11.5,
+                    DISTRICT_MAP_CONFIG.LABEL_SIZE_MEDIUM,
+                    13,
+                    DISTRICT_MAP_CONFIG.LABEL_SIZE_CLOSE,
+                  ],
+                  textHaloColor: DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
+                  textHaloWidth: DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
+                  textOpacity: [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    9,
+                    0.6,
+                    10,
+                    1.0,
+                    13.2,
+                    0.9,
+                    DISTRICT_MAP_CONFIG.LABEL_FADE_ZOOM,
+                    0.0,
+                  ],
+                } as any
+              }
             />
           </GeoJSONSource>
         )}
 
         {/* Community Center Markers for Active Districts */}
-        {showDistricts && districtsGeoJSON.features.map((feature: any) => {
-          const props = feature.properties;
-          if (!props.isLocked && props.communityCenterLat && props.communityCenterLot) {
-            return (
-              <Marker
-                key={`community-center-${props.name}`}
-                lngLat={[props.communityCenterLot, props.communityCenterLat]}
-                anchor="center"
-              >
-                <TouchableOpacity
-                  onPress={() => props.neighborhoodId && onPressNCC?.(props.neighborhoodId)}
-                  activeOpacity={0.75}
+        {showDistricts &&
+          districtsGeoJSON.features.map((feature: any) => {
+            const props = feature.properties;
+            if (
+              !props.isLocked &&
+              props.communityCenterLat &&
+              props.communityCenterLot
+            ) {
+              return (
+                <Marker
+                  key={`community-center-${props.name}`}
+                  lngLat={[props.communityCenterLot, props.communityCenterLat]}
+                  anchor="center"
                 >
-                  <View style={styles.communityCenterContainer}>
-                    <View style={styles.communityCenterBadge}>
-                      <Text style={styles.communityCenterBadgeText}>🏛️ مرکز محله</Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      props.neighborhoodId && onPressNCC?.(props.neighborhoodId)
+                    }
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.communityCenterContainer}>
+                      <View style={styles.communityCenterBadge}>
+                        <Text style={styles.communityCenterBadgeText}>
+                          🏛️ مرکز محله
+                        </Text>
+                      </View>
+                      <View style={styles.communityCenterDot} />
                     </View>
-                    <View style={styles.communityCenterDot} />
-                  </View>
-                </TouchableOpacity>
-              </Marker>
-            );
-          }
-          return null;
-        })}
+                  </TouchableOpacity>
+                </Marker>
+              );
+            }
+            return null;
+          })}
 
         {/* 5-Meter Building Zone Overlay */}
         {circleGeoJSON && (
@@ -312,18 +351,22 @@ export const GameMap: React.FC<GameMapProps> = ({
             <Layer
               id="building-zone-fill"
               type="fill"
-              style={{
-                fillColor: zoneColor,
-                fillOpacity: 0.32,
-              } as any}
+              style={
+                {
+                  fillColor: zoneColor,
+                  fillOpacity: 0.32,
+                } as any
+              }
             />
             <Layer
               id="building-zone-line"
               type="line"
-              style={{
-                lineColor: zoneColor,
-                lineWidth: 3,
-              } as any}
+              style={
+                {
+                  lineColor: zoneColor,
+                  lineWidth: 3,
+                } as any
+              }
             />
           </GeoJSONSource>
         )}
@@ -332,16 +375,26 @@ export const GameMap: React.FC<GameMapProps> = ({
         {buildingZone && (
           <Marker
             id="building-zone-marker"
-            lngLat={[buildingZone.center.longitude, buildingZone.center.latitude]}
+            lngLat={[
+              buildingZone.center.longitude,
+              buildingZone.center.latitude,
+            ]}
             anchor="center"
           >
             <View style={styles.zoneMarkerContainer}>
               <View style={[styles.zoneBadge, { borderColor: zoneColor }]}>
                 <Text style={styles.zoneBadgeText}>
-                  {buildingZone.status === 'valid' ? '✅' : buildingZone.status === 'invalid' ? '🚫' : '⏳'} شعاع ۵ متر
+                  {buildingZone.status === "valid"
+                    ? "✅"
+                    : buildingZone.status === "invalid"
+                      ? "🚫"
+                      : "⏳"}{" "}
+                  شعاع ۵ متر
                 </Text>
               </View>
-              <View style={[styles.zoneCenterDot, { backgroundColor: zoneColor }]} />
+              <View
+                style={[styles.zoneCenterDot, { backgroundColor: zoneColor }]}
+              />
             </View>
           </Marker>
         )}
@@ -383,10 +436,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   zoneMarkerContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   zoneBadge: {
-    backgroundColor: 'rgba(8, 12, 26, 0.9)',
+    backgroundColor: "rgba(8, 12, 26, 0.9)",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 12,
@@ -394,41 +447,41 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   zoneBadgeText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   zoneCenterDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
   communityCenterContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   communityCenterBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.9)',
+    backgroundColor: "rgba(16, 185, 129, 0.9)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: '#10B981',
+    borderColor: "#10B981",
     marginBottom: 4,
   },
   communityCenterBadgeText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   communityCenterDot: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
 });
 

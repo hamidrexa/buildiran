@@ -1,32 +1,27 @@
 import { setWorkerUrl as maplibreSetWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import Map, {
-    Layer,
-    Marker,
-    NavigationControl,
-    ScaleControl,
-    Source,
-    type MapMouseEvent,
-    type MapRef,
-    type ViewStateChangeEvent,
+  Layer,
+  Marker,
+  NavigationControl,
+  ScaleControl,
+  Source,
+  type MapMouseEvent,
+  type MapRef,
+  type ViewStateChangeEvent,
 } from "react-map-gl/maplibre";
 import { StyleSheet } from "react-native";
 
 import { BuildingMarker } from "@/components/game/BuildingMarker";
 import {
-    DISTRICT_MAP_CONFIG,
-    MAP_DEFAULT_CENTER,
-    MAP_DEFAULT_ZOOM,
-    MAP_MAX_ZOOM,
-    MAP_MIN_ZOOM,
-    MAP_STYLE,
-    TEHRAN_BOUNDS,
+  DISTRICT_MAP_CONFIG,
+  MAP_DEFAULT_CENTER,
+  MAP_DEFAULT_ZOOM,
+  MAP_MAX_ZOOM,
+  MAP_MIN_ZOOM,
+  MAP_STYLE,
+  TEHRAN_BOUNDS,
 } from "@/lib/constants";
 import type { GameMapProps } from "@/types/map.types";
 import { createGeoJSONCircle } from "@/utils/geo";
@@ -261,9 +256,12 @@ export const GameMap: React.FC<GameMapProps> = ({
                   "interpolate",
                   ["linear"],
                   ["zoom"],
-                  9, 0.7,
-                  10, 0.9,
-                  15, 0.85,
+                  9,
+                  0.7,
+                  10,
+                  0.9,
+                  15,
+                  0.85,
                 ],
               }}
             />
@@ -316,64 +314,69 @@ export const GameMap: React.FC<GameMapProps> = ({
         )}
 
         {/* Community Center Markers for Active Districts */}
-        {showDistricts && districtsGeoJSON.features.map((feature: any) => {
-          const props = feature.properties;
-          if (!props.isLocked && props.communityCenterLat && props.communityCenterLot) {
-            return (
-              <Marker
-                key={`community-center-${props.name}`}
-                longitude={props.communityCenterLot}
-                latitude={props.communityCenterLat}
-                anchor="center"
-                onClick={(e) => {
-                  e.originalEvent.stopPropagation();
-                  if (props.neighborhoodId && onPressNCC) {
-                    onPressNCC(props.neighborhoodId);
-                  }
-                }}
-                style={{ cursor: "pointer", pointerEvents: "auto" }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    pointerEvents: "auto",
+        {showDistricts &&
+          districtsGeoJSON.features.map((feature: any) => {
+            const props = feature.properties;
+            if (
+              !props.isLocked &&
+              props.communityCenterLat &&
+              props.communityCenterLot
+            ) {
+              return (
+                <Marker
+                  key={`community-center-${props.name}`}
+                  longitude={props.communityCenterLot}
+                  latitude={props.communityCenterLat}
+                  anchor="center"
+                  onClick={(e) => {
+                    e.originalEvent.stopPropagation();
+                    if (props.neighborhoodId && onPressNCC) {
+                      onPressNCC(props.neighborhoodId);
+                    }
                   }}
+                  style={{ cursor: "pointer", pointerEvents: "auto" }}
                 >
                   <div
                     style={{
-                      background: "rgba(16, 185, 129, 0.9)",
-                      color: "#fff",
-                      padding: "4px 8px",
-                      borderRadius: "8px",
-                      fontSize: "10px",
-                      fontWeight: 600,
-                      border: "1.5px solid #10B981",
-                      boxShadow: "0 0 8px rgba(16, 185, 129, 0.5)",
-                      whiteSpace: "nowrap",
-                      marginBottom: "4px",
-                      direction: "rtl",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      pointerEvents: "auto",
                     }}
                   >
-                    🏛️ مرکز محله
+                    <div
+                      style={{
+                        background: "rgba(16, 185, 129, 0.9)",
+                        color: "#fff",
+                        padding: "4px 8px",
+                        borderRadius: "8px",
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        border: "1.5px solid #10B981",
+                        boxShadow: "0 0 8px rgba(16, 185, 129, 0.5)",
+                        whiteSpace: "nowrap",
+                        marginBottom: "4px",
+                        direction: "rtl",
+                      }}
+                    >
+                      🏛️ مرکز محله
+                    </div>
+                    <div
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        borderRadius: "50%",
+                        backgroundColor: "#10B981",
+                        border: "2px solid #fff",
+                        boxShadow: "0 0 6px rgba(16, 185, 129, 0.6)",
+                      }}
+                    />
                   </div>
-                  <div
-                    style={{
-                      width: "16px",
-                      height: "16px",
-                      borderRadius: "50%",
-                      backgroundColor: "#10B981",
-                      border: "2px solid #fff",
-                      boxShadow: "0 0 6px rgba(16, 185, 129, 0.6)",
-                    }}
-                  />
-                </div>
-              </Marker>
-            );
-          }
-          return null;
-        })}
+                </Marker>
+              );
+            }
+            return null;
+          })}
 
         {/* 5-Meter Building Zone Overlay */}
         {circleGeoJSON && (

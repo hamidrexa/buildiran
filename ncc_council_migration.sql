@@ -1,5 +1,14 @@
+
 -- ============================================================
--- BuildIran — NCC Council and Neighborhood Area Migration
+--  BuildIran — NCC Council and Neighborhood Area Migration
+--  Run AFTER:
+--    1. "Supabase Schema.sql"
+--    2. "economy_migration.sql"
+--    3. "build_modes_v1_migration.sql"
+--    4. "npc_workers_migration.sql"
+--    5. "tehran_districts_migration.sql"
+--
+--  Supabase SQL Editor → New query → Paste → Run
 -- ============================================================
 
 -- 1. Alter neighborhoods table
@@ -42,7 +51,7 @@ DECLARE
   v_power INTEGER;
   v_min_popularity INTEGER;
   v_capacity INTEGER;
-  v_cost BIGINT := 50000; -- Application fee
+  v_cost BIGINT := 50; -- Application fee
   v_has_home BOOLEAN;
   v_member_count INTEGER;
   v_lowest_power_member_id UUID;
@@ -66,14 +75,12 @@ BEGIN
   SELECT min_council_popularity, council_member_capacity
   INTO v_min_popularity, v_capacity
   FROM public.neighborhoods
-  WHERE id = p_neighborhood_id;
+  WHERE id = p_neighborhood_id
+  FOR UPDATE;
 
   IF NOT FOUND THEN
     RETURN jsonb_build_object('success', false, 'error', 'neighborhood_not_found');
   END IF;
-
-  -- Deduct cost immediately
-  UPDATE public.profiles SET cash = cash - v_cost WHERE id = v_player_id;
 
   -- CLEANUP PHASE: Remove members who no longer own a home in this neighborhood
   FOR v_member_record IN
@@ -123,6 +130,8 @@ BEGIN
 
   IF v_member_count < v_capacity THEN
     -- Add directly if there is space
+    UPDATE public.profiles SET cash = cash - v_cost WHERE id = v_player_id;
+
     INSERT INTO public.neighborhood_council_members (neighborhood_id, player_id)
     VALUES (p_neighborhood_id, v_player_id);
     
@@ -138,6 +147,8 @@ BEGIN
 
     IF v_power > v_lowest_power THEN
       -- Replace
+      UPDATE public.profiles SET cash = cash - v_cost WHERE id = v_player_id;
+
       DELETE FROM public.neighborhood_council_members 
       WHERE neighborhood_id = p_neighborhood_id AND player_id = v_lowest_power_member_id;
       
