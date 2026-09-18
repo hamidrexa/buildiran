@@ -123,6 +123,11 @@ export interface Neighborhood {
   minCouncilPopularity?: number;
   councilChairId?: string | null;
   lastChairSelectionAt?: string | null;
+  // v5 — Neighborhood Power Economy
+  amenityScore?: number;            // cached weighted sum of all assets' amenity contributions
+  amenityTier?: number;             // 0–5 tier index
+  costMultiplier?: number;          // build cost multiplier (1.00 – 2.00)
+  neighborhoodDailyDrip?: number;   // power granted per day to residents who claim
 }
 
 export interface CouncilMember {
@@ -356,6 +361,8 @@ export interface Player {
   status: PlayerStatus;
   joinedAt: string;
   lastSeenAt: string;
+  // v5 — Neighborhood Power Economy
+  lastNeighborhoodDripAt: string | null;   // null = never claimed
 }
 
 // ─── Asset (Building on Map) ─────────────────────────────────────────────────
@@ -437,7 +444,9 @@ export type GameEventType =
   | 'npc_hired'
   | 'npc_assigned'
   | 'npc_trained'
-  | 'npc_leveled_up';
+  | 'npc_leveled_up'
+  // v5 — Neighborhood Power Economy
+  | 'neighborhood_power_drip';
 
 export interface GameEvent {
   id: string;

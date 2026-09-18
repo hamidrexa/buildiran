@@ -808,6 +808,89 @@ export const DAILY_POWER_DRIP: Record<string, number> = {
   // custom building types inherit the value from their custom_settings.daily_power_drip
 } as const;
 
+// ─── Economy: Neighborhood Amenity Weights ────────────────────────────────────
+// How much each building type contributes to the neighborhood's amenity_score.
+// This mirrors the CASE block inside recompute_neighborhood_amenity() in SQL —
+// keep the two in sync if values change.
+//
+// Score bands → tier → cost_multiplier / daily_drip:
+//   0–9   → tier 0 (محله ساده,        ×1.00, +0 power/day)
+//   10–29 → tier 1 (محله در حال رشد,  ×1.10, +1 power/day)
+//   30–59 → tier 2 (محله متوسط,       ×1.25, +3 power/day)
+//   60–99 → tier 3 (محله خوب,         ×1.45, +6 power/day)
+//   100–159 → tier 4 (محله برتر,      ×1.70, +10 power/day)
+//   160+  → tier 5 (محله لوکس,        ×2.00, +15 power/day)
+
+export const NEIGHBORHOOD_AMENITY_WEIGHTS: Record<string, number> = {
+  // ── Residential ──
+  house:           1,
+  villa:           2,
+  tower:           4,
+  main_house:      2,
+  resident_house:  1,
+  // ── Commercial ──
+  shop:            2,
+  cafe:            2,
+  gym:             3,
+  warehouse:       1,
+  exchange:        3,
+  mall:            7,
+  restaurant:      2,
+  market:          2,
+  office:          3,
+  // ── Industrial ──
+  farm:            1,
+  factory:         2,
+  // ── Public ──
+  hospital:        8,
+  park:            5,
+  university:      10,
+  bank:            6,
+  // ── Military / legacy ──
+  barracks:        1,
+};
+
+export interface NeighborhoodAmenityTier {
+  readonly tier: number;
+  readonly nameFa: string;
+  readonly minScore: number;
+  readonly maxScore: number;
+  readonly costMultiplier: number;
+  /** Power added per day to residents who manually claim (via claim_neighborhood_drip RPC) */
+  readonly dailyDrip: number;
+  readonly color: string;       // for UI badges
+  readonly emoji: string;
+}
+
+export const NEIGHBORHOOD_AMENITY_TIERS: readonly NeighborhoodAmenityTier[] = [
+  { tier: 0, nameFa: 'محله ساده',         minScore: 0,   maxScore: 9,        costMultiplier: 1.00, dailyDrip: 0,  color: '#6B7280', emoji: '🏚️' },
+  { tier: 1, nameFa: 'محله در حال رشد',  minScore: 10,  maxScore: 29,       costMultiplier: 1.10, dailyDrip: 1,  color: '#10B981', emoji: '🌱' },
+  { tier: 2, nameFa: 'محله متوسط',        minScore: 30,  maxScore: 59,       costMultiplier: 1.25, dailyDrip: 3,  color: '#3B82F6', emoji: '🏘️' },
+  { tier: 3, nameFa: 'محله خوب',          minScore: 60,  maxScore: 99,       costMultiplier: 1.45, dailyDrip: 6,  color: '#8B5CF6', emoji: '🌆' },
+  { tier: 4, nameFa: 'محله برتر',         minScore: 100, maxScore: 159,      costMultiplier: 1.70, dailyDrip: 10, color: '#F59E0B', emoji: '🏙️' },
+  { tier: 5, nameFa: 'محله لوکس',         minScore: 160, maxScore: Infinity, costMultiplier: 2.00, dailyDrip: 15, color: '#EC4899', emoji: '💎' },
+] as const;
+
+/** Resolve the amenity tier object from a raw amenity score. */
+export function getNeighborhoodTier(amenityScore: number): NeighborhoodAmenityTier {
+  for (let i = NEIGHBORHOOD_AMENITY_TIERS.length - 1; i >= 0; i--) {
+    if (amenityScore >= NEIGHBORHOOD_AMENITY_TIERS[i].minScore) {
+      return NEIGHBORHOOD_AMENITY_TIERS[i];
+    }
+  }
+  return NEIGHBORHOOD_AMENITY_TIERS[0];
+}
+
+/** Client-side amenity weight lookup (mirrors SQL). Unknown types default to 1. */
+export function getAmenityWeight(buildingType: string): number {
+  return NEIGHBORHOOD_AMENITY_WEIGHTS[buildingType] ?? 1;
+}
+
+// ─── Economy: Neighborhood Drip Claim Cooldown ───────────────────────────────
+
+/** Minimum seconds between neighborhood drip claims (20 hours). Must match SQL. */
+export const NEIGHBORHOOD_DRIP_COOLDOWN_SECONDS = 72_000;
+
 // ─── Economy: Popularity Boost ────────────────────────────────────────────────
 
 /** Base popularity cost — multiplied by asset.level at activation time */

@@ -108,6 +108,9 @@ interface NeighborhoodState {
   isEditorForNeighborhood: (playerPower: number, playerId: string, neighborhoodId: string) => boolean;
   isDistrictLocked: (nameFa: string, areaNumber?: number) => boolean;
 
+  /** Returns the build cost multiplier for a given neighborhood (1.0 if not found) */
+  getNeighborhoodCostMultiplier: (neighborhoodId: string | null | undefined) => number;
+
   proposeCustomBuilding: (params: {
     userId: string;
     code: string;
@@ -189,6 +192,11 @@ export const useNeighborhoodStore = create<NeighborhoodState>()((set, get) => ({
           minCouncilPopularity: n.min_council_popularity ?? 50,
           councilChairId: n.council_chair_id,
           lastChairSelectionAt: n.last_chair_selection_at,
+          // v5 — Neighborhood Power Economy
+          amenityScore: n.amenity_score ?? 0,
+          amenityTier: n.amenity_tier ?? 0,
+          costMultiplier: n.cost_multiplier ?? 1.0,
+          neighborhoodDailyDrip: n.neighborhood_daily_drip ?? 0,
         }));
         set({ neighborhoods: list });
         if (!get().currentNeighborhood) {
@@ -332,6 +340,12 @@ export const useNeighborhoodStore = create<NeighborhoodState>()((set, get) => ({
       ) || neighborhoods.find((n) => n.nameFa === nameFa);
 
     return match ? (match.isLocked ?? true) : true;
+  },
+
+  getNeighborhoodCostMultiplier: (neighborhoodId: string | null | undefined): number => {
+    if (!neighborhoodId) return 1.0;
+    const neighborhood = get().neighborhoods.find((n) => n.id === neighborhoodId);
+    return neighborhood?.costMultiplier ?? 1.0;
   },
 
   proposeCustomBuilding: async (params) => {

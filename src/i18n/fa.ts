@@ -137,6 +137,41 @@ const fa = {
     leadEditor: 'سرپرست ویرایشگران',
   },
 
+  neighborhood: {
+    amenity: {
+      title: 'کیفیت محله',
+      score: 'امتیاز امکانات',
+      tier: 'رده محله',
+      costMultiplier: 'ضریب هزینه ساخت',
+      dailyDrip: 'پاداش روزانه قدرت',
+      tiers: {
+        tier0: 'محله ساده',
+        tier1: 'محله در حال رشد',
+        tier2: 'محله متوسط',
+        tier3: 'محله خوب',
+        tier4: 'محله برتر',
+        tier5: 'محله لوکس',
+      },
+      nextTierIn: 'تا رده بعدی',
+      points: 'امتیاز',
+    },
+    drip: {
+      claimTitle: 'پاداش محله آماده است!',
+      claimDesc: 'با ساخت بنا در محله‌های بهتر، قدرت بیشتری هر روز دریافت کنید.',
+      claimButton: 'دریافت پاداش محله',
+      claimSuccess: 'قدرت محله دریافت شد',
+      powerAdded: 'قدرت اضافه شد',
+      from: 'از',
+      neighborhoods: 'محله',
+      cooldownActive: 'پاداش امروز دریافت شد',
+      cooldownRemaining: 'تا دریافت بعدی',
+      noAssets: 'برای دریافت پاداش محله، در محله‌های فعال ملک داشته باشید.',
+      hours: 'ساعت',
+      minutes: 'دقیقه',
+    },
+    costPremium: 'هزینه ساخت در این محله به دلیل کیفیت بالاتر، گران‌تر از استاندارد است.',
+  },
+
   stats: {
     power: 'قدرت نظامی / نفوذ',
     wealth: 'ثروت کل',

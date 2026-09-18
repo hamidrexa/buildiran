@@ -16,9 +16,12 @@ import { usePlayerStore } from "@/store/usePlayerStore";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
-import Animated from "react-native-reanimated";
+import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NeighborhoodEditorModal } from "./NeighborhoodEditorModal";
+import { NeighborhoodAmenityCard } from "./NeighborhoodAmenityCard";
+import { NEIGHBORHOOD_DRIP_COOLDOWN_SECONDS } from "@/lib/constants";
+
 
 // ─── 4-Factor Stat Bar ────────────────────────────────────────────────────────
 
@@ -83,6 +86,7 @@ export const HUD: React.FC = () => {
   );
 
   const [showEditorModal, setShowEditorModal] = useState(false);
+  const [isClaimingDrip, setIsClaimingDrip] = useState(false);
 
   const selectedTile = selectedTileId ? tiles[selectedTileId] : null;
 
@@ -97,44 +101,87 @@ export const HUD: React.FC = () => {
     ? player.power >= currentNeighborhood.minEditorPower
     : player.power >= 150;
 
+  // Evaluate daily drip claim eligibility
+  const canClaimDrip = player.lastNeighborhoodDripAt
+    ? (new Date().getTime() - new Date(player.lastNeighborhoodDripAt).getTime()) / 1000 > NEIGHBORHOOD_DRIP_COOLDOWN_SECONDS
+    : true; // can claim if never claimed
+
+  const handleClaimDrip = async () => {
+    if (isClaimingDrip) return;
+    setIsClaimingDrip(true);
+    const result = await usePlayerStore.getState().claimNeighborhoodDrip();
+    setIsClaimingDrip(false);
+
+    if (result?.success) {
+      if ((result.dripTotal ?? 0) > 0) {
+        GameAudio.playApprove();
+        // Optional: show a toast or alert here for feedback
+      }
+    }
+  };
+
   return (
     <>
       {/* Sub-bar: Neighborhood & Editor Panel Access */}
       <View style={[styles.subBar, { top: insets.top + 68 }]}>
-        <TouchableOpacity
-          style={styles.neighborhoodPill}
-          onPress={() => {
-            GameAudio.playTap();
-            setShowEditorModal(true);
-          }}
-          activeOpacity={0.8}
-        >
-          <Text variant="body" color="primary">
-            📍 {currentNeighborhood?.nameFa ?? "محله بازی"}
-          </Text>
-        </TouchableOpacity>
-
-        {isEditor && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <TouchableOpacity
-            style={styles.editorPill}
+            style={styles.neighborhoodPill}
             onPress={() => {
               GameAudio.playTap();
               setShowEditorModal(true);
             }}
             activeOpacity={0.8}
           >
-            <LinearGradient
-              colors={["#F59E0B", "#D97706"]}
-              style={styles.editorPillGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Text variant="body" weight="semibold" color="inverse">
-                🎖️ ویرایشگر محله
-              </Text>
-            </LinearGradient>
+            <Text variant="body" color="primary">
+              📍 {currentNeighborhood?.nameFa ?? "محله بازی"}
+            </Text>
           </TouchableOpacity>
-        )}
+          {currentNeighborhood && currentNeighborhood.amenityTier !== undefined && currentNeighborhood.amenityTier > 0 && (
+            <NeighborhoodAmenityCard neighborhood={currentNeighborhood} compact />
+          )}
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {canClaimDrip && (
+            <TouchableOpacity
+              style={styles.claimDripBtn}
+              onPress={handleClaimDrip}
+              activeOpacity={0.8}
+              disabled={isClaimingDrip}
+            >
+              <LinearGradient
+                colors={["#10B981", "#059669"]}
+                style={styles.editorPillGradient}
+              >
+                <Text variant="body" weight="bold" color="inverse">
+                  {isClaimingDrip ? "..." : "⚡ پاداش محله"}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+          {isEditor && (
+            <TouchableOpacity
+              style={styles.editorPill}
+              onPress={() => {
+                GameAudio.playTap();
+                setShowEditorModal(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={["#F59E0B", "#D97706"]}
+                style={styles.editorPillGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text variant="body" weight="semibold" color="inverse">
+                  🎖️ ویرایشگر
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Right side: 4-Factor Stats Panel */}
@@ -276,11 +323,21 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
   },
+  claimDripBtn: {
+    borderRadius: 12,
+    overflow: "hidden",
+    elevation: 6,
+    shadowColor: "#10B981",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
   editorPillGradient: {
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   editorPillText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
+
 
   // Tier badge under player name
   tierBadge: {

@@ -27,6 +27,8 @@ import {
   ADVANCED_BUILD_NEARBY_RADIUS_METERS,
 } from '@/lib/constants';
 import { create } from 'zustand';
+// Neighborhood cost multiplier — imported lazily inside actions to avoid circular dependency
+import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 
 // ─── Building Config ──────────────────────────────────────────────────────────
 // cost  = fast-mode build cost (land + construction, bundled)
@@ -190,6 +192,8 @@ interface AssetState {
     latitude: number;
     longitude: number;
     tileId: string;
+    /** Optional: neighborhood the asset is being placed in (determines cost multiplier) */
+    neighborhoodId?: string | null;
   }) => Promise<Asset | null>;
 
   /** Advanced mode: create a DB session, returns sessionId */
@@ -199,6 +203,8 @@ interface AssetState {
     latitude: number;
     longitude: number;
     tileId: string;
+    /** Optional: neighborhood the asset is being placed in (for cost multiplier on confirm) */
+    neighborhoodId?: string | null;
   }) => Promise<string | null>;
 
   /** Add / replace one material slot in the active session (calls RPC) */
@@ -316,10 +322,15 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
 
   // ─── Fast Build ───────────────────────────────────────────────────────────
 
-  buildAssetFast: async ({ userId, type, latitude, longitude, tileId }) => {
+  buildAssetFast: async ({ userId, type, latitude, longitude, tileId, neighborhoodId }) => {
     const config = BUILDING_CONFIG[type] ?? { cost: 5000, value: 6000, power: 5, incomeRate: 0, dailyPowerDrip: 0, institutionType: null };
     const category: InstitutionCategory | null = INSTITUTION_CATEGORY[type] ?? null;
     const licenseFee = category ? LICENSE_FEE[category] : 0;
+
+    // Apply neighborhood cost multiplier to the base build cost
+    const costMultiplier = useNeighborhoodStore.getState().getNeighborhoodCostMultiplier(neighborhoodId);
+    const adjustedCost = Math.floor(config.cost * costMultiplier);
+    const adjustedLicenseFee = Math.floor(licenseFee * costMultiplier);
 
     try {
       // Insert asset into DB
@@ -331,6 +342,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
           latitude,
           longitude,
           tile_id: tileId,
+          neighborhood_id: neighborhoodId ?? null,
           market_value: config.value,
           power_bonus: config.power,
           income_rate: config.incomeRate,
@@ -338,26 +350,27 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
           institution_type: config.institutionType ?? null,
           institution_category: category,
           build_mode: 'fast',
-          license_purchased: licenseFee > 0,
+          license_purchased: adjustedLicenseFee > 0,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Securely deduct license fee via RPC if applicable
-      if (licenseFee > 0 && data?.id) {
+      // Securely deduct license fee via RPC if applicable (using adjusted fee)
+      if (adjustedLicenseFee > 0 && data?.id) {
         const { error: rpcError } = await supabase.rpc('buy_license', {
           p_asset_id: data.id,
-          p_fee: licenseFee,
+          p_fee: adjustedLicenseFee,
         });
         if (rpcError) {
           console.warn('[AssetStore] buy_license RPC error:', rpcError);
         }
       }
 
-      // Deduct cash + power via profile update (cash deduction includes license fee)
-      // (Caller is responsible for updateCash(-totalCost) and updateStats({power: +config.power}))
+      // Deduct cash + power via profile update
+      // (Caller is responsible for updateCash(-adjustedCost - adjustedLicenseFee)
+      //  and updateStats({power: +config.power}))
 
       const asset = dbRowToAsset(data);
       set((state) => ({ assets: { ...state.assets, [asset.id]: asset } }));
@@ -365,7 +378,16 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       await supabase.from('game_events').insert({
         player_id: userId,
         type: 'building_built',
-        payload: { asset_id: asset.id, asset_type: type, build_mode: 'fast', license_fee: licenseFee, lat: latitude, lng: longitude },
+        payload: {
+          asset_id: asset.id,
+          asset_type: type,
+          build_mode: 'fast',
+          license_fee: adjustedLicenseFee,
+          neighborhood_id: neighborhoodId ?? null,
+          cost_multiplier: costMultiplier,
+          lat: latitude,
+          lng: longitude,
+        },
       });
 
       return asset;
@@ -377,7 +399,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
 
   // ─── Advanced Build ───────────────────────────────────────────────────────
 
-  startAdvancedBuild: async ({ userId, type, latitude, longitude, tileId }) => {
+  startAdvancedBuild: async ({ userId, type, latitude, longitude, tileId, neighborhoodId }) => {
     try {
       const { data, error } = await supabase.rpc('start_advanced_build', {
         p_building_type: type,
@@ -390,6 +412,8 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       if (!sessionId) return null;
 
       const session = buildEmptySession(sessionId, type, latitude, longitude, tileId);
+      // Stash neighborhoodId so confirmAdvancedBuild can apply the multiplier
+      (session as any).__neighborhoodId = neighborhoodId ?? null;
       set({ activeSession: session });
       return sessionId;
     } catch (err) {
@@ -449,6 +473,11 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     const category: InstitutionCategory | null = INSTITUTION_CATEGORY[type] ?? null;
     const licenseFee = category ? LICENSE_FEE[category] : 0;
 
+    // Apply neighborhood cost multiplier to the license fee component
+    const neighborhoodId = (activeSession as any).__neighborhoodId as string | null | undefined;
+    const costMultiplier = useNeighborhoodStore.getState().getNeighborhoodCostMultiplier(neighborhoodId);
+    const adjustedLicenseFee = Math.floor(licenseFee * costMultiplier);
+
     try {
       const { data, error } = await supabase.rpc('confirm_advanced_build', {
         p_session_id:       activeSession.sessionId,
@@ -458,7 +487,7 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
         p_daily_power_drip: config.dailyPowerDrip,
         p_institution_type: config.institutionType ?? '',
         p_institution_cat:  category ?? '',
-        p_license_fee:      licenseFee,
+        p_license_fee:      adjustedLicenseFee,
       });
 
       if (error) throw error;

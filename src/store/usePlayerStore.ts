@@ -48,6 +48,21 @@ interface PlayerState {
    */
   useSubsidy: (amount: number) => boolean;
 
+  // ─── Neighborhood Power Economy ──────────────────────────────────────────
+  /**
+   * Calls the `claim_neighborhood_drip` RPC.
+   * Returns the RPC response payload or null on network error.
+   * On success: optimistically updates power in local state.
+   */
+  claimNeighborhoodDrip: () => Promise<{
+    success: boolean;
+    dripTotal?: number;
+    neighborhoodsCount?: number;
+    nextClaimAt?: string;
+    error?: string;
+    remainingSeconds?: number;
+  } | null>;
+
   // ─── Supabase Sync ───────────────────────────────────────────────────────
   syncFromSupabase: (userId: string) => Promise<void>;
   syncToSupabase: () => Promise<void>;
@@ -84,6 +99,8 @@ function dbRowToPlayer(row: Record<string, any>): Player {
     subsidyResetAt: row.subsidy_reset_at ?? new Date().toISOString(),
     joinedAt: row.joined_at ?? new Date().toISOString(),
     lastSeenAt: row.last_seen_at ?? new Date().toISOString(),
+    // v5 — Neighborhood Power Economy
+    lastNeighborhoodDripAt: row.last_neighborhood_drip_at ?? null,
   };
 }
 
@@ -213,6 +230,50 @@ export const usePlayerStore = create<PlayerState>()(
             : null,
         }));
         return true;
+      },
+
+      // ─── Neighborhood Power Economy ────────────────────────────────────
+
+      claimNeighborhoodDrip: async () => {
+        const { player } = get();
+        if (!player) return null;
+        try {
+          const { data, error } = await supabase.rpc('claim_neighborhood_drip');
+          if (error) throw error;
+
+          const payload = data as any;
+          if (payload?.success && payload.drip_total > 0) {
+            // Optimistically update power in local state
+            set((state) => ({
+              player: state.player
+                ? {
+                    ...state.player,
+                    power: state.player.power + (payload.drip_total as number),
+                    lastNeighborhoodDripAt: new Date().toISOString(),
+                  }
+                : null,
+            }));
+          } else if (payload?.success) {
+            // Tier-0 neighborhoods: drip_total = 0, still mark the timestamp
+            set((state) => ({
+              player: state.player
+                ? { ...state.player, lastNeighborhoodDripAt: new Date().toISOString() }
+                : null,
+            }));
+          }
+
+          return {
+            success: payload?.success ?? false,
+            dripTotal: payload?.drip_total,
+            neighborhoodsCount: payload?.neighborhoods_count,
+            nextClaimAt: payload?.next_claim_at,
+            error: payload?.error,
+            remainingSeconds: payload?.remaining_seconds,
+          };
+        } catch (err) {
+          console.warn('[PlayerStore] claimNeighborhoodDrip error:', err);
+          return null;
+        }
       },
 
       // ─── Supabase Sync ─────────────────────────────────────────────────
