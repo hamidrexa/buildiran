@@ -254,12 +254,12 @@ export const GameMap: React.FC<GameMapProps> = ({
                     "interpolate",
                     ["linear"],
                     ["zoom"],
-                    9,
-                    0.7,
-                    10,
-                    0.9,
-                    15,
-                    0.85,
+                    DISTRICT_MAP_CONFIG.ZOOM_FAR,
+                    DISTRICT_MAP_CONFIG.BORDER_OPACITY_FAR,
+                    DISTRICT_MAP_CONFIG.ZOOM_MEDIUM,
+                    DISTRICT_MAP_CONFIG.BORDER_OPACITY_MEDIUM,
+                    DISTRICT_MAP_CONFIG.ZOOM_STREET,
+                    DISTRICT_MAP_CONFIG.BORDER_OPACITY_STREET,
                   ],
                 } as any
               }

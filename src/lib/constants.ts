@@ -474,37 +474,37 @@ export const BUILD_MATERIAL_SLOTS: Record<
 // Used for Fast Build mode and general building metadata.
 
 export const BUILDING_CONFIG: Record<string, { cost: number; power: number }> =
-  {
-    // ── Residential ──
-    house: { cost: 500, power: 2 },
-    villa: { cost: 3500, power: 5 },
-    tower: { cost: 8000, power: 12 },
-    // ── Commercial ──
-    shop: { cost: 1200, power: 3 },
-    cafe: { cost: 1500, power: 4 },
-    gym: { cost: 2000, power: 5 },
-    warehouse: { cost: 1000, power: 2 },
-    exchange: { cost: 4000, power: 8 },
-    mall: { cost: 5000, power: 10 },
-    restaurant: { cost: 3000, power: 6 },
-    market: { cost: 1500, power: 3 },
-    office: { cost: 2500, power: 6 },
-    // ── Industrial ──
-    farm: { cost: 800, power: 1 },
-    factory: { cost: 4500, power: 7 },
-    // ── Public ──
-    hospital: { cost: 6000, power: 15 },
-    park: { cost: 2000, power: 5 },
-    university: { cost: 7000, power: 18 },
-    bank: { cost: 4000, power: 9 },
-    // ── Legacy ──
-    barracks: { cost: 4000, power: 20 },
-    // ── v4: NPC Housing ──
-    // Note: actual cash cost is dynamic via compute_housing_cost RPC (area + floors).
-    // These are the minimum base costs (50m², 1 floor).
-    main_house: { cost: 1500, power: 3 },
-    resident_house: { cost: 2000, power: 2 },
-  };
+{
+  // ── Residential ──
+  house: { cost: 500, power: 2 },
+  villa: { cost: 3500, power: 5 },
+  tower: { cost: 8000, power: 12 },
+  // ── Commercial ──
+  shop: { cost: 1200, power: 3 },
+  cafe: { cost: 1500, power: 4 },
+  gym: { cost: 2000, power: 5 },
+  warehouse: { cost: 1000, power: 2 },
+  exchange: { cost: 4000, power: 8 },
+  mall: { cost: 5000, power: 10 },
+  restaurant: { cost: 3000, power: 6 },
+  market: { cost: 1500, power: 3 },
+  office: { cost: 2500, power: 6 },
+  // ── Industrial ──
+  farm: { cost: 800, power: 1 },
+  factory: { cost: 4500, power: 7 },
+  // ── Public ──
+  hospital: { cost: 6000, power: 15 },
+  park: { cost: 2000, power: 5 },
+  university: { cost: 7000, power: 18 },
+  bank: { cost: 4000, power: 9 },
+  // ── Legacy ──
+  barracks: { cost: 4000, power: 20 },
+  // ── v4: NPC Housing ──
+  // Note: actual cash cost is dynamic via compute_housing_cost RPC (area + floors).
+  // These are the minimum base costs (50m², 1 floor).
+  main_house: { cost: 1500, power: 3 },
+  resident_house: { cost: 2000, power: 2 },
+};
 
 // ─── Institution Category Map ─────────────────────────────────────────────────
 // Maps every building type to its institution category.
@@ -823,31 +823,31 @@ export const DAILY_POWER_DRIP: Record<string, number> = {
 
 export const NEIGHBORHOOD_AMENITY_WEIGHTS: Record<string, number> = {
   // ── Residential ──
-  house:           1,
-  villa:           2,
-  tower:           4,
-  main_house:      2,
-  resident_house:  1,
+  house: 1,
+  villa: 2,
+  tower: 4,
+  main_house: 2,
+  resident_house: 1,
   // ── Commercial ──
-  shop:            2,
-  cafe:            2,
-  gym:             3,
-  warehouse:       1,
-  exchange:        3,
-  mall:            7,
-  restaurant:      2,
-  market:          2,
-  office:          3,
+  shop: 2,
+  cafe: 2,
+  gym: 3,
+  warehouse: 1,
+  exchange: 3,
+  mall: 7,
+  restaurant: 2,
+  market: 2,
+  office: 3,
   // ── Industrial ──
-  farm:            1,
-  factory:         2,
+  farm: 1,
+  factory: 2,
   // ── Public ──
-  hospital:        8,
-  park:            5,
-  university:      10,
-  bank:            6,
+  hospital: 8,
+  park: 5,
+  university: 10,
+  bank: 6,
   // ── Military / legacy ──
-  barracks:        1,
+  barracks: 1,
 };
 
 export interface NeighborhoodAmenityTier {
@@ -863,12 +863,12 @@ export interface NeighborhoodAmenityTier {
 }
 
 export const NEIGHBORHOOD_AMENITY_TIERS: readonly NeighborhoodAmenityTier[] = [
-  { tier: 0, nameFa: 'محله ساده',         minScore: 0,   maxScore: 9,        costMultiplier: 1.00, dailyDrip: 0,  color: '#6B7280', emoji: '🏚️' },
-  { tier: 1, nameFa: 'محله در حال رشد',  minScore: 10,  maxScore: 29,       costMultiplier: 1.10, dailyDrip: 1,  color: '#10B981', emoji: '🌱' },
-  { tier: 2, nameFa: 'محله متوسط',        minScore: 30,  maxScore: 59,       costMultiplier: 1.25, dailyDrip: 3,  color: '#3B82F6', emoji: '🏘️' },
-  { tier: 3, nameFa: 'محله خوب',          minScore: 60,  maxScore: 99,       costMultiplier: 1.45, dailyDrip: 6,  color: '#8B5CF6', emoji: '🌆' },
-  { tier: 4, nameFa: 'محله برتر',         minScore: 100, maxScore: 159,      costMultiplier: 1.70, dailyDrip: 10, color: '#F59E0B', emoji: '🏙️' },
-  { tier: 5, nameFa: 'محله لوکس',         minScore: 160, maxScore: Infinity, costMultiplier: 2.00, dailyDrip: 15, color: '#EC4899', emoji: '💎' },
+  { tier: 0, nameFa: 'محله ساده', minScore: 0, maxScore: 9, costMultiplier: 1.00, dailyDrip: 0, color: '#6B7280', emoji: '🏚️' },
+  { tier: 1, nameFa: 'محله در حال رشد', minScore: 10, maxScore: 29, costMultiplier: 1.10, dailyDrip: 1, color: '#10B981', emoji: '🌱' },
+  { tier: 2, nameFa: 'محله متوسط', minScore: 30, maxScore: 59, costMultiplier: 1.25, dailyDrip: 3, color: '#3B82F6', emoji: '🏘️' },
+  { tier: 3, nameFa: 'محله خوب', minScore: 60, maxScore: 99, costMultiplier: 1.45, dailyDrip: 6, color: '#8B5CF6', emoji: '🌆' },
+  { tier: 4, nameFa: 'محله برتر', minScore: 100, maxScore: 159, costMultiplier: 1.70, dailyDrip: 10, color: '#F59E0B', emoji: '🏙️' },
+  { tier: 5, nameFa: 'محله لوکس', minScore: 160, maxScore: Infinity, costMultiplier: 2.00, dailyDrip: 15, color: '#EC4899', emoji: '💎' },
 ] as const;
 
 /** Resolve the amenity tier object from a raw amenity score. */
