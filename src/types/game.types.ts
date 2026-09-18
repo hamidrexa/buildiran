@@ -370,6 +370,7 @@ export interface Player {
 export interface Asset {
   id: string;
   ownerId: string;
+  neighborhoodId: string | null;
   type: BuildingType | string;
   latitude: number;
   longitude: number;

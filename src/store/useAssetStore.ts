@@ -80,6 +80,7 @@ function dbRowToAsset(row: Record<string, any>): Asset {
   return {
     id: row.id,
     ownerId: row.owner_id,
+    neighborhoodId: row.neighborhood_id ?? null,
     type: row.type as BuildingType,
     latitude: row.latitude,
     longitude: row.longitude,
