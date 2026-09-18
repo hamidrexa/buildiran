@@ -26,6 +26,7 @@ import {
 import type { GameMapProps } from "@/types/map.types";
 import { createGeoJSONCircle } from "@/utils/geo";
 import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
+import { useMapStore } from "@/store/useMapStore";
 
 // Metro cannot resolve maplibre's `new URL(..., import.meta.url)` worker, so the
 // GeoJSON/vector worker silently never starts (raster tiles still render, which
@@ -50,6 +51,8 @@ export const GameMap: React.FC<GameMapProps> = ({
   style,
 }) => {
   const mapRef = useRef<MapRef>(null);
+  const showDistrictsOverlay = useMapStore((s) => s.showDistrictsOverlay);
+  const showOtherPlayersAssets = useMapStore((s) => s.showOtherPlayersAssets);
 
   // Imperative fly-to camera control
   useEffect(() => {
@@ -200,7 +203,7 @@ export const GameMap: React.FC<GameMapProps> = ({
         <ScaleControl position="bottom-left" unit="metric" />
 
         {/* Tehran Districts Border Layer (toggleable) */}
-        {showDistricts && (
+        {showDistricts && showDistrictsOverlay && (
           <Source
             id="tehran-districts-source"
             type="geojson"
@@ -314,7 +317,7 @@ export const GameMap: React.FC<GameMapProps> = ({
         )}
 
         {/* Community Center Markers for Active Districts */}
-        {showDistricts &&
+        {showDistricts && showDistrictsOverlay &&
           districtsGeoJSON.features.map((feature: any) => {
             const props = feature.properties;
             if (
@@ -467,6 +470,11 @@ export const GameMap: React.FC<GameMapProps> = ({
           const isOwned = currentUserId
             ? asset.ownerId === currentUserId
             : false;
+
+          if (!showOtherPlayersAssets && !isOwned) {
+            return null; // hide other players' assets if toggled off
+          }
+
           const isSelected = selectedAssetId === asset.id;
 
           return (

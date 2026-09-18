@@ -41,6 +41,7 @@ import {
   View,
 } from "react-native";
 import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
+import { useMapStore } from "@/store/useMapStore";
 
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
@@ -56,10 +57,12 @@ export const GameMap: React.FC<GameMapProps> = ({
   onPressNCC,
   buildingZone,
   flyToTarget,
-  showDistricts = true,
+  showDistricts = true, // Still kept for backward compat, but we'll AND it with store
   style,
 }) => {
   const cameraRef = useRef<CameraRef>(null);
+  const showDistrictsOverlay = useMapStore((s) => s.showDistrictsOverlay);
+  const showOtherPlayersAssets = useMapStore((s) => s.showOtherPlayersAssets);
 
   // Imperative fly-to camera control
   useEffect(() => {
@@ -194,7 +197,7 @@ export const GameMap: React.FC<GameMapProps> = ({
         />
 
         {/* Tehran Districts Overlay */}
-        {showDistricts && (
+        {showDistricts && showDistrictsOverlay && (
           <GeoJSONSource
             id="tehran-districts-source"
             data={districtsGeoJSON as any}
@@ -310,7 +313,7 @@ export const GameMap: React.FC<GameMapProps> = ({
         )}
 
         {/* Community Center Markers for Active Districts */}
-        {showDistricts &&
+        {showDistricts && showDistrictsOverlay &&
           districtsGeoJSON.features.map((feature: any) => {
             const props = feature.properties;
             if (
@@ -404,6 +407,11 @@ export const GameMap: React.FC<GameMapProps> = ({
           const isOwned = currentUserId
             ? asset.ownerId === currentUserId
             : false;
+          
+          if (!showOtherPlayersAssets && !isOwned) {
+            return null; // hide other players' assets if toggled off
+          }
+
           const isSelected = selectedAssetId === asset.id;
 
           return (

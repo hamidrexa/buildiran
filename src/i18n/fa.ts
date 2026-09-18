@@ -170,6 +170,16 @@ const fa = {
       minutes: 'دقیقه',
     },
     costPremium: 'هزینه ساخت در این محله به دلیل کیفیت بالاتر، گران‌تر از استاندارد است.',
+    detailModal: {
+      title: 'اطلاعات محله',
+      visualToggles: 'تنظیمات نمایش نقشه',
+      showBorders: 'نمایش مرزها و سایه محله‌ها',
+      showOtherAssets: 'نمایش املاک سایر بازیکنان',
+      myDistricts: 'محله‌های شما',
+      myDistrictsDesc: 'محله‌هایی که در آن‌ها حداقل یک ملک دارید.',
+      teleport: 'رفتن به محله',
+      noDistricts: 'هنوز ملکی در هیچ محله‌ای ندارید.',
+    }
   },
 
   stats: {

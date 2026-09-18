@@ -13,12 +13,20 @@ interface MapState {
   viewport: MapViewport;
   pressedCoordinate: LatLng | null;
   isFollowingUser: boolean;
+  flyToTarget: { center: LatLng; zoom: number; duration?: number } | null;
+
+  // ─── Visual Settings ───────────────────────────────────────────────────────
+  showDistrictsOverlay: boolean;
+  showOtherPlayersAssets: boolean;
 
   // ─── Actions ───────────────────────────────────────────────────────────────
   setViewport: (viewport: Partial<MapViewport>) => void;
   setPressedCoordinate: (coord: LatLng | null) => void;
   flyTo: (center: LatLng, zoom?: number) => void;
+  triggerFlyTo: (target: { center: LatLng; zoom: number; duration?: number } | null) => void;
   setFollowUser: (follow: boolean) => void;
+  setShowDistrictsOverlay: (show: boolean) => void;
+  setShowOtherPlayersAssets: (show: boolean) => void;
   resetViewport: () => void;
 }
 
@@ -33,6 +41,9 @@ export const useMapStore = create<MapState>()((set) => ({
   viewport: defaultViewport,
   pressedCoordinate: null,
   isFollowingUser: false,
+  flyToTarget: null,
+  showDistrictsOverlay: true,
+  showOtherPlayersAssets: true,
 
   setViewport: (partial) =>
     set((state) => ({
@@ -51,7 +62,13 @@ export const useMapStore = create<MapState>()((set) => ({
       isFollowingUser: false,
     })),
 
+  triggerFlyTo: (flyToTarget) => set({ flyToTarget }),
+
   setFollowUser: (isFollowingUser) => set({ isFollowingUser }),
+
+  setShowDistrictsOverlay: (showDistrictsOverlay) => set({ showDistrictsOverlay }),
+  
+  setShowOtherPlayersAssets: (showOtherPlayersAssets) => set({ showOtherPlayersAssets }),
 
   resetViewport: () => set({ viewport: defaultViewport }),
 }));

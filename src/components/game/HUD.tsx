@@ -13,14 +13,18 @@ import { useGameStore } from "@/store/useGameStore";
 import { useNeighborhoodStore } from "@/store/useNeighborhoodStore";
 import { useNpcStore } from "@/store/useNpcStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
+import { useMapStore } from "@/store/useMapStore";
+import { haversineDistance } from "@/utils/geo";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NeighborhoodEditorModal } from "./NeighborhoodEditorModal";
+import { NeighborhoodDetailModal } from "./NeighborhoodDetailModal";
 import { NeighborhoodAmenityCard } from "./NeighborhoodAmenityCard";
 import { NEIGHBORHOOD_DRIP_COOLDOWN_SECONDS } from "@/lib/constants";
+import { Ionicons } from "@expo/vector-icons";
 
 
 // ─── 4-Factor Stat Bar ────────────────────────────────────────────────────────
@@ -77,18 +81,38 @@ export const HUD: React.FC = () => {
   const player = usePlayerStore((s) => s.player);
   const selectedTileId = useGameStore((s) => s.selectedTileId);
   const tiles = useGameStore((s) => s.tiles);
-  const currentNeighborhood = useNeighborhoodStore(
-    (s) => s.currentNeighborhood,
-  );
+  
+  const currentNeighborhood = useNeighborhoodStore((s) => s.currentNeighborhood);
+  const neighborhoods = useNeighborhoodStore((s) => s.neighborhoods);
+  
+  const mapCenter = useMapStore((s) => s.viewport.center);
+  
   const activeBoosts = useEconomyStore((s) => s.activeBoosts);
   const activeNpcCount = useNpcStore(
     (s) => Object.values(s.npcs).filter((n) => n.isWorking).length,
   );
 
   const [showEditorModal, setShowEditorModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [isClaimingDrip, setIsClaimingDrip] = useState(false);
 
   const selectedTile = selectedTileId ? tiles[selectedTileId] : null;
+
+  // Calculate the neighborhood currently closest to the map center
+  const viewedNeighborhood = React.useMemo(() => {
+    if (!neighborhoods || neighborhoods.length === 0) return null;
+    let minDistance = Infinity;
+    let closest = null;
+    for (const nb of neighborhoods) {
+      if (!nb.centerLat || !nb.centerLng) continue;
+      const d = haversineDistance(mapCenter, { latitude: nb.centerLat, longitude: nb.centerLng });
+      if (d < minDistance) {
+        minDistance = d;
+        closest = nb;
+      }
+    }
+    return closest;
+  }, [mapCenter, neighborhoods]);
 
   if (!player) return null;
 
@@ -124,21 +148,44 @@ export const HUD: React.FC = () => {
     <>
       {/* Sub-bar: Neighborhood & Editor Panel Access */}
       <View style={[styles.subBar, { top: insets.top + 68 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
           <TouchableOpacity
-            style={styles.neighborhoodPill}
+            style={styles.modernNbBox}
             onPress={() => {
               GameAudio.playTap();
-              setShowEditorModal(true);
+              if (viewedNeighborhood) {
+                // Sync the detail modal with the viewed neighborhood
+                useNeighborhoodStore.getState().setCurrentNeighborhood(viewedNeighborhood);
+              }
+              setShowDetailModal(true);
             }}
             activeOpacity={0.8}
           >
-            <Text variant="body" color="primary">
-              📍 {currentNeighborhood?.nameFa ?? "محله بازی"}
-            </Text>
+            <LinearGradient
+              colors={["rgba(22, 28, 45, 0.95)", "rgba(10, 15, 30, 0.85)"]}
+              style={styles.modernNbBoxInner}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.modernNbBoxIcon}>
+                <Ionicons name="map" size={16} color="#34D399" />
+              </View>
+              <View style={styles.modernNbBoxTextContainer}>
+                <Text variant="caption" color="secondary" style={{ fontSize: 9, opacity: 0.7, marginBottom: -2 }}>
+                  محله در حال نمایش
+                </Text>
+                <Text variant="body" weight="bold" color="primary" style={{ fontSize: 13 }}>
+                  {viewedNeighborhood?.nameFa ?? "نقشه آزاد"}
+                </Text>
+              </View>
+              <View style={styles.modernNbBoxAction}>
+                <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.4)" />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
-          {currentNeighborhood && currentNeighborhood.amenityTier !== undefined && currentNeighborhood.amenityTier > 0 && (
-            <NeighborhoodAmenityCard neighborhood={currentNeighborhood} compact />
+
+          {viewedNeighborhood && viewedNeighborhood.amenityTier !== undefined && viewedNeighborhood.amenityTier > 0 && (
+            <NeighborhoodAmenityCard neighborhood={viewedNeighborhood} compact />
           )}
         </View>
 
@@ -247,6 +294,12 @@ export const HUD: React.FC = () => {
       )}
 
       {/* Neighborhood Editor Review Modal */}
+      {/* Neighborhood Detail Modal */}
+      <NeighborhoodDetailModal
+        visible={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+      />
+
       <NeighborhoodEditorModal
         visible={showEditorModal}
         onClose={() => setShowEditorModal(false)}
@@ -362,6 +415,43 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderWidth: 1,
     borderColor: "rgba(251,146,60,0.4)",
+  },
+  modernNbBox: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modernNbBoxInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  modernNbBoxIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+  },
+  modernNbBoxTextContainer: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+  modernNbBoxAction: {
+    marginLeft: 'auto',
+    opacity: 0.8,
+    paddingLeft: 4,
   },
 
   statsPanel: {
