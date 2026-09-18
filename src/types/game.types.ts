@@ -16,7 +16,7 @@ export interface Bounds {
 
 // ─── Tile / Land ────────────────────────────────────────────────────────────
 
-export type TileStatus = 'available' | 'owned' | 'enemy' | 'neutral';
+export type TileStatus = "available" | "owned" | "enemy" | "neutral";
 
 export interface GameTile {
   id: string;
@@ -34,49 +34,53 @@ export interface GameTile {
 // ─── Buildings ──────────────────────────────────────────────────────────────
 
 export type StandardBuildingType =
-  | 'house'
-  | 'farm'
-  | 'market'
-  | 'tower'
-  | 'warehouse'
-  | 'barracks'
-  | 'shop'
-  | 'mall'
-  | 'villa'
-  | 'office'
+  | "house"
+  | "farm"
+  | "market"
+  | "tower"
+  | "warehouse"
+  | "barracks"
+  | "shop"
+  | "mall"
+  | "villa"
+  | "office"
   // v3 — new types
-  | 'restaurant'
-  | 'gym'
-  | 'cafe'
-  | 'factory'
-  | 'hospital'
-  | 'park'
-  | 'university'
-  | 'bank'
+  | "restaurant"
+  | "gym"
+  | "cafe"
+  | "factory"
+  | "hospital"
+  | "park"
+  | "university"
+  | "bank"
   // v4 — NPC housing types
-  | 'main_house'
-  | 'resident_house';
+  | "main_house"
+  | "resident_house";
 
 export type BuildingType = StandardBuildingType | (string & {});
 
 export type BuildingCategory =
-  | 'residential'
-  | 'commercial'
-  | 'industrial'
-  | 'military'
-  | 'cultural'
-  | 'tech';
+  | "residential"
+  | "commercial"
+  | "industrial"
+  | "military"
+  | "cultural"
+  | "tech";
 
 /** 4-type institution classification (v3) */
-export type InstitutionCategory = 'residential' | 'commercial' | 'industrial' | 'public';
+export type InstitutionCategory =
+  | "residential"
+  | "commercial"
+  | "industrial"
+  | "public";
 
 /** Build mode: pay premium for instant build vs. manually gather materials */
-export type BuildMode = 'fast' | 'advanced';
+export type BuildMode = "fast" | "advanced";
 
 /** Source of a build material item in Advanced mode */
-export type MaterialSource = 'market' | 'subsidized';
+export type MaterialSource = "market" | "subsidized";
 
-export type ProposalStatus = 'pending' | 'approved' | 'rejected';
+export type ProposalStatus = "pending" | "approved" | "rejected";
 
 export interface CustomBuildingType {
   id: string;
@@ -124,10 +128,10 @@ export interface Neighborhood {
   councilChairId?: string | null;
   lastChairSelectionAt?: string | null;
   // v5 — Neighborhood Power Economy
-  amenityScore?: number;            // cached weighted sum of all assets' amenity contributions
-  amenityTier?: number;             // 0–5 tier index
-  costMultiplier?: number;          // build cost multiplier (1.00 – 2.00)
-  neighborhoodDailyDrip?: number;   // power granted per day to residents who claim
+  amenityScore?: number; // cached weighted sum of all assets' amenity contributions
+  amenityTier?: number; // 0–5 tier index
+  costMultiplier?: number; // build cost multiplier (1.00 – 2.00)
+  neighborhoodDailyDrip?: number; // power granted per day to residents who claim
 }
 
 export interface CouncilMember {
@@ -188,28 +192,28 @@ export interface PowerTier {
 
 /** All supported institution type codes */
 export type InstitutionType =
-  | 'home_rent'
-  | 'shopping'
-  | 'hospital'
-  | 'university'
-  | 'cafe'
-  | 'gym'
-  | 'library'
-  | 'exchange'
+  | "home_rent"
+  | "shopping"
+  | "hospital"
+  | "university"
+  | "cafe"
+  | "gym"
+  | "library"
+  | "exchange"
   // v3 — new types
-  | 'restaurant'
-  | 'park_service'
-  | 'bank_service'
-  | 'farm_supply'
-  | 'factory_supply'
-  | 'industrial_supply';
+  | "restaurant"
+  | "park_service"
+  | "bank_service"
+  | "farm_supply"
+  | "factory_supply"
+  | "industrial_supply";
 
 /** Result of using an institution as a client */
 export interface ServiceResult {
   success: boolean;
-  clientCostStat: 'cash' | 'activity';
+  clientCostStat: "cash" | "activity";
   clientCostAmount: number;
-  clientGainStat: 'power' | 'cash';
+  clientGainStat: "power" | "cash";
   clientGainAmount: number;
   providerCashEarned?: number;
   providerPowerEarned?: number;
@@ -330,7 +334,7 @@ export interface AdvancedBuildSession {
 
 // ─── Player ─────────────────────────────────────────────────────────────────
 
-export type PlayerStatus = 'online' | 'offline' | 'in_game';
+export type PlayerStatus = "online" | "offline" | "in_game";
 
 export interface Player {
   id: string;
@@ -341,15 +345,15 @@ export interface Player {
   experience: number;
   resources: ResourceMap;
   // Economy
-  cash: number;           // liquid spendable currency
+  cash: number; // liquid spendable currency
   // 4-Factor Stats
-  power: number;          // military/influence strength
-  wealth: number;         // total asset market value
-  activity: number;       // daily activity score
-  popularity: number;     // social/trade score
+  power: number; // military/influence strength
+  wealth: number; // total asset market value
+  activity: number; // daily activity score
+  popularity: number; // social/trade score
   // Power Tier (computed from power value, cached in DB)
-  powerTier: number;      // 1–6
-  powerXp: number;        // XP within current tier
+  powerTier: number; // 1–6
+  powerXp: number; // XP within current tier
   // Subsidy quota (resets weekly to 5000)
   subsidyQuota: number;
   subsidyResetAt: string;
@@ -362,7 +366,7 @@ export interface Player {
   joinedAt: string;
   lastSeenAt: string;
   // v5 — Neighborhood Power Economy
-  lastNeighborhoodDripAt: string | null;   // null = never claimed
+  lastNeighborhoodDripAt: string | null; // null = never claimed
 }
 
 // ─── Asset (Building on Map) ─────────────────────────────────────────────────
@@ -383,20 +387,20 @@ export interface Asset {
   builtAt: string;
   upgradedAt: string | null;
   // Economy additions
-  incomeRate: number;           // hourly cash income from this asset
-  totalViews: number;           // cached lifetime view count
-  dailyPowerDrip: number;       // power added to owner daily (via pg_cron)
-  institutionType: InstitutionType | null;  // null = not a service institution
+  incomeRate: number; // hourly cash income from this asset
+  totalViews: number; // cached lifetime view count
+  dailyPowerDrip: number; // power added to owner daily (via pg_cron)
+  institutionType: InstitutionType | null; // null = not a service institution
   // v3 — Build modes & institution category
   buildMode: BuildMode;
   institutionCategory: InstitutionCategory | null;
   licensePurchased: boolean;
   warehouseFilled: boolean;
   // v4 — NPC housing fields
-  maxCapacity: number;          // for resident_house: max NPC residents
-  floorCount: number;           // number of floors
-  areaM2: number;               // plot area (50/100/200 m²)
-  currentWorkerCount: number;   // cached active worker count for businesses
+  maxCapacity: number; // for resident_house: max NPC residents
+  floorCount: number; // number of floors
+  areaM2: number; // plot area (50/100/200 m²)
+  currentWorkerCount: number; // cached active worker count for businesses
   // Joined owner data
   ownerUsername?: string;
   ownerAvatarColor?: string;
@@ -404,7 +408,7 @@ export interface Asset {
 
 // ─── Asset Marketplace Listing ───────────────────────────────────────────────
 
-export type ListingStatus = 'active' | 'sold' | 'cancelled';
+export type ListingStatus = "active" | "sold" | "cancelled";
 
 export interface AssetListing {
   id: string;
@@ -423,31 +427,31 @@ export interface AssetListing {
 // ─── Game Events ─────────────────────────────────────────────────────────────
 
 export type GameEventType =
-  | 'tile_claimed'
-  | 'tile_attacked'
-  | 'building_built'
-  | 'building_upgraded'
-  | 'building_demolished'
-  | 'player_joined'
-  | 'player_left'
-  | 'resource_collected'
+  | "tile_claimed"
+  | "tile_attacked"
+  | "building_built"
+  | "building_upgraded"
+  | "building_demolished"
+  | "player_joined"
+  | "player_left"
+  | "resource_collected"
   // Economy events
-  | 'asset_sold'
-  | 'service_used'
-  | 'exchange_used'
-  | 'popularity_boost_activated'
-  | 'daily_power_drip'
-  | 'power_tier_advanced'
+  | "asset_sold"
+  | "service_used"
+  | "exchange_used"
+  | "popularity_boost_activated"
+  | "daily_power_drip"
+  | "power_tier_advanced"
   // v3
-  | 'license_purchased'
-  | 'warehouse_filled'
+  | "license_purchased"
+  | "warehouse_filled"
   // v4 — NPC events
-  | 'npc_hired'
-  | 'npc_assigned'
-  | 'npc_trained'
-  | 'npc_leveled_up'
+  | "npc_hired"
+  | "npc_assigned"
+  | "npc_trained"
+  | "npc_leveled_up"
   // v5 — Neighborhood Power Economy
-  | 'neighborhood_power_drip';
+  | "neighborhood_power_drip";
 
 export interface GameEvent {
   id: string;
@@ -469,21 +473,25 @@ export interface WorldState {
 // ─── NPC System (v4) ─────────────────────────────────────────────────────────
 
 export type NpcClass =
-  | 'worker'
-  | 'foreman'
-  | 'engineer'
-  | 'doctor'
-  | 'specialist'
-  | 'physician';
+  | "worker"
+  | "foreman"
+  | "engineer"
+  | "doctor"
+  | "specialist"
+  | "physician";
 
-export type NpcAssignmentStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
+export type NpcAssignmentStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "revoked";
 
 export interface Npc {
   id: string;
   ownerId: string;
   nameFa: string;
   class: NpcClass;
-  level: number;                         // 1–10
+  level: number; // 1–10
   experience: number;
   specialties: string[];
   currentBusinessAssetId: string | null; // null = idle

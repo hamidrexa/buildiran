@@ -2,7 +2,7 @@
  * BuildIran — Map TypeScript Types
  */
 
-import type { Asset, LatLng } from './game.types';
+import type { Asset, LatLng } from "./game.types";
 
 // ─── Viewport ────────────────────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ export interface MapViewport {
 export interface MapMarker {
   id: string;
   coordinate: LatLng;
-  type: 'building' | 'player' | 'event' | 'poi';
+  type: "building" | "player" | "event" | "poi";
   data?: Record<string, unknown>;
 }
 
@@ -33,7 +33,7 @@ export interface MapRegion {
 
 // ─── Map Style ───────────────────────────────────────────────────────────────
 
-export type MapStyleMode = 'streets' | 'dark' | 'osm' | 'liberty';
+export type MapStyleMode = "streets" | "dark" | "osm" | "liberty";
 
 // ─── Map Camera ──────────────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ export interface TileCoord {
 export interface BuildingZoneOverlay {
   center: LatLng;
   radiusMeters: number;
-  status: 'checking' | 'valid' | 'invalid';
+  status: "checking" | "valid" | "invalid";
   distanceToStreet?: number;
   streetName?: string;
 }
@@ -94,7 +94,5 @@ export interface GameMapProps {
   /** Imperative camera fly-to target */
   flyToTarget?: { center: LatLng; zoom: number; duration?: number } | null;
   /** Whether to show the district borders layer */
-  showDistricts?: boolean;
   style?: object;
 }
-

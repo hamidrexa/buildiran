@@ -18,6 +18,7 @@ import {
   MAP_STYLE,
   TEHRAN_BOUNDS,
 } from "@/lib/constants";
+import { useMapStore } from "@/store/useMapStore";
 import type { LatLng } from "@/types/game.types";
 import type { GameMapProps } from "@/types/map.types";
 import { createGeoJSONCircle } from "@/utils/geo";
@@ -41,7 +42,6 @@ import {
   View,
 } from "react-native";
 import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
-import { useMapStore } from "@/store/useMapStore";
 
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
@@ -57,7 +57,6 @@ export const GameMap: React.FC<GameMapProps> = ({
   onPressNCC,
   buildingZone,
   flyToTarget,
-  showDistricts = true, // Still kept for backward compat, but we'll AND it with store
   style,
 }) => {
   const cameraRef = useRef<CameraRef>(null);
@@ -197,7 +196,7 @@ export const GameMap: React.FC<GameMapProps> = ({
         />
 
         {/* Tehran Districts Overlay */}
-        {showDistricts && showDistrictsOverlay && (
+        {showDistrictsOverlay && (
           <GeoJSONSource
             id="tehran-districts-source"
             data={districtsGeoJSON as any}
@@ -313,7 +312,7 @@ export const GameMap: React.FC<GameMapProps> = ({
         )}
 
         {/* Community Center Markers for Active Districts */}
-        {showDistricts && showDistrictsOverlay &&
+        {showDistrictsOverlay &&
           districtsGeoJSON.features.map((feature: any) => {
             const props = feature.properties;
             if (
@@ -407,7 +406,7 @@ export const GameMap: React.FC<GameMapProps> = ({
           const isOwned = currentUserId
             ? asset.ownerId === currentUserId
             : false;
-          
+
           if (!showOtherPlayersAssets && !isOwned) {
             return null; // hide other players' assets if toggled off
           }

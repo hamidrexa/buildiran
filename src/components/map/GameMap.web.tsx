@@ -23,10 +23,10 @@ import {
   MAP_STYLE,
   TEHRAN_BOUNDS,
 } from "@/lib/constants";
+import { useMapStore } from "@/store/useMapStore";
 import type { GameMapProps } from "@/types/map.types";
 import { createGeoJSONCircle } from "@/utils/geo";
 import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
-import { useMapStore } from "@/store/useMapStore";
 
 // Metro cannot resolve maplibre's `new URL(..., import.meta.url)` worker, so the
 // GeoJSON/vector worker silently never starts (raster tiles still render, which
@@ -47,7 +47,6 @@ export const GameMap: React.FC<GameMapProps> = ({
   onPressNCC,
   buildingZone,
   flyToTarget,
-  showDistricts = true,
   style,
 }) => {
   const mapRef = useRef<MapRef>(null);
@@ -203,7 +202,7 @@ export const GameMap: React.FC<GameMapProps> = ({
         <ScaleControl position="bottom-left" unit="metric" />
 
         {/* Tehran Districts Border Layer (toggleable) */}
-        {showDistricts && showDistrictsOverlay && (
+        {showDistrictsOverlay && (
           <Source
             id="tehran-districts-source"
             type="geojson"
@@ -317,7 +316,7 @@ export const GameMap: React.FC<GameMapProps> = ({
         )}
 
         {/* Community Center Markers for Active Districts */}
-        {showDistricts && showDistrictsOverlay &&
+        {showDistrictsOverlay &&
           districtsGeoJSON.features.map((feature: any) => {
             const props = feature.properties;
             if (
