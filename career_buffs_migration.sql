@@ -1,7 +1,25 @@
--- 12. Apply Service buff to service transactions (+15% income from services for business)
--- 13. Apply Trader buff to market listings (Discount on market taxes)
+-- ============================================================
+--  BuildIran — Career Buffs Migration
+--  Patches use_institution() and buy_asset_listing() RPCs to
+--  apply career-path buffs (service income bonus, market tax
+--  discount) by calling get_career_buff() from
+--  careers_and_stories_migration.sql.
+--
+--  Run AFTER:
+--    1. "Supabase Schema.sql"
+--    2. "build_modes_v1_migration.sql"
+--    3. "careers_and_stories_migration.sql"
+--
+--  Supabase SQL Editor → New query → Paste → Run
+-- ============================================================
 
--- Drop the old use_institution functions to avoid parameter conflicts if needed, but we'll just replace the exact signature.
+-- ─── 1. Patch use_institution() ─────────────────────────────────────────────
+-- Adds service income buff: 'business' career gets +15% more cash share
+-- (multiplier is pulled from get_career_buff to stay DRY)
+
+-- ─── 2. Patch buy_asset_listing() ───────────────────────────────────────────
+-- Adds market tax buff: 'trader' career (buyer or seller) gets reduced tax
+-- (60% tax reduction → effective rate drops from 5% to 2%)
 
 CREATE OR REPLACE FUNCTION public.use_institution(
   p_asset_id                 UUID,
