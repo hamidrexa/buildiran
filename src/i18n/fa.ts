@@ -487,6 +487,76 @@ const fa = {
       request_already_pending: 'درخواست در انتظار وجود دارد',
     },
   },
+  // ─── Missions / Quests (v6) ──────────────────────────────────────────────────
+  missions: {
+    title: 'مأموریت‌ها',
+    badge: '🎯',
+    claimableHint: 'جایزه آماده دریافت است',
+
+    tabs: {
+      daily: 'روزانه',
+      weekly: 'هفتگی',
+      achievement: 'دستاوردها',
+      story: 'داستان',
+      event: 'رویداد',
+      location: 'مکان‌محور',
+    },
+
+    status: {
+      active: 'در جریان',
+      completed: 'تکمیل شد',
+      claimed: 'دریافت شد',
+      expired: 'منقضی شد',
+      locked: 'قفل',
+    },
+
+    category: {
+      daily: 'روزانه',
+      weekly: 'هفتگی',
+      achievement: 'دستاورد',
+      story: 'داستان',
+      event: 'رویداد',
+      location: 'مکان‌محور',
+    },
+
+    chains: {
+      citizen_start: 'شروع شهروندی',
+      trader: 'تاجر',
+      industrialist: 'صنعتگر',
+      producer: 'تولیدکننده',
+      business: 'کسب‌وکار',
+      employee: 'مسیر کارمندی',
+      famous: 'مشهور شدن',
+      real_estate: 'مسکن و ساخت‌وساز',
+    },
+
+    progress: 'پیشرفت',
+    progressFmt: '{current} از {target}',
+    reward: 'جایزه',
+    claimReward: 'دریافت جایزه',
+    claiming: 'در حال دریافت...',
+    claimed: 'دریافت شد ✓',
+    expired: 'منقضی شد',
+    locked: 'قفل — مرحله قبل را تکمیل کن',
+    step: 'مرحله',
+    empty: 'مأموریتی در این دسته‌بندی وجود ندارد',
+    emptyDaily: 'مأموریت‌های روزانه هر روز در تهران بازنشینی می‌شوند.',
+    emptyWeekly: 'مأموریت‌های هفتگی هر شنبه بازنشینی می‌شوند.',
+    loading: 'در حال بارگذاری مأموریت‌ها...',
+    pullToRefresh: 'برای بروزرسانی بکشید',
+    rewardCash: '{amount} تومان',
+    rewardPower: '{amount} قدرت',
+    rewardPopularity: '{amount} محبوبیت',
+    rewardActivity: '{amount} فعالیت',
+    completionTitle: 'مأموریت تکمیل شد!',
+    completionSub: 'جایزه آماده دریافت است',
+
+    errors: {
+      claimFailed: 'دریافت جایزه ناموفق بود',
+      alreadyClaimed: 'این جایزه قبلاً دریافت شده است',
+      notCompleted: 'مأموریت هنوز تکمیل نشده است',
+    },
+  },
 } as const;
 
 

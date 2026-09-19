@@ -16,7 +16,9 @@ import { useGameStore } from "@/store/useGameStore";
 import { useMapStore } from "@/store/useMapStore";
 import { useNeighborhoodStore } from "@/store/useNeighborhoodStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
+import { useMissionStore } from "@/store/useMissionStore";
 import { useViewportTracker } from "@/hooks/useViewportTracker";
+import { MissionCompletionToast } from "@/components/game/MissionCompletionToast";
 import type { Asset, LatLng } from "@/types/game.types";
 import type { BuildingZoneOverlay } from "@/types/map.types";
 import { checkStreetProximity, tileIdFromCoordinate, type StreetProximityResult } from "@/utils/geo";
@@ -79,7 +81,10 @@ export default function MapScreen() {
       }
 
       // Load real player data from Supabase
-      await syncFromSupabase(session.user.id);
+      if (!player) {
+        await syncFromSupabase(session.user.id);
+        useMissionStore.getState().init(session.user.id);
+      }
       // Load all map assets & active marketplace listings
       await fetchAllAssets();
       await fetchListings();
@@ -96,7 +101,14 @@ export default function MapScreen() {
       mounted = false;
       if (unsubscribeAssets) unsubscribeAssets();
     };
-  }, [syncFromSupabase, fetchAllAssets, fetchListings, subscribeToAssets]);
+  }, [syncFromSupabase, player, fetchAllAssets, fetchListings, subscribeToAssets, fetchActiveBoosts, fetchNeighborhoods]);
+
+  // Clean up mission realtime on unmount
+  useEffect(() => {
+    return () => {
+      useMissionStore.getState().unsubscribe();
+    };
+  }, []);
 
   // ─── Street Setback Verification Helper ────────────────────────────────────
   const verifyLocationStreetProximity = useCallback(async (coord: LatLng) => {
@@ -242,6 +254,9 @@ export default function MapScreen() {
 
       {/* Game HUD overlay (hidden during placement to maximize map visibility) */}
       {!isPlacementMode && <HUD />}
+
+      {/* Animated Mission Completion Toast */}
+      <MissionCompletionToast />
 
       {/* 5-Meter Placement Verification HUD (active at max zoom) */}
       {isPlacementMode && (

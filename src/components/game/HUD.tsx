@@ -13,6 +13,7 @@ import { useGameStore } from "@/store/useGameStore";
 import { useNeighborhoodStore } from "@/store/useNeighborhoodStore";
 import { useNpcStore } from "@/store/useNpcStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
+import { useMissionStore } from "@/store/useMissionStore";
 import { useMapStore } from "@/store/useMapStore";
 import { haversineDistance } from "@/utils/geo";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NeighborhoodEditorModal } from "./NeighborhoodEditorModal";
 import { NeighborhoodDetailModal } from "./NeighborhoodDetailModal";
 import { NeighborhoodAmenityCard } from "./NeighborhoodAmenityCard";
+import { MissionsPanel } from "./MissionsPanel";
 import { NEIGHBORHOOD_DRIP_COOLDOWN_SECONDS } from "@/lib/constants";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -81,6 +83,7 @@ export const HUD: React.FC = () => {
   const player = usePlayerStore((s) => s.player);
   const selectedTileId = useGameStore((s) => s.selectedTileId);
   const tiles = useGameStore((s) => s.tiles);
+  const claimableCount = useMissionStore((s) => s.claimableCount);
   
   const currentNeighborhood = useNeighborhoodStore((s) => s.currentNeighborhood);
   const neighborhoods = useNeighborhoodStore((s) => s.neighborhoods);
@@ -94,6 +97,7 @@ export const HUD: React.FC = () => {
 
   const [showEditorModal, setShowEditorModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showMissionsPanel, setShowMissionsPanel] = useState(false);
   const [isClaimingDrip, setIsClaimingDrip] = useState(false);
 
   const selectedTile = selectedTileId ? tiles[selectedTileId] : null;
@@ -120,6 +124,13 @@ export const HUD: React.FC = () => {
   const hasAnyBoost = Object.values(activeBoosts).some(
     (b) => b.ownerId === player.id && new Date(b.expiresAt) > new Date(),
   );
+
+  // Record neighborhood visit for location-based missions
+  React.useEffect(() => {
+    if (viewedNeighborhood?.id) {
+      useMissionStore.getState().recordNeighborhoodVisit(viewedNeighborhood.id);
+    }
+  }, [viewedNeighborhood?.id]);
 
   const isEditor = currentNeighborhood
     ? player.power >= currentNeighborhood.minEditorPower
@@ -190,6 +201,29 @@ export const HUD: React.FC = () => {
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={styles.missionsBtn}
+            onPress={() => {
+              GameAudio.playTap();
+              setShowMissionsPanel(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={["rgba(22, 28, 45, 0.95)", "rgba(10, 15, 30, 0.85)"]}
+              style={styles.missionsBtnInner}
+            >
+              <Text style={{ fontSize: 16 }}>🎯</Text>
+              {claimableCount > 0 && (
+                <View style={styles.missionsBadge}>
+                  <Text variant="caption" weight="bold" color="inverse" style={{ fontSize: 10 }}>
+                    {claimableCount}
+                  </Text>
+                </View>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
           {canClaimDrip && (
             <TouchableOpacity
               style={styles.claimDripBtn}
@@ -304,6 +338,11 @@ export const HUD: React.FC = () => {
         visible={showEditorModal}
         onClose={() => setShowEditorModal(false)}
       />
+
+      <MissionsPanel
+        visible={showMissionsPanel}
+        onClose={() => setShowMissionsPanel(false)}
+      />
     </>
   );
 };
@@ -390,6 +429,32 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   editorPillText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
+
+  missionsBtn: {
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  missionsBtnInner: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  missionsBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#000',
+  },
 
 
   // Tier badge under player name
