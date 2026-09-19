@@ -121,6 +121,15 @@ export const HUD: React.FC = () => {
     return closest;
   }, [mapCenter, neighborhoods]);
 
+  // Record neighborhood visit for location-based missions.
+  // This hook must run before the player guard so the hook order is stable
+  // while the player store is hydrating on web production builds.
+  React.useEffect(() => {
+    if (viewedNeighborhood?.id) {
+      useMissionStore.getState().recordNeighborhoodVisit(viewedNeighborhood.id);
+    }
+  }, [viewedNeighborhood?.id]);
+
   if (!player) return null;
 
   const tier = getPlayerTier(player.power ?? 0);
@@ -129,13 +138,6 @@ export const HUD: React.FC = () => {
   );
 
   const careerTheme = CAREER_PATHS[player.careerPath] || CAREER_PATHS.citizen;
-
-  // Record neighborhood visit for location-based missions
-  React.useEffect(() => {
-    if (viewedNeighborhood?.id) {
-      useMissionStore.getState().recordNeighborhoodVisit(viewedNeighborhood.id);
-    }
-  }, [viewedNeighborhood?.id]);
 
   const isEditor = currentNeighborhood
     ? player.power >= currentNeighborhood.minEditorPower
