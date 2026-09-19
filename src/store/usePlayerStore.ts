@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Player, ResourceMap } from '@/types/game.types';
 import { STORAGE_PLAYER_DATA } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
+import type { CareerPathId } from '@/lib/careers';
 
 interface PlayerState {
   // ─── Player Data ─────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ interface PlayerState {
   incrementScore: (amount: number) => void;
   setInitialized: (initialized: boolean) => void;
   clearPlayer: () => void;
+  setCareerPath: (path: CareerPathId) => Promise<void>;
 
   // ─── 4-Factor Stats ──────────────────────────────────────────────────────
   updateStats: (stats: {
@@ -101,6 +103,8 @@ function dbRowToPlayer(row: Record<string, any>): Player {
     lastSeenAt: row.last_seen_at ?? new Date().toISOString(),
     // v5 — Neighborhood Power Economy
     lastNeighborhoodDripAt: row.last_neighborhood_drip_at ?? null,
+    // v6 — Career Paths
+    careerPath: (row.career_path as CareerPathId) ?? 'citizen',
   };
 }
 
@@ -172,6 +176,26 @@ export const usePlayerStore = create<PlayerState>()(
             ? { ...state.player, score: state.player.score + amount }
             : null,
         })),
+
+      setCareerPath: async (path: CareerPathId) => {
+        const player = get().player;
+        if (!player) return;
+        
+        // Optimistic update
+        set((state) => ({
+          player: state.player ? { ...state.player, careerPath: path } : null,
+        }));
+        
+        // Persist to Supabase
+        const { error } = await supabase
+          .from('profiles')
+          .update({ career_path: path })
+          .eq('id', player.id);
+          
+        if (error) {
+          console.error('[usePlayerStore] setCareerPath error:', error);
+        }
+      },
 
       setInitialized: (isInitialized) => set({ isInitialized }),
 

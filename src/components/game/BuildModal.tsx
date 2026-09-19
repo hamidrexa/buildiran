@@ -123,8 +123,13 @@ export function BuildModal({ visible, coordinate, proximityResult, onClose }: Bu
   const config = selectedType ? (BUILDING_CONFIG[selectedType.type] ?? null) : null;
   const category = selectedType ? (INSTITUTION_CATEGORY[selectedType.type] ?? null) : null;
   const licenseFee = category ? LICENSE_FEE[category as keyof typeof LICENSE_FEE] : 0;
-  const fastCost = config ? config.cost + licenseFee : 0;
-  const advancedEstCost = config ? Math.round(config.cost * BUILD_MODE_ADVANCED_COST_RATIO) : 0;
+  const baseCost = config ? config.cost : 0;
+  const neighborhoodCostMultiplier = currentNeighborhood ? (useNeighborhoodStore.getState().getNeighborhoodCostMultiplier(currentNeighborhood.id)) : 1.0;
+  const careerCostMultiplier = player?.careerPath === 'real_estate' ? 0.9 : 1.0;
+  const totalCostMultiplier = neighborhoodCostMultiplier * careerCostMultiplier;
+
+  const fastCost = Math.round(baseCost * totalCostMultiplier) + Math.round(licenseFee * neighborhoodCostMultiplier);
+  const advancedEstCost = Math.round(baseCost * totalCostMultiplier * BUILD_MODE_ADVANCED_COST_RATIO);
 
   // Fetch nearby shops when entering gather step
   useEffect(() => {

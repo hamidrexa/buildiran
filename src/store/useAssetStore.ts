@@ -513,11 +513,16 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
       INSTITUTION_CATEGORY[type] ?? null;
     const licenseFee = category ? LICENSE_FEE[category] : 0;
 
-    // Apply neighborhood cost multiplier to the base build cost
+    // Apply neighborhood cost multiplier and Real Estate buff to the base build cost
     const costMultiplier = useNeighborhoodStore
       .getState()
       .getNeighborhoodCostMultiplier(neighborhoodId);
-    const adjustedCost = Math.floor(config.cost * costMultiplier);
+    
+    const player = usePlayerStore.getState().player;
+    const careerCostMultiplier = player?.careerPath === 'real_estate' ? 0.9 : 1.0;
+    const totalCostMultiplier = costMultiplier * careerCostMultiplier;
+    
+    const adjustedCost = Math.floor(config.cost * totalCostMultiplier);
     const adjustedLicenseFee = Math.floor(licenseFee * costMultiplier);
 
     try {

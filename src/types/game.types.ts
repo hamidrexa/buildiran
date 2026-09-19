@@ -4,6 +4,8 @@
 
 // ─── Coordinates ───────────────────────────────────────────────────────────
 
+import type { CareerPathId } from "../lib/careers";
+
 export interface LatLng {
   latitude: number;
   longitude: number;
@@ -367,6 +369,8 @@ export interface Player {
   lastSeenAt: string;
   // v5 — Neighborhood Power Economy
   lastNeighborhoodDripAt: string | null; // null = never claimed
+  // v6 — Career Paths
+  careerPath: CareerPathId;
 }
 
 // ─── Asset (Building on Map) ─────────────────────────────────────────────────

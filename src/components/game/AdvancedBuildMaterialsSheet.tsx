@@ -86,13 +86,15 @@ export function AdvancedBuildMaterialsSheet({
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {slots.map((slot) => {
           const matDef = BUILD_MATERIALS.find((m) => m.itemId === slot.itemId);
-          const subsidizedCost = matDef?.subsidizedUnitCost ?? 0;
+          const careerCostMultiplier = player?.careerPath === 'real_estate' ? 0.9 : 1.0;
+          const discountedSubsidizedCost = Math.round((matDef?.subsidizedUnitCost ?? 0) * careerCostMultiplier);
           const quotaCostPerUnit = matDef?.subsidyQuotaCostPerUnit ?? 0;
 
           // Find market option from nearby shops
           const shopOption = nearbyShopItems.find(
             (item) => item.itemId === slot.itemId && item.stock >= slot.qtyRequired,
           );
+          const discountedShopPrice = shopOption ? Math.round(shopOption.price * careerCostMultiplier) : 0;
 
           const isGathered = slot.gathered !== null;
 
@@ -134,7 +136,7 @@ export function AdvancedBuildMaterialsSheet({
                           itemNameFa: slot.nameFa,
                           qty: slot.qtyRequired,
                           source: 'market',
-                          unitCost: shopOption.price,
+                          unitCost: discountedShopPrice,
                           quotaCostPerUnit: 0,
                           shopAssetId: shopOption.shopAssetId,
                         });
@@ -148,7 +150,7 @@ export function AdvancedBuildMaterialsSheet({
                       >
                         <Text variant="caption" weight="bold" color="primary">💵 بازار آزاد</Text>
                         <Text variant="caption" color="secondary">
-                          💰 {(shopOption.price * slot.qtyRequired).toLocaleString('fa-IR')}
+                          💰 {(discountedShopPrice * slot.qtyRequired).toLocaleString('fa-IR')}
                         </Text>
                         <Text style={styles.shopOwner}>{shopOption.shopOwnerUsername}</Text>
                       </LinearGradient>
@@ -175,7 +177,7 @@ export function AdvancedBuildMaterialsSheet({
                         itemNameFa: slot.nameFa,
                         qty: slot.qtyRequired,
                         source: 'subsidized',
-                        unitCost: subsidizedCost,
+                        unitCost: discountedSubsidizedCost,
                         quotaCostPerUnit,
                       });
                     }}

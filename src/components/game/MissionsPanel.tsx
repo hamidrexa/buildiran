@@ -26,6 +26,7 @@ import type { MissionCategory } from '@/types/missions.types';
 import fa from '@/i18n/fa';
 import { MissionCard } from './MissionCard';
 import { GameAudio } from '@/lib/audio';
+import { CAREER_PATHS } from '@/lib/careers';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -49,6 +50,7 @@ export function MissionsPanel({ visible, onClose }: MissionsPanelProps) {
   const [activeTab, setActiveTab] = useState<MissionCategory>('daily');
   const [claimingIds, setClaimingIds] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
+  const careerTheme = player ? CAREER_PATHS[player.careerPath] || CAREER_PATHS.citizen : CAREER_PATHS.citizen;
 
   // Filter and sort slots for current tab
   const tabSlots = useMemo(() => {
@@ -129,25 +131,38 @@ export function MissionsPanel({ visible, onClose }: MissionsPanelProps) {
                     (s) => s.definition?.category === tab.key && s.status === 'completed'
                   );
                   
+                  const isStoryTab = tab.key === 'story';
+                  const tabColor = isActive ? Colors.brand.primary : Colors.text.secondary;
+                  const activeColor = isStoryTab ? careerTheme.color : Colors.brand.primary;
+
                   return (
                     <TouchableOpacity
                       key={tab.key}
-                      style={[styles.tab, isActive && styles.tabActive]}
+                      style={[
+                        styles.tab, 
+                        isActive && styles.tabActive,
+                        isStoryTab && { borderColor: careerTheme.color, borderWidth: 1 }
+                      ]}
                       onPress={() => {
                         setActiveTab(tab.key);
                         GameAudio.playTap();
                       }}
                       activeOpacity={0.7}
                     >
-                      <Ionicons
-                        name={isActive ? tab.icon : (`${tab.icon}-outline` as any)}
-                        size={18}
-                        color={isActive ? Colors.brand.primary : Colors.text.secondary}
-                      />
+                      {isStoryTab ? (
+                        <Text style={{ fontSize: 16 }}>{careerTheme.icon}</Text>
+                      ) : (
+                        <Ionicons
+                          name={isActive ? tab.icon : (`${tab.icon}-outline` as any)}
+                          size={18}
+                          color={isActive ? activeColor : Colors.text.secondary}
+                        />
+                      )}
                       <Text
                         variant="body"
                         weight={isActive ? 'bold' : 'medium'}
                         color={isActive ? 'brand' : 'secondary'}
+                        style={isStoryTab && isActive ? { color: careerTheme.color } : {}}
                       >
                         {(fa.missions.tabs as any)[tab.key]}
                       </Text>
