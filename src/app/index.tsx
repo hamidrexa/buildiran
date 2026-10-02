@@ -3,14 +3,14 @@
  * Auth guard: redirects to game if session exists, else to login.
  */
 
-import { Text } from '@/components/ui/Text';
+import { PersianBrandLockup } from '@/components/brand/BrandLogos';
 import { GameAudio } from '@/lib/audio';
 import { supabase } from '@/lib/supabase';
 import { Spacing } from '@/theme';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Redirect } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 export default function Index() {
   const { colors: c } = useTheme();
@@ -31,18 +31,7 @@ export default function Index() {
   if (checking) {
     return (
       <View style={styles.splash}>
-        {/* The crown — Shahryar's mark */}
-        <Image
-          source={require("../../assets/images/splash-icon.png")}
-          style={styles.markImage}
-          resizeMode="contain"
-        />
-        <Text variant="title" weight="bold" color="primary">
-          شهریار
-        </Text>
-        <Text variant="label" color="muted" style={styles.kicker}>
-          SHAHRAYAR
-        </Text>
+        <PersianBrandLockup width={220} style={styles.logoImage} />
         <ActivityIndicator color={c.brass[400]} size="small" style={styles.spinner} />
       </View>
     );
@@ -57,44 +46,12 @@ const makeStyles = (c: ReturnType<typeof useTheme>['colors']) =>
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: c.bg.primary,
+      backgroundColor: c.ink[950],
       gap: 4,
     },
-    mark: {
-      width: 44,
-      height: 48,
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      marginBottom: Spacing.md,
-    },
-    markImage: {
-      width: 48,
-      height: 48,
-    },
-    leg: {
-      position: 'absolute',
-      bottom: 0,
-      width: 6,
-      height: 28,
-      borderTopLeftRadius: 3,
-      borderTopRightRadius: 3,
-      backgroundColor: c.brass[400],
-    },
-    arch: {
-      position: 'absolute',
-      top: 2,
-      alignSelf: 'center',
-      width: 24,
-      height: 20,
-      borderTopLeftRadius: 12,
-      borderTopRightRadius: 12,
-      borderWidth: 4,
-      borderBottomWidth: 0,
-      borderColor: c.brass[300],
-    },
-    kicker: {
-      letterSpacing: 2,
-      marginTop: 2,
+    logoImage: {
+      width: 220,
+      height: 317,
     },
     spinner: {
       marginTop: Spacing.xl,

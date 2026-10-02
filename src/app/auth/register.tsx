@@ -6,6 +6,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { BrandCrest } from "@/components/brand/BrandLogos";
 import { IconPlate } from "@/components/ui/IconPlate";
 import { Input } from "@/components/ui/Input";
 import { Text } from "@/components/ui/Text";
@@ -21,7 +22,6 @@ import { useMemo, useState } from "react";
 import {
     Alert,
     Dimensions,
-    Image,
     KeyboardAvoidingView,
     Platform,
     Pressable,
@@ -63,18 +63,14 @@ const AuthBackdrop: React.FC = () => {
   );
 };
 
-// ── The Shahryar crown mark ──────────────────────────────────────────────────
-const ArchMark: React.FC = () => {
+// ── The Shahriyar shield mark ────────────────────────────────────────────────
+const ShieldMark: React.FC = () => {
   const { colors: c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   return (
     <View style={styles.markWrap}>
       <View style={styles.markRing} />
-      <Image
-        source={require("../../../assets/images/splash-icon.png")}
-        style={styles.markImage}
-        resizeMode="contain"
-      />
+      <BrandCrest style={styles.markImage} />
     </View>
   );
 };
@@ -107,7 +103,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // The ONE looping animation on this screen — subtle arch-mark glow.
+  // The ONE looping animation on this screen — subtle shield-mark glow.
   const markGlow = useGlowPulse(0.7, 1.0);
   const buttonScale = useScalePop();
   const formShake = useShake();
@@ -280,7 +276,7 @@ export default function RegisterScreen() {
             style={styles.hero}
           >
             <Animated.View style={markGlow.style}>
-              <ArchMark />
+              <ShieldMark />
             </Animated.View>
             <Text variant="heading" weight="extrabold" color="primary" center>
               ثبت نام فرمانده
@@ -480,7 +476,7 @@ const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) =>
     },
     topBarSpacer: { flex: 1 },
 
-    // Hero — arch mark
+    // Hero — shield mark
     hero: {
       alignItems: "center",
       gap: Spacing.sm + 4,
@@ -488,9 +484,11 @@ const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) =>
     markWrap: {
       width: 92,
       height: 92,
+      borderRadius: 46,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: Spacing.sm,
+      backgroundColor: c.ink[950],
     },
     markRing: {
       position: "absolute",
@@ -501,8 +499,8 @@ const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) =>
       borderColor: c.brass[600],
     },
     markImage: {
-      width: 48,
-      height: 48,
+      width: 52,
+      height: 74,
     },
     mark: {
       width: 52,
