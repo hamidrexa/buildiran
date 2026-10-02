@@ -1,17 +1,25 @@
 /**
- * BuildIran — EngagementDashboard
+ * BuildIran — EngagementDashboard — «Gentleman Neon» (v2)
  * Asset owner's analytics panel: viewport views, popularity earned,
  * top viewers, and upgrade suggestions.
  * Mounted inside AssetDetailModal when the viewer is the asset owner.
+ * SectionTitle rhythm, IconPlate stat cards, tabular numerals; economy
+ * store calls and public props ({assetId}) unchanged.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Text } from '@/components/ui/Text';
+import { IconPlate } from '@/components/ui/IconPlate';
+import { SectionTitle } from '@/components/ui/SectionTitle';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Spacing, Radii, Typography, Motion } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Palette } from '@/theme/palettes';
 import { useEconomyStore } from '@/store/useEconomyStore';
 import { useBounceIn } from '@/lib/effects';
-import Animated from 'react-native-reanimated';
 import t from '@/i18n';
 
 const lang = t();
@@ -21,28 +29,45 @@ const lang = t();
 const StatCard: React.FC<{
   value: number;
   label: string;
-  icon: string;
-  color: string;
+  icon: React.ComponentProps<typeof IconPlate>['name'];
+  tone: React.ComponentProps<typeof IconPlate>['tone'];
   delay?: number;
-}> = ({ value, label, icon, color, delay = 0 }) => {
+}> = ({ value, label, icon, tone, delay = 0 }) => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => statCardStyles(c), [c]);
   const { style } = useBounceIn(delay);
   return (
-    <Animated.View style={[cardStyles.card, style]}>
-      <LinearGradient
-        colors={[`${color}22`, `${color}08`]}
-        style={cardStyles.cardInner}
-      >
-        <Text style={cardStyles.icon}>{icon}</Text>
-        <Text variant="title" weight="bold" style={{ color }}>
-          {value.toLocaleString('fa-IR')}
-        </Text>
-        <Text variant="caption" color="secondary" center>
-          {label}
-        </Text>
-      </LinearGradient>
+    <Animated.View style={[styles.card, style]}>
+      <IconPlate name={icon} size="sm" tone={tone} bordered={false} />
+      <Text variant="title" weight="bold" style={styles.value}>
+        {value.toLocaleString('fa-IR')}
+      </Text>
+      <Text variant="caption" color="secondary" style={styles.label}>
+        {label}
+      </Text>
     </Animated.View>
   );
 };
+
+const statCardStyles = (c: Palette) =>
+  StyleSheet.create({
+    card: {
+      width: '47%',
+      backgroundColor: c.ink[700],
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      alignItems: 'center',
+      gap: Spacing.xs + 2,
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+    },
+    value: {
+      fontVariant: ['tabular-nums'],
+    },
+    label: {
+      textAlign: 'center',
+    },
+  });
 
 // ─── Viewer Row ───────────────────────────────────────────────────────────────
 
@@ -50,19 +75,56 @@ const ViewerRow: React.FC<{
   username: string;
   viewCount: number;
   rank: number;
-}> = ({ username, viewCount, rank }) => (
-  <View style={viewerStyles.row}>
-    <Text variant="caption" color="muted" style={viewerStyles.rank}>
-      #{rank.toLocaleString('fa-IR')}
-    </Text>
-    <Text variant="body" color="primary" style={{ flex: 1 }}>
-      {username}
-    </Text>
-    <Text variant="caption" color="secondary">
-      {viewCount.toLocaleString('fa-IR')} 👁️
-    </Text>
-  </View>
-);
+  index: number;
+}> = ({ username, viewCount, rank, index }) => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => viewerStyles(c), [c]);
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(Motion.stagger(index)).duration(Motion.durations.normal)}
+      style={styles.row}
+    >
+      <Text variant="caption" color="muted" style={styles.rank}>
+        #{rank.toLocaleString('fa-IR')}
+      </Text>
+      <Text variant="body" weight="medium" style={styles.name} numberOfLines={1}>
+        {username}
+      </Text>
+      <Ionicons name="eye" size={13} color={c.text.muted} />
+      <Text variant="caption" color="secondary" style={styles.count}>
+        {viewCount.toLocaleString('fa-IR')}
+      </Text>
+    </Animated.View>
+  );
+};
+
+const viewerStyles = (c: Palette) =>
+  StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingVertical: Spacing.sm + 2,
+      paddingHorizontal: Spacing.md,
+      backgroundColor: c.ink[700],
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      minHeight: 44,
+    },
+    rank: {
+      minWidth: 26,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
+    name: {
+      flex: 1,
+    },
+    count: {
+      fontVariant: ['tabular-nums'],
+      fontSize: Typography.sizes.sm,
+    },
+  });
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -71,6 +133,9 @@ interface Props {
 }
 
 export const EngagementDashboard: React.FC<Props> = ({ assetId }) => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
+
   const fetchEngagement    = useEconomyStore((s) => s.fetchEngagement);
   const engagementData     = useEconomyStore((s) => s.engagementData[assetId]);
   const isLoadingEngagement = useEconomyStore((s) => s.isLoadingEngagement);
@@ -82,7 +147,7 @@ export const EngagementDashboard: React.FC<Props> = ({ assetId }) => {
   if (isLoadingEngagement && !engagementData) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color="#6C63FF" size="small" />
+        <ActivityIndicator color={c.brass[400]} size="small" />
         <Text variant="caption" color="secondary">
           {lang.common.loading}
         </Text>
@@ -95,80 +160,78 @@ export const EngagementDashboard: React.FC<Props> = ({ assetId }) => {
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
       {/* Header */}
-      <View style={styles.titleRow}>
-        <Text variant="label" weight="bold" color="primary">
-          📊 {lang.economy.engagement.title}
-        </Text>
-        <Text variant="caption" color="secondary">
-          {lang.economy.engagement.viewsLead}
-        </Text>
-      </View>
+      <SectionTitle
+        kicker="تحلیل"
+        title={lang.economy.engagement.title}
+        trailing={
+          <Text variant="caption" color="muted">
+            {lang.economy.engagement.viewsLead}
+          </Text>
+        }
+      />
 
       {/* Stat Cards */}
       <View style={styles.cardGrid}>
         <StatCard
           value={engagementData.viewsToday}
           label={lang.economy.engagement.viewsToday}
-          icon="👁️"
-          color="#60A5FA"
+          icon="eye"
+          tone="steel"
           delay={0}
         />
         <StatCard
           value={engagementData.viewsThisWeek}
           label={lang.economy.engagement.viewsWeek}
-          icon="📅"
-          color="#A78BFA"
+          icon="calendar"
+          tone="brass"
           delay={80}
         />
         <StatCard
           value={engagementData.viewsAllTime}
           label={lang.economy.engagement.viewsAll}
-          icon="📈"
-          color="#34D399"
+          icon="trending-up"
+          tone="jade"
           delay={160}
         />
         <StatCard
           value={engagementData.popularityEarned}
           label={lang.economy.engagement.popularityEarned}
-          icon="⭐"
-          color="#FFD700"
+          icon="star"
+          tone="ember"
           delay={240}
         />
       </View>
 
       {/* Top viewers */}
-      <View style={styles.section}>
-        <Text variant="label" color="secondary" style={styles.sectionTitle}>
-          {lang.economy.engagement.topViewers}
-        </Text>
-        {engagementData.topViewers.length === 0 ? (
-          <Text variant="caption" color="muted" center>
-            {lang.economy.engagement.noViewers}
-          </Text>
-        ) : (
-          engagementData.topViewers.map((v, i) => (
+      <SectionTitle kicker="بازدیدکنندگان" title={lang.economy.engagement.topViewers} />
+      {engagementData.topViewers.length === 0 ? (
+        <EmptyState
+          icon="eye-off"
+          tone="neutral"
+          title={lang.economy.engagement.noViewers}
+          style={styles.emptyCompact}
+        />
+      ) : (
+        <View style={styles.viewerList}>
+          {engagementData.topViewers.map((v, i) => (
             <ViewerRow
               key={v.playerId}
               username={v.username}
               viewCount={v.viewCount}
               rank={i + 1}
+              index={i}
             />
-          ))
-        )}
-      </View>
+          ))}
+        </View>
+      )}
 
       {/* Upgrade suggestion */}
       {engagementData.upgradeSuggestion && (
         <View style={styles.suggestion}>
-          <LinearGradient
-            colors={['rgba(108,99,255,0.15)', 'rgba(108,99,255,0.05)']}
-            style={styles.suggestionInner}
-          >
-            <Text variant="body" style={{ color: '#6C63FF' }}>💡</Text>
-            <Text variant="caption" color="secondary" style={{ flex: 1 }}>
-              {engagementData.upgradeSuggestion}
-            </Text>
-          </LinearGradient>
+          <IconPlate name="bulb" size="sm" tone="brass" bordered={false} />
+          <Text variant="caption" color="secondary" style={styles.suggestionText}>
+            {engagementData.upgradeSuggestion}
+          </Text>
         </View>
       )}
     </ScrollView>
@@ -177,53 +240,38 @@ export const EngagementDashboard: React.FC<Props> = ({ assetId }) => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  loading: { alignItems: 'center', gap: 8, paddingVertical: 24 },
-  titleRow: { gap: 2, marginBottom: 16 },
-  cardGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  section: { gap: 8, marginBottom: 16 },
-  sectionTitle: { marginBottom: 6 },
-  suggestion: { borderRadius: 14, overflow: 'hidden', marginBottom: 16 },
-  suggestionInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.25)',
-  },
-});
-
-const cardStyles = StyleSheet.create({
-  card: { width: '47%' },
-  cardInner: {
-    borderRadius: 14,
-    padding: 14,
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  icon: { fontSize: 20 },
-});
-
-const viewerStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 10,
-  },
-  rank: { minWidth: 26, textAlign: 'center' },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    container: { flex: 1 },
+    loading: { alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.xl },
+    cardGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.md,
+      justifyContent: 'space-between',
+      marginTop: Spacing.md,
+      marginBottom: Spacing.lg,
+    },
+    viewerList: {
+      gap: Spacing.sm,
+      marginTop: Spacing.md,
+      marginBottom: Spacing.lg,
+    },
+    emptyCompact: {
+      paddingVertical: Spacing.lg,
+    },
+    suggestion: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      padding: Spacing.md,
+      borderRadius: Radii.lg,
+      borderWidth: 1,
+      borderColor: `${c.brass[400]}3D`,
+      backgroundColor: `${c.brass[400]}0F`,
+      marginBottom: Spacing.lg,
+    },
+    suggestionText: {
+      flex: 1,
+    },
+  });

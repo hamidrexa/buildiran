@@ -25,6 +25,7 @@ import {
 } from "@/lib/constants";
 import { useMapStore } from "@/store/useMapStore";
 import type { GameMapProps } from "@/types/map.types";
+import { useTheme } from "@/theme/ThemeProvider";
 import { createGeoJSONCircle } from "@/utils/geo";
 import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
 
@@ -36,7 +37,7 @@ maplibreSetWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
   initialZoom = MAP_DEFAULT_ZOOM,
-  mapStyle = MAP_STYLE,
+  mapStyle,
   onMapPress,
   onRegionChange,
   assets = [],
@@ -49,6 +50,9 @@ export const GameMap: React.FC<GameMapProps> = ({
   flyToTarget,
   style,
 }) => {
+  const { colors, isDark } = useTheme();
+  // Basemap follows the active palette unless the caller overrides it.
+  const resolvedStyle = mapStyle ?? colors.mapStyle ?? MAP_STYLE;
   const mapRef = useRef<MapRef>(null);
   const showDistrictsOverlay = useMapStore((s) => s.showDistrictsOverlay);
   const showOtherPlayersAssets = useMapStore((s) => s.showOtherPlayersAssets);
@@ -99,11 +103,11 @@ export const GameMap: React.FC<GameMapProps> = ({
   }, [buildingZone]);
 
   const zoneColor = useMemo(() => {
-    if (!buildingZone) return "#6C63FF";
-    if (buildingZone.status === "valid") return "#10B981";
-    if (buildingZone.status === "invalid") return "#EF4444";
-    return "#F59E0B";
-  }, [buildingZone]);
+    if (!buildingZone) return colors.steel;
+    if (buildingZone.status === "valid") return colors.jade;
+    if (buildingZone.status === "invalid") return colors.crimson;
+    return colors.steel;
+  }, [buildingZone, colors]);
 
   const districtsGeoJSON = useMemo(() => {
     const neighborhoodMap: Record<string, any> = {};
@@ -179,7 +183,7 @@ export const GameMap: React.FC<GameMapProps> = ({
           latitude: initialCenter.latitude,
           zoom: initialZoom,
         }}
-        mapStyle={mapStyle as any}
+        mapStyle={resolvedStyle as any}
         minZoom={MAP_MIN_ZOOM}
         maxZoom={MAP_MAX_ZOOM}
         maxBounds={[
@@ -240,8 +244,8 @@ export const GameMap: React.FC<GameMapProps> = ({
                 "line-color": [
                   "case",
                   ["==", ["get", "isLocked"], true],
-                  DISTRICT_MAP_CONFIG.COLOR_LOCKED_BORDER,
-                  DISTRICT_MAP_CONFIG.COLOR_ACTIVE_BORDER,
+                  colors.border.strong,
+                  colors.border.strong,
                 ],
                 "line-width": [
                   "interpolate",
@@ -294,8 +298,8 @@ export const GameMap: React.FC<GameMapProps> = ({
                 "text-anchor": "center",
               }}
               paint={{
-                "text-color": DISTRICT_MAP_CONFIG.LABEL_COLOR,
-                "text-halo-color": DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
+                "text-color": colors.text.primary,
+                "text-halo-color": colors.bg.primary,
                 "text-halo-width": DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
                 "text-opacity": [
                   "interpolate",
@@ -348,14 +352,14 @@ export const GameMap: React.FC<GameMapProps> = ({
                   >
                     <div
                       style={{
-                        background: "rgba(16, 185, 129, 0.9)",
-                        color: "#fff",
+                        background: colors.jade,
+                        color: colors.text.inverse,
                         padding: "4px 8px",
                         borderRadius: "8px",
                         fontSize: "10px",
                         fontWeight: 600,
-                        border: "1.5px solid #10B981",
-                        boxShadow: "0 0 8px rgba(16, 185, 129, 0.5)",
+                        border: `1.5px solid ${colors.jade}`,
+                        boxShadow: `0 0 8px ${colors.jade}80`,
                         whiteSpace: "nowrap",
                         marginBottom: "4px",
                         direction: "rtl",
@@ -368,9 +372,9 @@ export const GameMap: React.FC<GameMapProps> = ({
                         width: "16px",
                         height: "16px",
                         borderRadius: "50%",
-                        backgroundColor: "#10B981",
-                        border: "2px solid #fff",
-                        boxShadow: "0 0 6px rgba(16, 185, 129, 0.6)",
+                        backgroundColor: colors.jade,
+                        border: `2px solid ${colors.text.primary}`,
+                        boxShadow: `0 0 6px ${colors.jade}99`,
                       }}
                     />
                   </div>
@@ -425,8 +429,10 @@ export const GameMap: React.FC<GameMapProps> = ({
             >
               <div
                 style={{
-                  background: "rgba(8, 12, 26, 0.9)",
-                  color: "#fff",
+                  background: isDark
+                    ? "rgba(10, 12, 16, 0.88)"
+                    : "rgba(255, 255, 255, 0.92)",
+                  color: colors.text.primary,
                   padding: "3px 8px",
                   borderRadius: "12px",
                   fontSize: "11px",
@@ -456,7 +462,7 @@ export const GameMap: React.FC<GameMapProps> = ({
                   height: "12px",
                   borderRadius: "50%",
                   backgroundColor: zoneColor,
-                  border: "2px solid #fff",
+                  border: `2px solid ${colors.text.primary}`,
                   boxShadow: `0 0 8px ${zoneColor}`,
                 }}
               />

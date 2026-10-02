@@ -1,20 +1,21 @@
 /**
- * BuildIran — MissionCompletionToast
- * Animated toast notification that slides in when a mission is completed.
- * It listens to the `recentlyCompleted` array in `useMissionStore`.
+ * BuildIran — MissionCompletionToast (Gentleman Neon, v2)
+ * Top-center glass toast (mode-aware per the §2 glass recipe): jade
+ * checkmark plate, mission title and reward chips. Spring entrance from
+ * the top, auto-dismiss after 4s. Listens to the `recentlyCompleted`
+ * queue in `useMissionStore`.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, {
-  FadeInUp,
-  FadeOutUp,
-  runOnJS,
-} from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { SlideInUp, FadeOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/Text';
-import { Colors, Radii, Shadows, Spacing } from '@/theme';
+import { IconPlate } from '@/components/ui/IconPlate';
+import { Chip } from '@/components/ui/Chip';
+import { Motion, Radii, Shadows, Spacing } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Palette } from '@/theme/palettes';
 import { useMissionStore } from '@/store/useMissionStore';
 import { GameAudio } from '@/lib/audio';
 import fa from '@/i18n/fa';
@@ -22,6 +23,8 @@ import type { MissionSlot } from '@/types/missions.types';
 
 export function MissionCompletionToast() {
   const insets = useSafeAreaInsets();
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const { recentlyCompleted, slots, clearRecentlyCompleted } = useMissionStore();
   const [currentSlot, setCurrentSlot] = useState<MissionSlot | null>(null);
 
@@ -54,65 +57,88 @@ export function MissionCompletionToast() {
   if (!currentSlot || !currentSlot.definition) return null;
 
   const def = currentSlot.definition;
+  const rewards = def.rewards;
+  const hasRewards =
+    (rewards.cash ?? 0) > 0 ||
+    (rewards.power ?? 0) > 0 ||
+    (rewards.popularity ?? 0) > 0 ||
+    (rewards.activity ?? 0) > 0;
 
   return (
     <Animated.View
-      entering={FadeInUp.springify().damping(14).stiffness(100)}
+      entering={SlideInUp.springify()
+        .damping(Motion.entrance.damping)
+        .stiffness(Motion.entrance.stiffness)}
       exiting={FadeOutUp}
-      style={[styles.container, { top: insets.top + 16 }]}
+      pointerEvents="none"
+      style={[styles.container, { top: insets.top + Spacing.md }]}
     >
-      <LinearGradient
-        colors={[Colors.brand.primary, Colors.brand.secondary]}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>{def.icon}</Text>
-        </View>
+      <View style={styles.toast}>
+        <IconPlate name="checkmark-circle" size="md" tone="jade" />
         <View style={styles.content}>
-          <Text variant="caption" weight="bold" color="inverse" style={{ opacity: 0.8 }}>
+          <Text variant="label" weight="medium" color="success">
             {fa.missions.completionTitle}
           </Text>
-          <Text variant="body" weight="extrabold" color="inverse">
+          <Text variant="body" weight="semibold" numberOfLines={1}>
             {def.titleFa}
           </Text>
-          <Text variant="label" weight="medium" color="inverse" style={{ marginTop: 2, opacity: 0.9 }}>
-            {fa.missions.completionSub}
-          </Text>
+          {hasRewards && (
+            <View style={styles.rewardRow}>
+              {(rewards.cash ?? 0) > 0 && (
+                <Chip icon="cash" tone="brass" value={rewards.cash} label="تومان" />
+              )}
+              {(rewards.power ?? 0) > 0 && (
+                <Chip icon="flash" tone="brass" value={rewards.power} label="قدرت" />
+              )}
+              {(rewards.popularity ?? 0) > 0 && (
+                <Chip icon="sparkles" tone="jade" value={rewards.popularity} label="محبوبیت" />
+              )}
+              {(rewards.activity ?? 0) > 0 && (
+                <Chip icon="flame" tone="ember" value={rewards.activity} label="فعالیت" />
+              )}
+            </View>
+          )}
         </View>
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    zIndex: 999,
-    ...Shadows.lg,
-  },
-  gradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  icon: {
-    fontSize: 24,
-  },
-  content: {
-    flex: 1,
-  },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    container: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 999,
+      elevation: 16,
+    },
+    toast: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      width: '92%',
+      maxWidth: 420,
+      // Glass recipe (§2) — HUD-grade surface, mode-aware
+      backgroundColor:
+        c.mode === 'dark' ? 'rgba(10, 12, 16, 0.88)' : 'rgba(255, 255, 255, 0.92)',
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      ...Shadows.md,
+    },
+    content: {
+      flex: 1,
+      gap: Spacing.xs,
+    },
+    rewardRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.xs,
+      marginTop: Spacing.xxs,
+    },
+  });
+
+export default MissionCompletionToast;

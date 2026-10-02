@@ -21,6 +21,8 @@ import {
 import { useMapStore } from "@/store/useMapStore";
 import type { LatLng } from "@/types/game.types";
 import type { GameMapProps } from "@/types/map.types";
+import { useTheme } from "@/theme/ThemeProvider";
+import type { Palette } from "@/theme/palettes";
 import { createGeoJSONCircle } from "@/utils/geo";
 import {
   Camera,
@@ -46,7 +48,7 @@ import tehranDistrictsRaw from "../../../assets/maps/Tehran Districts.json";
 export const GameMap: React.FC<GameMapProps> = ({
   initialCenter = MAP_DEFAULT_CENTER,
   initialZoom = MAP_DEFAULT_ZOOM,
-  mapStyle = MAP_STYLE,
+  mapStyle,
   onMapPress,
   onRegionChange,
   assets = [],
@@ -59,6 +61,10 @@ export const GameMap: React.FC<GameMapProps> = ({
   flyToTarget,
   style,
 }) => {
+  const { colors } = useTheme();
+  // Basemap follows the active palette unless the caller overrides it.
+  const resolvedStyle = mapStyle ?? colors.mapStyle ?? MAP_STYLE;
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const cameraRef = useRef<CameraRef>(null);
   const showDistrictsOverlay = useMapStore((s) => s.showDistrictsOverlay);
   const showOtherPlayersAssets = useMapStore((s) => s.showOtherPlayersAssets);
@@ -113,11 +119,11 @@ export const GameMap: React.FC<GameMapProps> = ({
   }, [buildingZone]);
 
   const zoneColor = useMemo(() => {
-    if (!buildingZone) return "#6C63FF";
-    if (buildingZone.status === "valid") return "#10B981";
-    if (buildingZone.status === "invalid") return "#EF4444";
-    return "#F59E0B";
-  }, [buildingZone]);
+    if (!buildingZone) return colors.steel;
+    if (buildingZone.status === "valid") return colors.jade;
+    if (buildingZone.status === "invalid") return colors.crimson;
+    return colors.steel;
+  }, [buildingZone, colors]);
 
   const districtsGeoJSON = useMemo(() => {
     const neighborhoodMap: Record<string, any> = {};
@@ -169,7 +175,7 @@ export const GameMap: React.FC<GameMapProps> = ({
     <View style={[styles.container, style]}>
       <Map
         style={styles.map}
-        mapStyle={mapStyle as any}
+        mapStyle={resolvedStyle as any}
         onPress={handlePress}
         onRegionDidChange={handleRegionDidChange}
         compass
@@ -236,8 +242,8 @@ export const GameMap: React.FC<GameMapProps> = ({
                   lineColor: [
                     "case",
                     ["==", ["get", "isLocked"], true],
-                    DISTRICT_MAP_CONFIG.COLOR_LOCKED_BORDER,
-                    DISTRICT_MAP_CONFIG.COLOR_ACTIVE_BORDER,
+                    colors.border.strong,
+                    colors.border.strong,
                   ],
                   lineWidth: [
                     "interpolate",
@@ -278,7 +284,7 @@ export const GameMap: React.FC<GameMapProps> = ({
                     DISTRICT_MAP_CONFIG.ZOOM_CLOSE,
                     ["get", "labelClose"],
                   ],
-                  textColor: DISTRICT_MAP_CONFIG.LABEL_COLOR,
+                  textColor: colors.text.primary,
                   textSize: [
                     "interpolate",
                     ["linear"],
@@ -290,7 +296,7 @@ export const GameMap: React.FC<GameMapProps> = ({
                     13,
                     DISTRICT_MAP_CONFIG.LABEL_SIZE_CLOSE,
                   ],
-                  textHaloColor: DISTRICT_MAP_CONFIG.LABEL_HALO_COLOR,
+                  textHaloColor: colors.bg.primary,
                   textHaloWidth: DISTRICT_MAP_CONFIG.LABEL_HALO_WIDTH,
                   textOpacity: [
                     "interpolate",
@@ -435,61 +441,65 @@ export const GameMap: React.FC<GameMapProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    flex: 1,
-  },
-  zoneMarkerContainer: {
-    alignItems: "center",
-  },
-  zoneBadge: {
-    backgroundColor: "rgba(8, 12, 26, 0.9)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    marginBottom: 4,
-  },
-  zoneBadgeText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  zoneCenterDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  communityCenterContainer: {
-    alignItems: "center",
-  },
-  communityCenterBadge: {
-    backgroundColor: "rgba(16, 185, 129, 0.9)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: "#10B981",
-    marginBottom: 4,
-  },
-  communityCenterBadgeText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  communityCenterDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#10B981",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    map: {
+      flex: 1,
+    },
+    zoneMarkerContainer: {
+      alignItems: "center",
+    },
+    zoneBadge: {
+      backgroundColor:
+        c.mode === "dark"
+          ? "rgba(10, 12, 16, 0.88)"
+          : "rgba(255, 255, 255, 0.92)",
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      marginBottom: 4,
+    },
+    zoneBadgeText: {
+      color: c.text.primary,
+      fontSize: 10,
+      fontWeight: "700",
+    },
+    zoneCenterDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: c.text.primary,
+    },
+    communityCenterContainer: {
+      alignItems: "center",
+    },
+    communityCenterBadge: {
+      backgroundColor: c.jade,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: c.jade,
+      marginBottom: 4,
+    },
+    communityCenterBadgeText: {
+      color: c.text.inverse,
+      fontSize: 10,
+      fontWeight: "600",
+    },
+    communityCenterDot: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: c.jade,
+      borderWidth: 2,
+      borderColor: c.text.primary,
+    },
+  });
 
 export default GameMap;

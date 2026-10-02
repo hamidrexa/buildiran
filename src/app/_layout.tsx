@@ -1,9 +1,9 @@
 /**
  * BuildIran — Root Layout
- * Sets up: RTL (Persian), safe area, splash screen, dark theme.
+ * Theme provider (dark/light), RTL (Persian), safe area, splash, fonts.
  */
 
-import { Colors } from "@/theme";
+import { ThemeProvider, useTheme } from "@/theme";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import * as Font from "expo-font";
@@ -19,6 +19,25 @@ import { useFonts } from 'expo-font';
 // Keep splash screen visible while loading initial state
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+function Shell() {
+  const { colors, isDark } = useTheme();
+
+  return (
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.bg.primary },
+          animation: Platform.OS === "ios" ? "default" : "fade",
+        }}
+      />
+      {Platform.OS === "web" && <Analytics />}
+      {Platform.OS === "web" && <SpeedInsights />}
+    </>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Vazirmatn: require("../../assets/fonts/Vazirmatn-Regular.ttf"),
@@ -26,6 +45,8 @@ export default function RootLayout() {
     "Vazirmatn-SemiBold": require("../../assets/fonts/Vazirmatn-SemiBold.ttf"),
     VazirmatnBold: require("../../assets/fonts/Vazirmatn-Bold.ttf"),
     "Vazirmatn-ExtraBold": require("../../assets/fonts/Vazirmatn-ExtraBold.ttf"),
+    "Vazirmatn-Light": require("../../assets/fonts/Vazirmatn-Light.ttf"),
+    "Vazirmatn-Black": require("../../assets/fonts/Vazirmatn-Black.ttf"),
   });
 
   useEffect(() => {
@@ -54,18 +75,11 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: Colors.bg.primary },
-            animation: Platform.OS === "ios" ? "default" : "fade",
-          }}
-        />
-        {Platform.OS === "web" && <Analytics />}
-        {Platform.OS === "web" && <SpeedInsights />}
-      </SafeAreaProvider>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <Shell />
+        </SafeAreaProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }

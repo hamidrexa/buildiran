@@ -1,17 +1,20 @@
 /**
- * BuildIran — Entry Point
+ * BuildIran — Entry Point (theme-reactive)
  * Auth guard: redirects to game if session exists, else to login.
  */
 
 import { Text } from '@/components/ui/Text';
 import { GameAudio } from '@/lib/audio';
 import { supabase } from '@/lib/supabase';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Spacing } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
 import { Redirect } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 export default function Index() {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [checking, setChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -27,39 +30,69 @@ export default function Index() {
 
   if (checking) {
     return (
-      <LinearGradient
-        colors={['#080C1A', '#0D1533']}
-        style={styles.splash}
-      >
-        <Text variant="display" color="brand">🏰</Text>
-        <Text variant="heading" weight="extrabold" color="primary" style={{
-          textShadowColor: '#6C63FF',
-          textShadowRadius: 16,
-          textShadowOffset: { width: 0, height: 0 },
-        }}>بیلد ایران</Text>
-        <ActivityIndicator color="#6C63FF" size="large" style={{ marginTop: 24 }} />
-      </LinearGradient>
+      <View style={styles.splash}>
+        {/* The arch mark — same construction as LoadingScreen */}
+        <View style={styles.mark}>
+          <View style={[styles.leg, { start: 4 }]} />
+          <View style={[styles.leg, { end: 4 }]} />
+          <View style={styles.arch} />
+        </View>
+        <Text variant="title" weight="bold" color="primary">
+          بیلد ایران
+        </Text>
+        <Text variant="label" color="muted" style={styles.kicker}>
+          BUILD IRAN
+        </Text>
+        <ActivityIndicator color={c.brass[400]} size="small" style={styles.spinner} />
+      </View>
     );
   }
 
   return <Redirect href={(isAuthenticated ? '/(game)' : '/auth/login') as any} />;
 }
 
-const styles = StyleSheet.create({
-  splash: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  splashEmoji: { fontSize: 72 },
-  splashTitle: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    textShadowColor: '#6C63FF',
-    textShadowRadius: 16,
-    textShadowOffset: { width: 0, height: 0 },
-  },
-});
-
+const makeStyles = (c: ReturnType<typeof useTheme>['colors']) =>
+  StyleSheet.create({
+    splash: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: c.bg.primary,
+      gap: 4,
+    },
+    mark: {
+      width: 44,
+      height: 48,
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      marginBottom: Spacing.md,
+    },
+    leg: {
+      position: 'absolute',
+      bottom: 0,
+      width: 6,
+      height: 28,
+      borderTopLeftRadius: 3,
+      borderTopRightRadius: 3,
+      backgroundColor: c.brass[400],
+    },
+    arch: {
+      position: 'absolute',
+      top: 2,
+      alignSelf: 'center',
+      width: 24,
+      height: 20,
+      borderTopLeftRadius: 12,
+      borderTopRightRadius: 12,
+      borderWidth: 4,
+      borderBottomWidth: 0,
+      borderColor: c.brass[300],
+    },
+    kicker: {
+      letterSpacing: 2,
+      marginTop: 2,
+    },
+    spinner: {
+      marginTop: Spacing.xl,
+    },
+  });

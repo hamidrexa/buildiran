@@ -75,7 +75,7 @@ function dbRowToPlayer(row: Record<string, any>): Player {
     id: row.id,
     username: row.username ?? 'بازیکن',
     avatarUrl: row.avatar_url ?? null,
-    avatarColor: row.avatar_color ?? '#6C63FF',
+    avatarColor: row.avatar_color ?? '#E2B64F',
     level: row.level ?? 1,
     experience: row.experience ?? 0,
     cash: row.cash ?? 5000,

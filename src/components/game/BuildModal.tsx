@@ -1,9 +1,16 @@
 /**
- * BuildIran — Build Modal (v3)
- * 3-step flow: 1) select building type → 2) choose build mode → 3a) fast confirm / 3b) gather materials
+ * BuildIran — Build Modal «ساخت و ساز» (v2 «Gentleman Neon», dual theme)
+ * 3-step flow inside a Sheet: 1) select building type → 2) choose build mode → 3a) fast confirm / 3b) gather materials
+ * Design: blueprint grid of IconPlate cards, brass selection (brandSoft tint), tabular fa-IR numerals.
+ * Build confirmations stay brass (normal actions — neon is for live signals only). No emoji in UI chrome.
  */
 
 import { Text } from '@/components/ui/Text';
+import { Button } from '@/components/ui/Button';
+import { Chip } from '@/components/ui/Chip';
+import { IconPlate } from '@/components/ui/IconPlate';
+import { SectionTitle } from '@/components/ui/SectionTitle';
+import { Sheet } from '@/components/ui/Sheet';
 import { GameAudio } from '@/lib/audio';
 import { useScalePop } from '@/lib/effects';
 import { supabase } from '@/lib/supabase';
@@ -17,58 +24,137 @@ import { useAssetStore } from '@/store/useAssetStore';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
-import type { BuildingType, CustomBuildingType, LatLng, InstitutionCategory } from '@/types/game.types';
+import { Motion, Radii, Spacing } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Palette } from '@/theme/palettes';
+import type { CustomBuildingType, LatLng, InstitutionCategory } from '@/types/game.types';
 import { tileIdFromCoordinate, type StreetProximityResult } from '@/utils/geo';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
-  Modal,
   ScrollView,
   StyleSheet,
+  TextStyle,
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { ProposeBuildingModal } from './ProposeBuildingModal';
 import { BuildModeCard } from './BuildModeCard';
 import { AdvancedBuildMaterialsSheet } from './AdvancedBuildMaterialsSheet';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
+// ─── Press-spring touchable (§4 — every touchable springs) ───────────────────
+
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+const TouchableScale: React.FC<
+  React.ComponentProps<typeof TouchableOpacity>
+> = ({ onPressIn, onPressOut, style, ...rest }) => {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  return (
+    <AnimatedTouchable
+      {...rest}
+      style={[animatedStyle, style]}
+      onPressIn={(e) => {
+        scale.value = withSpring(0.97, Motion.press);
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        scale.value = withSpring(1, Motion.press);
+        onPressOut?.(e);
+      }}
+    />
+  );
+};
+
+type IconName = keyof typeof Ionicons.glyphMap;
+type IconTone = 'brass' | 'jade' | 'crimson' | 'steel' | 'ember' | 'terracotta' | 'neutral' | 'inverse';
+
+/** DESIGN.md §4 — building type → Ionicon + tone (no emoji in UI chrome) */
+const BUILDING_VISUALS: Record<string, { icon: IconName; tone: IconTone }> = {
+  // Residential — steel
+  house: { icon: 'home', tone: 'steel' },
+  villa: { icon: 'home-outline', tone: 'steel' },
+  tower: { icon: 'business', tone: 'steel' },
+  main_house: { icon: 'home', tone: 'steel' },
+  resident_house: { icon: 'home-outline', tone: 'steel' },
+  // Commercial — brass
+  shop: { icon: 'storefront', tone: 'brass' },
+  market: { icon: 'storefront', tone: 'brass' },
+  cafe: { icon: 'cafe', tone: 'brass' },
+  gym: { icon: 'barbell', tone: 'brass' },
+  restaurant: { icon: 'restaurant', tone: 'brass' },
+  mall: { icon: 'cart', tone: 'brass' },
+  exchange: { icon: 'swap-horizontal', tone: 'brass' },
+  office: { icon: 'briefcase', tone: 'brass' },
+  warehouse: { icon: 'archive', tone: 'brass' },
+  // Industrial — ember
+  farm: { icon: 'nutrition', tone: 'ember' },
+  factory: { icon: 'construct', tone: 'ember' },
+  // Civic / public — jade
+  hospital: { icon: 'medkit', tone: 'jade' },
+  park: { icon: 'leaf', tone: 'jade' },
+  university: { icon: 'school', tone: 'jade' },
+  bank: { icon: 'cash', tone: 'jade' },
+  // Military — crimson
+  barracks: { icon: 'shield', tone: 'crimson' },
+};
+
+const CATEGORY_TONES: Record<InstitutionCategory, IconTone> = {
+  residential: 'steel',
+  commercial: 'brass',
+  industrial: 'ember',
+  public: 'jade',
+};
+
+const tabular: TextStyle = { fontVariant: ['tabular-nums'] };
+
+const getBuildingVisual = (type: string, category: InstitutionCategory) =>
+  BUILDING_VISUALS[type] ?? { icon: 'business' as IconName, tone: CATEGORY_TONES[category] ?? 'steel' };
+
 // ─── Building catalog organized by institution category ──────────────────────
 
 interface BuildingDef {
   type: string;
-  emoji: string;
+  icon: IconName;
+  tone: IconTone;
   label: string;
   category: InstitutionCategory;
 }
 
 const BUILDING_CATALOG: BuildingDef[] = [
   // Residential
-  { type: 'house',      emoji: '🏠', label: 'خانه',       category: 'residential' },
-  { type: 'villa',      emoji: '🏡', label: 'ویلا',        category: 'residential' },
-  { type: 'tower',      emoji: '🏢', label: 'برج',         category: 'residential' },
+  { type: 'house',      icon: 'home',             tone: 'steel',  label: 'خانه',       category: 'residential' },
+  { type: 'villa',      icon: 'home-outline',     tone: 'steel',  label: 'ویلا',        category: 'residential' },
+  { type: 'tower',      icon: 'business',         tone: 'steel',  label: 'برج',         category: 'residential' },
   // Commercial
-  { type: 'shop',       emoji: '🏪', label: 'مغازه',       category: 'commercial' },
-  { type: 'cafe',       emoji: '☕', label: 'کافه',        category: 'commercial' },
-  { type: 'gym',        emoji: '🏋️', label: 'باشگاه',      category: 'commercial' },
-  { type: 'restaurant', emoji: '🍽️', label: 'رستوران',     category: 'commercial' },
-  { type: 'mall',       emoji: '🏬', label: 'مرکز خرید',   category: 'commercial' },
-  { type: 'exchange',   emoji: '💱', label: 'صرافی',       category: 'commercial' },
-  { type: 'warehouse',  emoji: '🏭', label: 'انبار',        category: 'commercial' },
+  { type: 'shop',       icon: 'storefront',       tone: 'brass',  label: 'مغازه',       category: 'commercial' },
+  { type: 'cafe',       icon: 'cafe',             tone: 'brass',  label: 'کافه',        category: 'commercial' },
+  { type: 'gym',        icon: 'barbell',          tone: 'brass',  label: 'باشگاه',      category: 'commercial' },
+  { type: 'restaurant', icon: 'restaurant',       tone: 'brass',  label: 'رستوران',     category: 'commercial' },
+  { type: 'mall',       icon: 'cart',             tone: 'brass',  label: 'مرکز خرید',   category: 'commercial' },
+  { type: 'exchange',   icon: 'swap-horizontal',  tone: 'brass',  label: 'صرافی',       category: 'commercial' },
+  { type: 'warehouse',  icon: 'archive',          tone: 'brass',  label: 'انبار',        category: 'commercial' },
   // Industrial
-  { type: 'farm',       emoji: '🌾', label: 'مزرعه',       category: 'industrial' },
-  { type: 'factory',    emoji: '🏗️', label: 'کارخانه',     category: 'industrial' },
+  { type: 'farm',       icon: 'nutrition',        tone: 'ember',  label: 'مزرعه',       category: 'industrial' },
+  { type: 'factory',    icon: 'construct',        tone: 'ember',  label: 'کارخانه',     category: 'industrial' },
   // Public
-  { type: 'hospital',   emoji: '🏥', label: 'بیمارستان',   category: 'public' },
-  { type: 'park',       emoji: '🌳', label: 'پارک',         category: 'public' },
-  { type: 'university', emoji: '🎓', label: 'دانشگاه',     category: 'public' },
-  { type: 'bank',       emoji: '🏦', label: 'بانک',         category: 'public' },
+  { type: 'hospital',   icon: 'medkit',           tone: 'jade',   label: 'بیمارستان',   category: 'public' },
+  { type: 'park',       icon: 'leaf',             tone: 'jade',   label: 'پارک',         category: 'public' },
+  { type: 'university', icon: 'school',           tone: 'jade',   label: 'دانشگاه',     category: 'public' },
+  { type: 'bank',       icon: 'cash',             tone: 'jade',   label: 'بانک',        category: 'public' },
 ];
 
 const CATEGORY_LABELS: Record<InstitutionCategory, string> = {
@@ -90,6 +176,8 @@ interface BuildModalProps {
 }
 
 export function BuildModal({ visible, coordinate, proximityResult, onClose }: BuildModalProps) {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [step, setStep] = useState<Step>('type');
   const [selectedType, setSelectedType] = useState<BuildingDef | null>(null);
   const [selectedMode, setSelectedMode] = useState<'fast' | 'advanced' | null>(null);
@@ -115,7 +203,7 @@ export function BuildModal({ visible, coordinate, proximityResult, onClose }: Bu
 
   const currentNeighborhood  = useNeighborhoodStore((s) => s.currentNeighborhood);
   const approvedCustomTypes  = useNeighborhoodStore((s) => s.approvedCustomTypes);
-  const { style: btnStyle, pop } = useScalePop();
+  const { pop } = useScalePop();
   const { track } = useActivityTracker();
   const ruleMeters = proximityResult?.ruleDistanceMeters ?? 10;
 
@@ -138,18 +226,26 @@ export function BuildModal({ visible, coordinate, proximityResult, onClose }: Bu
     }
   }, [step, coordinate, fetchNearbyShopItems]);
 
-  const handleSelectType = useCallback((b: BuildingDef) => {
+  // Selection (step 1): pick a card, then confirm via the brass footer button
+  const handleTapBuilding = useCallback((b: BuildingDef) => {
     setSelectedType(b);
     setSelectedMode(null);
     GameAudio.playTap();
-    setStep('mode');
   }, []);
 
-  const handleSelectCustom = useCallback((c: CustomBuildingType) => {
-    setSelectedType({ type: c.code, emoji: c.emoji || '🏰', label: c.nameFa, category: 'commercial' });
+  const handleTapCustom = useCallback((c: CustomBuildingType) => {
+    setSelectedType({ type: c.code, icon: 'business', tone: 'brass', label: c.nameFa, category: 'commercial' });
     setSelectedMode(null);
     GameAudio.playTap();
+  }, []);
+
+  const handleConfirmType = useCallback(() => {
+    if (!selectedType) return;
     setStep('mode');
+  }, [selectedType]);
+
+  const handleBackToType = useCallback(() => {
+    setStep('type');
   }, []);
 
   const handleConfirmMode = useCallback(async () => {
@@ -248,228 +344,305 @@ export function BuildModal({ visible, coordinate, proximityResult, onClose }: Bu
 
   if (!coordinate) return null;
 
+  const subtitle = `${currentNeighborhood ? `محله ${currentNeighborhood.nameFa} · ` : ''}${coordinate.latitude.toFixed(4)}°, ${coordinate.longitude.toFixed(4)}°`;
+
+  const balanceChip = (
+    <Chip icon="cash" tone="brass" label="موجودی" value={player?.cash ?? 0} />
+  );
+
+  const renderBuildingCard = (b: BuildingDef, custom?: boolean, keyId?: string) => {
+    const cfg = BUILDING_CONFIG[b.type];
+    const affordable = (player?.cash ?? 0) >= (cfg?.cost ?? 0);
+    const isSelected = selectedType?.type === b.type;
+    return (
+      <TouchableScale
+        key={keyId ?? b.type}
+        style={[
+          styles.buildingCard,
+          custom && styles.customCard,
+          isSelected && styles.buildingCardSelected,
+          !affordable && styles.buildingCardDisabled,
+        ]}
+        onPress={() => affordable && handleTapBuilding(b)}
+        activeOpacity={affordable ? 0.8 : 1}
+        accessibilityRole="button"
+        accessibilityLabel={b.label}
+        accessibilityState={{ selected: isSelected, disabled: !affordable }}
+      >
+        {isSelected && (
+          <LinearGradient
+            colors={c.gradient.brandSoft}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+        <IconPlate name={b.icon} tone={b.tone} size="md" />
+        <Text variant="caption" weight="semibold" color={affordable ? 'primary' : 'muted'} numberOfLines={1}>
+          {b.label}
+        </Text>
+        <View style={styles.cardMeta}>
+          <Ionicons name="cash" size={11} color={affordable ? c.brass[400] : c.text.muted} />
+          <Text variant="label" color={affordable ? 'secondary' : 'muted'} style={tabular}>
+            {(cfg?.cost ?? 0).toLocaleString('fa-IR')}
+          </Text>
+        </View>
+        <View style={styles.cardMeta}>
+          <Ionicons name="flash" size={11} color={c.terracotta} />
+          <Text variant="label" color="secondary" style={tabular}>
+            +{(cfg?.power ?? 0).toLocaleString('fa-IR')}
+          </Text>
+        </View>
+      </TouchableScale>
+    );
+  };
+
   return (
     <>
-      <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
-        <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
-          <TouchableOpacity style={styles.backdrop} onPress={handleClose} activeOpacity={1} />
+      <Sheet
+        visible={visible}
+        onClose={handleClose}
+        title="ساخت و ساز"
+        subtitle={subtitle}
+        maxHeight={0.88}
+        footer={
+          success || (step === 'gather' && activeSession) ? undefined : (
+            <View style={styles.footerRow}>
+              {balanceChip}
+              {step === 'type' ? (
+                <Button
+                  label="ساخت"
+                  onPress={handleConfirmType}
+                  disabled={!selectedType}
+                  style={styles.footerBtn}
+                />
+              ) : (
+                <Button
+                  label={
+                    selectedMode === 'fast'
+                      ? 'احداث سریع'
+                      : selectedMode === 'advanced'
+                        ? 'شروع تهیه مصالح'
+                        : 'روش ساخت را انتخاب کنید'
+                  }
+                  onPress={handleConfirmMode}
+                  disabled={!selectedMode || building}
+                  loading={building}
+                  style={styles.footerBtn}
+                />
+              )}
+            </View>
+          )
+        }
+      >
+        {success ? (
+          <View style={styles.successBox}>
+            <IconPlate name="checkmark-circle" tone="jade" size="lg" bordered={false} />
+            <Text variant="heading" weight="bold" color="primary">ساخت موفق!</Text>
+            <Text variant="body" color="secondary" center>
+              {selectedType?.label ?? 'سازه'} با موفقیت در نقشه ساخته شد
+            </Text>
+          </View>
+        ) : step === 'gather' && activeSession ? (
+          <AdvancedBuildMaterialsSheet
+            buildingType={activeSession.buildingType}
+            slots={activeSession.slots}
+            nearbyShopItems={nearbyShopItems}
+            isLoadingNearby={isLoadingNearby}
+            onGather={addMaterialToSession}
+            onConfirm={handleConfirmAdvanced}
+            onCancel={handleCancelAdvanced}
+            isConfirming={building}
+            totalCashCost={activeSession.totalCashCost}
+            totalQuotaUsed={activeSession.totalQuotaUsed}
+            effectivePowerRatio={activeSession.effectivePowerRatio}
+            allGathered={activeSession.allGathered}
+          />
+        ) : (
+          <>
+            {/* Step 1 — Type Selection */}
+            {step === 'type' && (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.scrollArea}
+                contentContainerStyle={styles.scrollContent}
+              >
+                {CATEGORIES.map((cat) => {
+                  const catBuildings = BUILDING_CATALOG.filter((b) => b.category === cat);
+                  return (
+                    <View key={cat} style={styles.catSection}>
+                      <SectionTitle title={CATEGORY_LABELS[cat]} />
+                      <View style={styles.buildingGrid}>
+                        {catBuildings.map((b) => renderBuildingCard(b))}
+                      </View>
+                    </View>
+                  );
+                })}
 
-          <Animated.View entering={SlideInDown.springify().damping(18)} style={styles.sheet}>
-            <LinearGradient colors={['#0D1533', '#080C1A']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
-            <View style={styles.handle} />
-
-            {success ? (
-              <View style={styles.successBox}>
-                <Text variant="display" color="brand">🎉</Text>
-                <Text variant="heading" weight="bold" color="primary">ساخت موفق!</Text>
-                <Text variant="body" color="secondary">
-                  {selectedType?.label ?? 'سازه'} با موفقیت در نقشه ساخته شد
-                </Text>
-              </View>
-            ) : step === 'gather' && activeSession ? (
-              <AdvancedBuildMaterialsSheet
-                buildingType={activeSession.buildingType}
-                slots={activeSession.slots}
-                nearbyShopItems={nearbyShopItems}
-                isLoadingNearby={isLoadingNearby}
-                onGather={addMaterialToSession}
-                onConfirm={handleConfirmAdvanced}
-                onCancel={handleCancelAdvanced}
-                isConfirming={building}
-                totalCashCost={activeSession.totalCashCost}
-                totalQuotaUsed={activeSession.totalQuotaUsed}
-                effectivePowerRatio={activeSession.effectivePowerRatio}
-                allGathered={activeSession.allGathered}
-              />
-            ) : (
-              <>
-                {/* Header */}
-                <View style={styles.header}>
-                  <View style={{ flex: 1 }}>
-                    <Text variant="heading" weight="bold" color="primary">
-                      {step === 'type' ? '📍 انتخاب سازه' : `${selectedType?.emoji} ${selectedType?.label} — روش ساخت`}
-                    </Text>
-                    <Text variant="caption" color="secondary">
-                      {currentNeighborhood ? `محله ${currentNeighborhood.nameFa} | ` : ''}
-                      {coordinate.latitude.toFixed(4)}°, {coordinate.longitude.toFixed(4)}°
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {step !== 'type' && (
-                      <TouchableOpacity onPress={() => setStep('type')} style={styles.backBtn}>
-                        <Text variant="caption" color="secondary">‹ بازگشت</Text>
-                      </TouchableOpacity>
-                    )}
-                    <View style={styles.cashBadge}>
-                      <Text variant="body" weight="semibold" color="inverse">💰 {(player?.cash ?? 0).toLocaleString('fa-IR')}</Text>
+                {approvedCustomTypes.length > 0 && (
+                  <View style={styles.catSection}>
+                    <SectionTitle title="اختصاصی محله" />
+                    <View style={styles.buildingGrid}>
+                      {approvedCustomTypes.map((c) =>
+                        renderBuildingCard(
+                          { type: c.code, icon: 'business', tone: 'brass', label: c.nameFa, category: 'commercial' },
+                          true,
+                          c.id,
+                        ),
+                      )}
                     </View>
                   </View>
-                </View>
-
-                {/* Step 1 — Type Selection */}
-                {step === 'type' && (
-                  <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-                    {CATEGORIES.map((cat) => {
-                      const catBuildings = BUILDING_CATALOG.filter((b) => b.category === cat);
-                      return (
-                        <View key={cat}>
-                          <View style={styles.catHeader}>
-                            <Text variant="caption" weight="bold" style={styles.catLabel}>{CATEGORY_LABELS[cat]}</Text>
-                          </View>
-                          <View style={styles.buildingGrid}>
-                            {catBuildings.map((b) => {
-                              const cfg = BUILDING_CONFIG[b.type];
-                              const affordable = (player?.cash ?? 0) >= (cfg?.cost ?? 0);
-                              return (
-                                <TouchableOpacity
-                                  key={b.type}
-                                  style={[styles.buildingCard, !affordable && styles.buildingCardDisabled]}
-                                  onPress={() => affordable && handleSelectType(b)}
-                                  activeOpacity={affordable ? 0.8 : 1}
-                                >
-                                  <Text variant="display" color="brand">{b.emoji}</Text>
-                                  <Text variant="caption" weight="bold" color={affordable ? 'primary' : 'muted'}>{b.label}</Text>
-                                  <Text variant="caption" color={affordable ? 'secondary' : 'muted'}>💰 {(cfg?.cost ?? 0).toLocaleString('fa-IR')}</Text>
-                                  <Text variant="caption" color="secondary">⚡ +{cfg?.power ?? 0}</Text>
-                                </TouchableOpacity>
-                              );
-                            })}
-                          </View>
-                        </View>
-                      );
-                    })}
-
-                    {approvedCustomTypes.length > 0 && (
-                      <View>
-                        <View style={styles.catHeader}>
-                          <Text variant="caption" weight="bold" style={styles.catLabel}>اختصاصی محله</Text>
-                        </View>
-                        <View style={styles.buildingGrid}>
-                          {approvedCustomTypes.map((c) => {
-                            const affordable = (player?.cash ?? 0) >= c.baseCost;
-                            return (
-                              <TouchableOpacity
-                                key={c.id}
-                                style={[styles.buildingCard, styles.customCard, !affordable && styles.buildingCardDisabled]}
-                                onPress={() => affordable && handleSelectCustom(c)}
-                                activeOpacity={affordable ? 0.8 : 1}
-                              >
-                                <Text variant="display" color="brand">{c.emoji || '🏛️'}</Text>
-                                <Text variant="caption" weight="bold" color={affordable ? 'primary' : 'muted'}>{c.nameFa}</Text>
-                                <Text variant="caption" color={affordable ? 'secondary' : 'muted'}>💰 {c.baseCost.toLocaleString('fa-IR')}</Text>
-                                <Text variant="caption" color="secondary">⚡ +{c.powerBonus}</Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    )}
-
-                    <TouchableOpacity style={styles.proposeBanner} onPress={() => { GameAudio.playTap(); setShowProposeModal(true); }} activeOpacity={0.8}>
-                      <LinearGradient colors={['rgba(108,99,255,0.25)', 'rgba(139,92,246,0.15)']} style={styles.proposeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                        <Text variant="display" color="brand">💡</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text variant="body" weight="semibold" color="primary">پیشنهاد نوع سازه جدید</Text>
-                          <Text variant="caption" color="secondary">طرح سازه دلخواه خود را ثبت کنید</Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={18} color="#A78BFA" />
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </ScrollView>
                 )}
 
-                {/* Step 2 — Mode Selection */}
-                {step === 'mode' && selectedType && (
-                  <View style={styles.modeContainer}>
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 16, paddingBottom: 12 }}>
-                      <BuildModeCard
-                        mode="fast"
-                        selected={selectedMode === 'fast'}
-                        fastCost={fastCost}
-                        advancedEstCost={advancedEstCost}
-                        licenseFee={licenseFee}
-                        subsidyQuotaRemaining={player?.subsidyQuota ?? 5000}
-                        onPress={() => { setSelectedMode('fast'); GameAudio.playTap(); }}
-                      />
-                      <BuildModeCard
-                        mode="advanced"
-                        selected={selectedMode === 'advanced'}
-                        fastCost={fastCost}
-                        advancedEstCost={advancedEstCost}
-                        licenseFee={licenseFee}
-                        subsidyQuotaRemaining={player?.subsidyQuota ?? 5000}
-                        onPress={() => { setSelectedMode('advanced'); GameAudio.playTap(); }}
-                      />
-                    </ScrollView>
-
-                    <Animated.View style={[btnStyle, { paddingHorizontal: 16 }]}>
-                      <TouchableOpacity
-                        style={[styles.buildBtn, (!selectedMode || building) && styles.buildBtnDisabled]}
-                        onPress={handleConfirmMode}
-                        disabled={!selectedMode || building}
-                        activeOpacity={0.85}
-                      >
-                        <LinearGradient
-                          colors={selectedMode ? ['#6C63FF', '#A78BFA'] : ['#374151', '#1F2937']}
-                          style={styles.buildBtnGradient}
-                          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                        >
-                          {building ? (
-                            <ActivityIndicator color="#fff" />
-                          ) : (
-                            <Text weight="semibold" color="inverse">
-                              {selectedMode === 'fast' ? '⚡ احداث سریع' : selectedMode === 'advanced' ? '🔨 شروع تهیه مصالح' : 'روش ساخت را انتخاب کنید'}
-                            </Text>
-                          )}
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </Animated.View>
+                <TouchableScale
+                  style={styles.proposeBanner}
+                  onPress={() => { GameAudio.playTap(); setShowProposeModal(true); }}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="پیشنهاد نوع سازه جدید"
+                >
+                  <IconPlate name="bulb" tone="brass" size="sm" />
+                  <View style={styles.proposeTexts}>
+                    <Text variant="body" weight="semibold" color="primary">پیشنهاد نوع سازه جدید</Text>
+                    <Text variant="caption" color="secondary">طرح سازه دلخواه خود را ثبت کنید</Text>
                   </View>
-                )}
-              </>
+                  <Ionicons name="chevron-back" size={16} color={c.text.secondary} />
+                </TouchableScale>
+              </ScrollView>
             )}
-          </Animated.View>
-        </Animated.View>
-      </Modal>
+
+            {/* Step 2 — Mode Selection */}
+            {step === 'mode' && selectedType && (
+              <View style={styles.modeContainer}>
+                <TouchableScale
+                  style={styles.backBtn}
+                  onPress={handleBackToType}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="بازگشت"
+                >
+                  <Ionicons name="chevron-back" size={14} color={c.text.secondary} />
+                  <Text variant="caption" color="secondary">بازگشت به انتخاب سازه</Text>
+                </TouchableScale>
+
+                <SectionTitle
+                  kicker="روش ساخت"
+                  title={selectedType.label}
+                  trailing={
+                    <IconPlate name={selectedType.icon} tone={selectedType.tone} size="xs" bordered={false} />
+                  }
+                />
+
+                <BuildModeCard
+                  mode="fast"
+                  selected={selectedMode === 'fast'}
+                  fastCost={fastCost}
+                  advancedEstCost={advancedEstCost}
+                  licenseFee={licenseFee}
+                  subsidyQuotaRemaining={player?.subsidyQuota ?? 5000}
+                  onPress={() => { setSelectedMode('fast'); GameAudio.playTap(); }}
+                />
+                <BuildModeCard
+                  mode="advanced"
+                  selected={selectedMode === 'advanced'}
+                  fastCost={fastCost}
+                  advancedEstCost={advancedEstCost}
+                  licenseFee={licenseFee}
+                  subsidyQuotaRemaining={player?.subsidyQuota ?? 5000}
+                  onPress={() => { setSelectedMode('advanced'); GameAudio.playTap(); }}
+                />
+              </View>
+            )}
+          </>
+        )}
+      </Sheet>
 
       <ProposeBuildingModal visible={showProposeModal} onClose={() => setShowProposeModal(false)} />
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.6)' },
-  sheet: {
-    maxHeight: SCREEN_H * 0.88,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.3)',
-    overflow: 'hidden',
-    paddingBottom: 24,
-  },
-  handle: { alignSelf: 'center', width: 44, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 10 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingBottom: 12 },
-  backBtn: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  cashBadge: { backgroundColor: 'rgba(255,211,0,0.15)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(255,211,0,0.3)' },
-  verifiedBadge: { backgroundColor: 'rgba(16,185,129,0.15)', borderRadius: 8, borderWidth: 1, borderColor: '#10B981', paddingHorizontal: 6, paddingVertical: 2 },
-  verifiedBadgeText: { color: '#34D399', fontSize: 10, fontWeight: '700' },
-  scrollArea: { maxHeight: SCREEN_H * 0.6 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 12 },
-  catHeader: { paddingVertical: 6, marginTop: 4 },
-  catLabel: { color: '#94A3B8', fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase' },
-  buildingGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-start', marginBottom: 12 },
-  buildingCard: { width: '30%', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.05)', padding: 8, alignItems: 'center', gap: 2 },
-  customCard: { borderColor: 'rgba(139,92,246,0.35)', backgroundColor: 'rgba(139,92,246,0.08)' },
-  buildingCardSelected: { borderColor: '#6C63FF', backgroundColor: 'rgba(108,99,255,0.2)' },
-  buildingCardDisabled: { opacity: 0.35 },
-  proposeBanner: { marginTop: 6, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(108,99,255,0.35)' },
-  proposeGradient: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 },
-  modeContainer: { flex: 1, gap: 12, paddingTop: 4, paddingBottom: 8 },
-  buildBtn: { borderRadius: 12, overflow: 'hidden', marginTop: 4 },
-  buildBtnDisabled: { opacity: 0.5 },
-  buildBtnGradient: { paddingVertical: 14, alignItems: 'center' },
-  successBox: { alignItems: 'center', justifyContent: 'center', padding: 40, gap: 10 },
-});
-
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    footerRow: {
+      flexDirection: 'row-reverse',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.md,
+    },
+    footerBtn: {
+      minWidth: 148,
+      minHeight: 44,
+    },
+    scrollArea: { maxHeight: SCREEN_H * 0.56 },
+    scrollContent: { paddingBottom: Spacing.sm },
+    catSection: { marginBottom: Spacing.lg, gap: Spacing.sm + 2 },
+    buildingGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: Spacing.sm,
+    },
+    buildingCard: {
+      width: '48.5%',
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      backgroundColor: c.ink[700],
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.sm,
+      alignItems: 'center',
+      gap: Spacing.xs,
+      overflow: 'hidden',
+    },
+    customCard: {
+      borderColor: c.border.brand,
+      backgroundColor: c.ink[600],
+    },
+    buildingCardSelected: {
+      borderColor: c.brass[400],
+    },
+    buildingCardDisabled: { opacity: 0.35 },
+    cardMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+    },
+    proposeBanner: {
+      flexDirection: 'row-reverse',
+      alignItems: 'center',
+      gap: Spacing.md,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: c.border.default,
+      backgroundColor: c.ink[700],
+      padding: Spacing.md,
+      minHeight: 56,
+    },
+    proposeTexts: {
+      flex: 1,
+      gap: 1,
+    },
+    modeContainer: {
+      gap: Spacing.md,
+      paddingBottom: Spacing.xs,
+    },
+    backBtn: {
+      flexDirection: 'row-reverse',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: Spacing.xs,
+      backgroundColor: c.ink[600],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      borderRadius: Radii.sm,
+      paddingHorizontal: Spacing.md,
+      minHeight: 44,
+    },
+    successBox: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Spacing['3xl'],
+      gap: Spacing.md,
+    },
+  });

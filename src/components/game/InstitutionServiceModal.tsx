@@ -1,34 +1,98 @@
 /**
- * BuildIran — InstitutionServiceModal
- * Unified modal for all institution interactions (client side).
- * Dynamically adapts to any institutionType: shows conversion formula,
+ * BuildIran — Institution Service Modal — «Gentleman Neon» (v2)
+ * Unified sheet for all institution interactions (client side).
+ * Dynamically adapts to any institutionType: shows the conversion formula,
  * cost/gain preview, provider info, and handles the use_institution RPC.
+ * Built on the shared Sheet primitive: institution IconPlate header,
+ * tone-coded conversion pills, brass quick-select amounts (44pt targets),
+ * Chip balance row and a single brass primary CTA in the sticky footer.
+ * Dual theme via useTheme() — every color comes from the palette; neon is
+ * intentionally absent (exchange/conversion is not a live signal).
+ * Game logic, store/RPC calls, i18n copy and the public props are unchanged.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Modal,
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
+  Pressable,
   ScrollView,
+  StyleSheet,
+  View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Chip } from '@/components/ui/Chip';
+import { IconPlate, toneOf } from '@/components/ui/IconPlate';
+import { SectionTitle } from '@/components/ui/SectionTitle';
+import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { GameAudio } from '@/lib/audio';
 import { showAlert } from '@/lib/alert';
 import { useEconomyStore } from '@/store/useEconomyStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { INSTITUTION_DEFINITIONS } from '@/lib/constants';
-import { useFloatIn, useScalePop } from '@/lib/effects';
-import Animated from 'react-native-reanimated';
+import { useScalePop } from '@/lib/effects';
+import { Motion, Radii, Spacing } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Palette } from '@/theme/palettes';
 import type { Asset, InstitutionType } from '@/types/game.types';
 import t from '@/i18n';
 
 const lang = t();
 
-// ─── Stat label helper ────────────────────────────────────────────────────────
+type PlateIcon = React.ComponentProps<typeof IconPlate>['name'];
+type PlateTone =
+  | 'brass'
+  | 'jade'
+  | 'crimson'
+  | 'steel'
+  | 'ember'
+  | 'terracotta'
+  | 'neutral'
+  | 'inverse';
+
+// ─── TouchableScale (press spring, same recipe as HUD / WorkersPanel) ─────────
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const TouchableScale: React.FC<
+  React.ComponentProps<typeof Pressable>
+> = ({ onPressIn, onPressOut, style, ...rest }) => {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  return (
+    <AnimatedPressable
+      {...rest}
+      style={[animatedStyle, style]}
+      onPressIn={(e) => {
+        scale.value = withSpring(0.97, Motion.press);
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        scale.value = withSpring(1, Motion.press);
+        onPressOut?.(e);
+      }}
+    />
+  );
+};
+
+// ─── Stat → tone/icon helpers (DESIGN.md iconography: cash / flame / flash) ──
+
+const STAT_META: Record<
+  'cash' | 'activity' | 'power',
+  { tone: PlateTone; icon: PlateIcon }
+> = {
+  cash: { tone: 'brass', icon: 'cash' },
+  activity: { tone: 'ember', icon: 'flame' },
+  power: { tone: 'terracotta', icon: 'flash' },
+};
 
 function statLabel(stat: string): string {
   if (stat === 'cash')     return lang.economy.institution.stat_cash;
@@ -37,32 +101,48 @@ function statLabel(stat: string): string {
   return stat;
 }
 
-// ─── Conversion Arrow Row ─────────────────────────────────────────────────────
+// ─── Conversion Pills Row ─────────────────────────────────────────────────────
 
 const ConversionRow: React.FC<{
-  fromLabel: string;
+  fromStat: 'cash' | 'activity';
   fromAmount: number;
-  toLabel: string;
+  fromLabel: string;
+  toStat: 'power' | 'cash';
   toAmount: number;
-  fromColor: string;
-  toColor: string;
-}> = ({ fromLabel, fromAmount, toLabel, toAmount, fromColor, toColor }) => (
-  <View style={convStyles.row}>
-    <View style={[convStyles.pill, { borderColor: fromColor }]}>
-      <Text variant="body" weight="bold" style={{ color: fromColor }}>
-        {fromAmount.toLocaleString('fa-IR')}
-      </Text>
-      <Text variant="caption" color="secondary">{fromLabel}</Text>
+  toLabel: string;
+}> = ({ fromStat, fromAmount, fromLabel, toStat, toAmount, toLabel }) => {
+  const { colors: c } = useTheme();
+  const from = STAT_META[fromStat];
+  const to = STAT_META[toStat];
+  const fromColor = toneOf(c, from.tone);
+  const toColor = toneOf(c, to.tone);
+
+  return (
+    <View style={convStyles.row}>
+      <View style={[convStyles.pill, { backgroundColor: `${fromColor}0F`, borderColor: `${fromColor}4D` }]}>
+        <View style={convStyles.pillValueRow}>
+          <Ionicons name={from.icon} size={14} color={fromColor} />
+          <Text variant="subtitle" weight="bold" style={[convStyles.num, { color: fromColor }]}>
+            {fromAmount.toLocaleString('fa-IR')}
+          </Text>
+        </View>
+        <Text variant="caption" color="secondary">{fromLabel}</Text>
+      </View>
+
+      <Text variant="heading" color="secondary" style={convStyles.arrow}>←</Text>
+
+      <View style={[convStyles.pill, { backgroundColor: `${toColor}0F`, borderColor: `${toColor}4D` }]}>
+        <View style={convStyles.pillValueRow}>
+          <Ionicons name={to.icon} size={14} color={toColor} />
+          <Text variant="subtitle" weight="bold" style={[convStyles.num, { color: toColor }]}>
+            {`+${toAmount.toLocaleString('fa-IR')}`}
+          </Text>
+        </View>
+        <Text variant="caption" color="secondary">{toLabel}</Text>
+      </View>
     </View>
-    <Text variant="heading" color="secondary" style={convStyles.arrow}>←</Text>
-    <View style={[convStyles.pill, { borderColor: toColor }]}>
-      <Text variant="body" weight="bold" style={{ color: toColor }}>
-        +{toAmount.toLocaleString('fa-IR')}
-      </Text>
-      <Text variant="caption" color="secondary">{toLabel}</Text>
-    </View>
-  </View>
-);
+  );
+};
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
@@ -84,8 +164,10 @@ export const InstitutionServiceModal: React.FC<Props> = ({
   const resolveExchangeRate = useEconomyStore((s) => s.resolveExchangeRate);
   const exchangeActivity = useEconomyStore((s) => s.exchangeActivity);
   const player = usePlayerStore((s) => s.player);
-  const { style: floatStyle } = useFloatIn(0);
   const { style: btnStyle, pop } = useScalePop();
+
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
 
   // Exchange specific state
   const isExchange = institutionType === 'exchange';
@@ -106,14 +188,12 @@ export const InstitutionServiceModal: React.FC<Props> = ({
   const def = INSTITUTION_DEFINITIONS[institutionType];
   if (!def) return null;
 
+  const meta = INSTITUTION_SERVICE_META[institutionType] ?? { icon: 'business' as PlateIcon, tone: 'steel' as PlateTone };
+
   // Compute active conversion amounts (dynamic for exchange, static for standard institutions)
   const activeRate = isExchange ? (exchangeRateKey === 'establishedBusiness' ? 5 : exchangeRateKey === 'ownerBonus' ? 3.5 : 2) : 1;
   const clientCostAmount = isExchange ? selectedActivityAmount : def.clientCost.amount;
   const clientGainAmount = isExchange ? Math.floor(selectedActivityAmount * activeRate) : def.clientGain.amount;
-
-  // Colour coding by stat type
-  const costColor  = def.clientCost.stat === 'cash' ? '#FFD700' : '#FB923C';
-  const gainColor  = def.clientGain.stat === 'power' ? '#A78BFA' : '#FFD700';
 
   // Affordability check
   const canAfford = player
@@ -126,7 +206,7 @@ export const InstitutionServiceModal: React.FC<Props> = ({
     if (!canAfford) {
       GameAudio.playError?.();
       showAlert(
-        '⚠️',
+        'خطا',
         def.clientCost.stat === 'cash'
           ? lang.economy.institution.errorInsufficientCash
           : lang.economy.institution.errorInsufficientActivity,
@@ -142,13 +222,13 @@ export const InstitutionServiceModal: React.FC<Props> = ({
         if (ok) {
           GameAudio.playBuild?.();
           showAlert(
-            '🏦 بورس مبادلات',
-            `تبدیل موفق! ${selectedActivityAmount.toLocaleString('fa-IR')} امتیاز فعالیت به ${clientGainAmount.toLocaleString('fa-IR')} 💰 تبدیل شد.`,
+            'بورس مبادلات',
+            `تبدیل موفق! ${selectedActivityAmount.toLocaleString('fa-IR')} امتیاز فعالیت به ${clientGainAmount.toLocaleString('fa-IR')} سکه تبدیل شد.`,
           );
           onClose();
         } else {
           GameAudio.playError?.();
-          showAlert('❌', 'خطا در انجام مبادله. لطفاً دوباره تلاش کنید.');
+          showAlert('خطا', 'خطا در انجام مبادله. لطفاً دوباره تلاش کنید.');
         }
       } else {
         const result = await useInstitution(asset.id, institutionType);
@@ -156,13 +236,13 @@ export const InstitutionServiceModal: React.FC<Props> = ({
           GameAudio.playBuild?.();
           const gainMsg =
             result.clientGainStat === 'power'
-              ? `${lang.economy.institution.successPower} +${result.clientGainAmount}`
+              ? `${lang.economy.institution.successPower} +${result.clientGainAmount.toLocaleString('fa-IR')}`
               : `${lang.economy.institution.successCash} +${result.clientGainAmount.toLocaleString('fa-IR')}`;
-          showAlert(def.emoji + ' ' + def.nameFa, gainMsg);
+          showAlert(def.nameFa, gainMsg);
           onClose();
         } else {
           GameAudio.playError?.();
-          showAlert('❌', lang.economy.institution.errorInsufficientCash);
+          showAlert('خطا', lang.economy.institution.errorInsufficientCash);
         }
       }
     } finally {
@@ -171,306 +251,404 @@ export const InstitutionServiceModal: React.FC<Props> = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.sheet, floatStyle]}>
-          <LinearGradient
-            colors={['#0D1533', '#0A0E1F']}
-            style={styles.gradient}
-          >
-            {/* Header */}
-            <View style={styles.header}>
-              <Text variant="heading" style={styles.emoji}>{def.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text variant="title" weight="bold" color="primary">{def.nameFa}</Text>
-                {asset.ownerUsername ? (
-                  <Text variant="caption" color="secondary">
-                    {lang.economy.institution.ownerLabel}: {asset.ownerUsername}
-                  </Text>
-                ) : (
-                  <Text variant="caption" color="secondary">موسسه عمومی شهر</Text>
-                )}
-              </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Text variant="body" color="secondary">✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.divider} />
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Dynamic Exchange Rate Tier Banner */}
-              {isExchange && (
-                <View style={exchangeStyles.tierCard}>
-                  <View style={exchangeStyles.tierHeader}>
-                    <Text variant="caption" weight="bold" color="primary">
-                      {exchangeRateKey === 'establishedBusiness'
-                        ? '🌟 نرخ کسب‌وکار مستقر'
-                        : exchangeRateKey === 'ownerBonus'
-                        ? '🏪 بونوس مالک کسب‌وکار'
-                        : '🚶‍♂️ نرخ پایه مبادله'}
-                    </Text>
-                    <View style={exchangeStyles.rateChip}>
-                      <Text variant="caption" weight="bold" style={{ color: '#10B981' }}>
-                        هر ۱ 🔥 = {activeRate.toLocaleString('fa-IR')} 💰
-                      </Text>
-                    </View>
-                  </View>
-                  <Text variant="caption" color="secondary" style={{ marginTop: 4 }}>
-                    {exchangeRateKey === 'establishedBusiness'
-                      ? 'دارای کسب‌وکار سطح ۲ به بالا با تراکنش فعال (حداکثر سود)'
-                      : exchangeRateKey === 'ownerBonus'
-                      ? 'مالک کسب‌وکار در شهر (پاداش کارآفرینی)'
-                      : 'برای نرخ بالاتر (تا ۵ برابر)، یک مغازه، کافه یا درمانگاه تأسیس کنید.'}
-                  </Text>
-
-                  {/* Activity Amount Quick Selectors */}
-                  <Text variant="label" color="secondary" style={[styles.sectionLabel, { marginTop: 12 }]}>
-                    میزان فعالیت جهت تبدیل:
-                  </Text>
-                  <View style={exchangeStyles.amountsRow}>
-                    {[5, 10, 25, 50].map((amt) => {
-                      const isSelected = selectedActivityAmount === amt;
-                      const hasEnough = (player?.activity ?? 0) >= amt;
-                      return (
-                        <TouchableOpacity
-                          key={amt}
-                          style={[
-                            exchangeStyles.amtPill,
-                            isSelected && exchangeStyles.amtPillSelected,
-                            !hasEnough && exchangeStyles.amtPillDisabled,
-                          ]}
-                          onPress={() => setSelectedActivityAmount(amt)}
-                        >
-                          <Text
-                            variant="caption"
-                            weight="bold"
-                            style={{ color: isSelected ? '#fff' : hasEnough ? '#CBD5E1' : '#64748B' }}
-                          >
-                            {amt.toLocaleString('fa-IR')} 🔥
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                    {/* Max button */}
-                    {(player?.activity ?? 0) > 0 && (
-                      <TouchableOpacity
-                        style={[
-                          exchangeStyles.amtPill,
-                          selectedActivityAmount === player?.activity && exchangeStyles.amtPillSelected,
-                        ]}
-                        onPress={() => setSelectedActivityAmount(player?.activity ?? 1)}
-                      >
-                        <Text variant="caption" weight="bold" color="inverse">همه</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              )}
-
-              {/* Conversion formula */}
-              <Text variant="label" color="secondary" style={styles.sectionLabel}>
-                {lang.economy.institution.conversionFormula}
-              </Text>
-              <ConversionRow
-                fromLabel={statLabel(def.clientCost.stat)}
-                fromAmount={clientCostAmount}
-                toLabel={statLabel(def.clientGain.stat)}
-                toAmount={clientGainAmount}
-                fromColor={costColor}
-                toColor={gainColor}
-              />
-
-              {/* Provider side (if applicable) */}
-              {!isExchange && def.providerCost && def.providerGainPercent && (
-                <>
-                  <View style={styles.divider} />
-                  <Text variant="label" color="secondary" style={styles.sectionLabel}>
-                    {lang.economy.institution.providerEarns}
-                  </Text>
-                  <View style={convStyles.providerRow}>
-                    <Text variant="caption" color="secondary">
-                      🏪 {Math.floor(def.clientCost.amount * (def.providerGainPercent / 100)).toLocaleString('fa-IR')} {lang.economy.institution.stat_cash}
-                    </Text>
-                    <Text variant="caption" color="secondary">
-                      (−{def.providerCost.amount} {lang.economy.institution.stat_activity})
-                    </Text>
-                  </View>
-                </>
-              )}
-
-              {/* Player balance */}
-              <View style={styles.divider} />
-              <View style={styles.balanceRow}>
-                <Text variant="caption" color="secondary">
-                  💰 {(player?.cash ?? 0).toLocaleString('fa-IR')}
-                </Text>
-                <Text variant="caption" color="secondary">
-                  🔥 {(player?.activity ?? 0).toLocaleString('fa-IR')}
-                </Text>
-                <Text variant="caption" color="secondary">
-                  ⚔️ {(player?.power ?? 0).toLocaleString('fa-IR')}
-                </Text>
-              </View>
-            </ScrollView>
-
-            {/* CTA */}
-            <Animated.View style={[styles.ctaWrap, btnStyle]}>
-              <TouchableOpacity
-                style={[styles.cta, !canAfford && styles.ctaDisabled]}
-                onPress={handleUse}
-                disabled={loading || !canAfford}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={canAfford ? (isExchange ? ['#10B981', '#059669'] : ['#6C63FF', '#8B5CF6']) : ['#3a3a4a', '#2a2a3a']}
-                  style={styles.ctaGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text variant="body" weight="bold" color="inverse">
-                      {canAfford
-                        ? isExchange
-                          ? `تبدیل ${clientCostAmount.toLocaleString('fa-IR')} فعالیت به ${clientGainAmount.toLocaleString('fa-IR')} سکه`
-                          : lang.economy.institution.useService
-                        : def.clientCost.stat === 'cash'
-                        ? lang.economy.institution.errorInsufficientCash
-                        : lang.economy.institution.errorInsufficientActivity}
-                    </Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animated.View>
-          </LinearGradient>
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      maxHeight={0.8}
+      footer={
+        <Animated.View style={btnStyle}>
+          <Button
+            fullWidth
+            size="lg"
+            loading={loading}
+            disabled={!canAfford}
+            onPress={handleUse}
+            label={
+              canAfford
+                ? isExchange
+                  ? `تبدیل ${clientCostAmount.toLocaleString('fa-IR')} فعالیت به ${clientGainAmount.toLocaleString('fa-IR')} سکه`
+                  : lang.economy.institution.useService
+                : def.clientCost.stat === 'cash'
+                ? lang.economy.institution.errorInsufficientCash
+                : lang.economy.institution.errorInsufficientActivity
+            }
+          />
         </Animated.View>
-      </View>
-    </Modal>
+      }
+    >
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Institution header ── */}
+        <View style={styles.headerRow}>
+          <IconPlate name={meta.icon} tone={meta.tone} size="lg" />
+          <View style={styles.headerTexts}>
+            <View style={styles.nameRow}>
+              <Text variant="title" weight="extrabold" numberOfLines={1} style={styles.flex1}>
+                {def.nameFa}
+              </Text>
+              <TouchableScale
+                onPress={onClose}
+                style={styles.closeBtn}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="بستن"
+              >
+                <Ionicons name="close" size={18} color={c.text.secondary} />
+              </TouchableScale>
+            </View>
+            <View style={styles.chipsRow}>
+              <Chip icon="ribbon" tone="brass" value={`سطح ${asset.level.toLocaleString('fa-IR')}`} />
+              <Chip
+                icon="person"
+                tone="steel"
+                value={
+                  asset.ownerUsername
+                    ? `${lang.economy.institution.ownerLabel}: ${asset.ownerUsername}`
+                    : 'موسسه عمومی شهر'
+                }
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* ── Exchange rate tier banner + quick amounts ── */}
+        {isExchange && (
+          <Card>
+            <View style={styles.tierHead}>
+              <View style={styles.tierTitleRow}>
+                <IconPlate name="trending-up" size="xs" tone="jade" />
+                <Text variant="body" weight="bold">
+                  {exchangeRateKey === 'establishedBusiness'
+                    ? 'نرخ کسب‌وکار مستقر'
+                    : exchangeRateKey === 'ownerBonus'
+                    ? 'بونوس مالک کسب‌وکار'
+                    : 'نرخ پایه مبادله'}
+                </Text>
+              </View>
+              <View style={styles.rateChip}>
+                <Text variant="caption" weight="bold" style={styles.rateText}>
+                  {`هر ۱ فعالیت = ${activeRate.toLocaleString('fa-IR')} سکه`}
+                </Text>
+              </View>
+            </View>
+            <Text variant="caption" color="secondary">
+              {exchangeRateKey === 'establishedBusiness'
+                ? 'دارای کسب‌وکار سطح ۲ به بالا با تراکنش فعال (حداکثر سود)'
+                : exchangeRateKey === 'ownerBonus'
+                ? 'مالک کسب‌وکار در شهر (پاداش کارآفرینی)'
+                : 'برای نرخ بالاتر (تا ۵ برابر)، یک مغازه، کافه یا درمانگاه تأسیس کنید.'}
+            </Text>
+
+            {/* Activity amount quick selectors */}
+            <Text variant="label" color="secondary" style={styles.amountsLabel}>
+              میزان فعالیت جهت تبدیل:
+            </Text>
+            <View style={styles.amountsRow}>
+              {[5, 10, 25, 50].map((amt) => {
+                const isSelected = selectedActivityAmount === amt;
+                const hasEnough = (player?.activity ?? 0) >= amt;
+                return (
+                  <TouchableScale
+                    key={amt}
+                    style={[
+                      styles.amtPill,
+                      isSelected && styles.amtPillSelected,
+                      !hasEnough && styles.amtPillDisabled,
+                    ]}
+                    onPress={() => setSelectedActivityAmount(amt)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${amt.toLocaleString('fa-IR')}`}
+                  >
+                    <Ionicons
+                      name="flame"
+                      size={11}
+                      color={isSelected ? c.text.inverse : hasEnough ? c.ember : c.text.muted}
+                    />
+                    <Text
+                      variant="caption"
+                      weight="bold"
+                      style={{
+                        color: isSelected
+                          ? c.text.inverse
+                          : hasEnough
+                          ? c.text.primary
+                          : c.text.muted,
+                      }}
+                    >
+                      {amt.toLocaleString('fa-IR')}
+                    </Text>
+                  </TouchableScale>
+                );
+              })}
+              {/* Max button */}
+              {(player?.activity ?? 0) > 0 && (
+                <TouchableScale
+                  style={[
+                    styles.amtPill,
+                    selectedActivityAmount === player?.activity && styles.amtPillSelected,
+                  ]}
+                  onPress={() => setSelectedActivityAmount(player?.activity ?? 1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="همه"
+                >
+                  <Text
+                    variant="caption"
+                    weight="bold"
+                    style={{
+                      color:
+                        selectedActivityAmount === player?.activity
+                          ? c.text.inverse
+                          : c.text.primary,
+                    }}
+                  >
+                    همه
+                  </Text>
+                </TouchableScale>
+              )}
+            </View>
+          </Card>
+        )}
+
+        {/* ── Conversion formula ── */}
+        <SectionTitle kicker="تبدیل" title={lang.economy.institution.conversionFormula} />
+        <ConversionRow
+          fromStat={def.clientCost.stat}
+          fromAmount={clientCostAmount}
+          fromLabel={statLabel(def.clientCost.stat)}
+          toStat={def.clientGain.stat}
+          toAmount={clientGainAmount}
+          toLabel={statLabel(def.clientGain.stat)}
+        />
+
+        {/* ── Provider side (if applicable) ── */}
+        {!isExchange && def.providerCost && def.providerGainPercent && (
+          <>
+            <SectionTitle kicker="ارائه‌دهنده" title={lang.economy.institution.providerEarns} />
+            <View style={styles.providerRow}>
+              <View style={styles.providerItem}>
+                <IconPlate name="storefront" size="xxs" tone="brass" bordered={false} />
+                <Text variant="caption" color="secondary" style={convStyles.num}>
+                  {`${Math.floor(def.clientCost.amount * (def.providerGainPercent / 100)).toLocaleString('fa-IR')} ${lang.economy.institution.stat_cash}`}
+                </Text>
+              </View>
+              <Text variant="caption" color="secondary" style={convStyles.num}>
+                {`(−${def.providerCost.amount} ${lang.economy.institution.stat_activity})`}
+              </Text>
+            </View>
+          </>
+        )}
+
+        {/* ── Player balance ── */}
+        <View style={styles.balanceRow}>
+          <Chip
+            icon="cash"
+            tone="brass"
+            value={player?.cash ?? 0}
+            label={lang.economy.institution.stat_cash}
+          />
+          <Chip
+            icon="flame"
+            tone="ember"
+            value={player?.activity ?? 0}
+            label={lang.economy.institution.stat_activity}
+          />
+          <Chip
+            icon="flash"
+            tone="terracotta"
+            value={player?.power ?? 0}
+            label={lang.economy.institution.stat_power}
+          />
+        </View>
+      </ScrollView>
+    </Sheet>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Institution type → Ionicon / tone ───────────────────────────────────────
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-    maxHeight: '75%',
-  },
-  gradient: {
-    padding: 24,
-    paddingBottom: 36,
-    gap: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  emoji: { fontSize: 32 },
-  closeBtn: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginVertical: 4,
-  },
-  sectionLabel: { marginBottom: 8 },
-  balanceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 8,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 12,
-  },
-  ctaWrap: { marginTop: 8 },
-  cta: { borderRadius: 16, overflow: 'hidden' },
-  ctaDisabled: { opacity: 0.5 },
-  ctaGradient: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-});
+const INSTITUTION_SERVICE_META: Record<string, { icon: PlateIcon; tone: PlateTone }> = {
+  home_rent: { icon: 'home', tone: 'steel' },
+  shopping: { icon: 'cart', tone: 'brass' },
+  cafe: { icon: 'cafe', tone: 'brass' },
+  gym: { icon: 'barbell', tone: 'brass' },
+  restaurant: { icon: 'restaurant', tone: 'brass' },
+  mall_service: { icon: 'storefront', tone: 'brass' },
+  library: { icon: 'book', tone: 'brass' },
+  exchange: { icon: 'swap-horizontal', tone: 'brass' },
+  farm_supply: { icon: 'nutrition', tone: 'ember' },
+  factory_supply: { icon: 'construct', tone: 'ember' },
+  industrial_supply: { icon: 'cube', tone: 'ember' },
+  hospital: { icon: 'medkit', tone: 'jade' },
+  university: { icon: 'school', tone: 'jade' },
+  park_service: { icon: 'leaf', tone: 'jade' },
+  bank_service: { icon: 'cash', tone: 'jade' },
+};
 
+// ─── Styles — all colors from the active palette (dual theme §2) ─────────────
+
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    scroll: {
+      flexGrow: 0,
+    },
+    scrollContent: {
+      gap: Spacing.lg,
+      paddingTop: Spacing.sm,
+    },
+
+    // Header
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing.md,
+    },
+    headerTexts: {
+      flex: 1,
+      gap: Spacing.xs + 2,
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.xs + 2,
+    },
+    closeBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: Radii.full,
+      backgroundColor: c.ink[500],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    flex1: {
+      flex: 1,
+    },
+
+    // Exchange tier card
+    tierHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.sm,
+      marginBottom: Spacing.xs + 2,
+    },
+    tierTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      flex: 1,
+    },
+    rateChip: {
+      backgroundColor: `${c.jade}1A`,
+      paddingHorizontal: Spacing.sm + 2,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+      borderColor: `${c.jade}3D`,
+    },
+    rateText: {
+      color: c.jade,
+      fontVariant: ['tabular-nums'],
+    },
+    amountsLabel: {
+      marginTop: Spacing.md,
+      marginBottom: Spacing.sm,
+    },
+    amountsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+    },
+    amtPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.xs,
+      minWidth: 44,
+      minHeight: 44,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radii.md,
+      backgroundColor: c.ink[600],
+      borderWidth: 1,
+      borderColor: c.border.default,
+    },
+    amtPillSelected: {
+      backgroundColor: `${c.brass[400]}22`,
+      borderColor: c.brass[400],
+    },
+    amtPillDisabled: {
+      opacity: 0.4,
+    },
+
+    // Provider side
+    providerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: c.ink[600],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      borderRadius: Radii.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm + 2,
+      gap: Spacing.sm,
+    },
+    providerItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+
+    // Balance row
+    balanceRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      gap: Spacing.sm,
+      backgroundColor: c.ink[600],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+    },
+  });
+
+// Geometry-only styles (no colors) — safe at module scope per DESIGN.md §2.
 const convStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: Spacing.md,
   },
   pill: {
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    minWidth: 100,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  arrow: { fontSize: 22 },
-  providerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 10,
-  },
-});
-
-const exchangeStyles = StyleSheet.create({
-  tierCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.3)',
-    marginBottom: 8,
+    borderRadius: Radii.lg,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    minWidth: 104,
+    gap: Spacing.xs,
   },
-  tierHeader: {
+  pillValueRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.xs,
   },
-  rateChip: {
-    backgroundColor: 'rgba(16,185,129,0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.4)',
+  num: {
+    fontVariant: ['tabular-nums'],
   },
-  amountsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 6,
-  },
-  amtPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  amtPillSelected: {
-    backgroundColor: '#059669',
-    borderColor: '#34D399',
-  },
-  amtPillDisabled: {
-    opacity: 0.4,
+  arrow: {
+    fontSize: 22,
   },
 });

@@ -28,7 +28,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'شهروند عادی',
     descriptionFa: 'شروع مسیر در شهر بزرگ تهران.',
     icon: '👤',
-    color: '#6C63FF',
+    color: '#8A93A6',
     buffFa: 'بدون ویژگی خاص',
   },
   trader: {
@@ -36,7 +36,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'تاجر و دلال',
     descriptionFa: 'متخصص در خرید و فروش املاک در بازار آزاد.',
     icon: '🤝',
-    color: '#0EA5E9', // Azure
+    color: '#7FA3C0', // Azure
     buffFa: 'تخفیف در مالیات خرید و فروش',
   },
   industrialist: {
@@ -44,7 +44,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'تأمین‌کننده و صنعتگر',
     descriptionFa: 'تمرکز بر کشاورزی، کارخانجات و زنجیره تأمین.',
     icon: '🏭',
-    color: '#10B981', // Emerald
+    color: '#4CBB8F', // Emerald
     buffFa: '+۲۰٪ قدرت بیشتر از پر کردن انبارها',
   },
   producer: {
@@ -52,7 +52,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'تولیدکننده مصالح',
     descriptionFa: 'استاد ساخت و ساز پیشرفته و تأمین مصالح.',
     icon: '🧱',
-    color: '#F97316', // Orange
+    color: '#E88D3C', // Orange
     buffFa: 'افزایش سهمیه مصالح یارانه‌ای',
   },
   business: {
@@ -60,7 +60,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'کسب‌وکار و خدمات',
     descriptionFa: 'مدیریت کافه‌ها، فروشگاه‌ها و ارائه خدمات شهری.',
     icon: '☕',
-    color: '#EC4899', // Pink
+    color: '#D9694F', // Pink
     buffFa: '+۱۵٪ درآمد بیشتر از ارائه خدمات',
   },
   employee: {
@@ -68,7 +68,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'مدیر منابع انسانی',
     descriptionFa: 'متخصص در استخدام، آموزش و مدیریت کارگران.',
     icon: '👔',
-    color: '#6366F1', // Indigo
+    color: '#8FB0CC', // Indigo
     buffFa: 'هزینه آموزش کارگران ۲۰٪ کمتر است',
   },
   famous: {
@@ -76,7 +76,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'چهره مشهور',
     descriptionFa: 'تمرکز بر خدمات عمومی، پارک‌ها و محبوبیت در محله.',
     icon: '⭐',
-    color: '#F59E0B', // Amber
+    color: '#E2B64F', // Amber
     buffFa: 'پارک‌ها و بیمارستان‌ها محبوبیت بیشتری تولید می‌کنند',
   },
   real_estate: {
@@ -84,7 +84,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'انبوه‌ساز مسکن',
     descriptionFa: 'پیمانکار بزرگ برج‌ها و مجتمع‌های مسکونی.',
     icon: '🏗️',
-    color: '#94A3B8', // Slate
+    color: '#A9AFBC', // Slate
     buffFa: '۱۰٪ تخفیف در هزینه ساخت فوری (Fast Build)',
   },
 };

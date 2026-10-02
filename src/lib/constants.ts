@@ -94,6 +94,7 @@ export const MAP_OSM_STYLE = {
 export const MAP_DARK_STYLE = {
   version: 8,
   name: "BuildIran Dark Streets",
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
   sources: {
     "carto-dark": {
       type: "raster",
@@ -118,7 +119,12 @@ export const MAP_DARK_STYLE = {
   ],
 } as const;
 
-/** Default active map style */
+/**
+ * Default active map style.
+ * NOTE: MAP_DARK_STYLE (below) matches the Ink & Brass shell — flip this to
+ * MAP_DARK_STYLE when testing on a device/browser that doesn't block
+ * basemaps.cartocdn.com. Kept on OSM raster for maximum compatibility.
+ */
 export const MAP_STYLE = MAP_OSM_STYLE;
 
 /** Backward-compatibility aliases */
@@ -864,11 +870,11 @@ export interface NeighborhoodAmenityTier {
 
 export const NEIGHBORHOOD_AMENITY_TIERS: readonly NeighborhoodAmenityTier[] = [
   { tier: 0, nameFa: 'محله ساده', minScore: 0, maxScore: 9, costMultiplier: 1.00, dailyDrip: 0, color: '#6B7280', emoji: '🏚️' },
-  { tier: 1, nameFa: 'محله در حال رشد', minScore: 10, maxScore: 29, costMultiplier: 1.10, dailyDrip: 1, color: '#10B981', emoji: '🌱' },
-  { tier: 2, nameFa: 'محله متوسط', minScore: 30, maxScore: 59, costMultiplier: 1.25, dailyDrip: 3, color: '#3B82F6', emoji: '🏘️' },
-  { tier: 3, nameFa: 'محله خوب', minScore: 60, maxScore: 99, costMultiplier: 1.45, dailyDrip: 6, color: '#8B5CF6', emoji: '🌆' },
-  { tier: 4, nameFa: 'محله برتر', minScore: 100, maxScore: 159, costMultiplier: 1.70, dailyDrip: 10, color: '#F59E0B', emoji: '🏙️' },
-  { tier: 5, nameFa: 'محله لوکس', minScore: 160, maxScore: Infinity, costMultiplier: 2.00, dailyDrip: 15, color: '#EC4899', emoji: '💎' },
+  { tier: 1, nameFa: 'محله در حال رشد', minScore: 10, maxScore: 29, costMultiplier: 1.10, dailyDrip: 1, color: '#8FB0CC', emoji: '🌱' },
+  { tier: 2, nameFa: 'محله متوسط', minScore: 30, maxScore: 59, costMultiplier: 1.25, dailyDrip: 3, color: '#4CBB8F', emoji: '🏘️' },
+  { tier: 3, nameFa: 'محله خوب', minScore: 60, maxScore: 99, costMultiplier: 1.45, dailyDrip: 6, color: '#E88D3C', emoji: '🌆' },
+  { tier: 4, nameFa: 'محله برتر', minScore: 100, maxScore: 159, costMultiplier: 1.70, dailyDrip: 10, color: '#E2B64F', emoji: '🏙️' },
+  { tier: 5, nameFa: 'محله لوکس', minScore: 160, maxScore: Infinity, costMultiplier: 2.00, dailyDrip: 15, color: '#F0CE7A', emoji: '💎' },
 ] as const;
 
 /** Resolve the amenity tier object from a raw amenity score. */

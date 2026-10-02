@@ -1,13 +1,26 @@
 /**
- * BuildIran — HUD (Heads-Up Display)
- * Floating overlay: resource bar + 4-factor stats (Power, Wealth, Activity, Popularity)
- * + Neighborhood indicator & Neighborhood Editor Panel trigger for high-power players.
+ * BuildIran — HUD (Heads-Up Display) — «Gentleman Neon» (v2)
+ * Floating map chrome on mode-aware glass: neighborhood pill + action plates
+ * (career / missions / neon drip claim / editor), the 4-factor StatBar panel
+ * and the selected-tile status bar.
+ * Design: dual-theme glass recipe (§2), neon mint reserved for the one live
+ * signal — the claimable «پاداش محله» pill (§1). Press springs on every
+ * touchable (§4). All game logic, store wiring and modal contracts unchanged.
  */
 
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { IconPlate } from "@/components/ui/IconPlate";
+import { StatBar } from "@/components/ui/StatBar";
 import { Text } from "@/components/ui/Text";
+import { Motion, Radii, Shadows, Spacing, Typography } from "@/theme";
+import { useTheme } from "@/theme/ThemeProvider";
+import { useGlowPulse } from "@/lib/effects";
 import { GameAudio } from "@/lib/audio";
-import { getPlayerTier } from "@/lib/constants";
-import { useStatBarFill } from "@/lib/effects";
+import {
+  NEIGHBORHOOD_DRIP_COOLDOWN_SECONDS,
+  getPlayerTier,
+} from "@/lib/constants";
 import { useEconomyStore } from "@/store/useEconomyStore";
 import { useGameStore } from "@/store/useGameStore";
 import { useNeighborhoodStore } from "@/store/useNeighborhoodStore";
@@ -16,65 +29,66 @@ import { usePlayerStore } from "@/store/usePlayerStore";
 import { useMissionStore } from "@/store/useMissionStore";
 import { useMapStore } from "@/store/useMapStore";
 import { haversineDistance } from "@/utils/geo";
-import { LinearGradient } from "expo-linear-gradient";
-import React, { useState } from "react";
+import { CAREER_PATHS } from "@/lib/careers";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useMemo, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
-import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NeighborhoodEditorModal } from "./NeighborhoodEditorModal";
 import { NeighborhoodDetailModal } from "./NeighborhoodDetailModal";
 import { NeighborhoodAmenityCard } from "./NeighborhoodAmenityCard";
 import { MissionsPanel } from "./MissionsPanel";
 import { CareerSelectionModal } from "./CareerSelectionModal";
-import { CAREER_PATHS } from "@/lib/careers";
-import { NEIGHBORHOOD_DRIP_COOLDOWN_SECONDS } from "@/lib/constants";
-import { Ionicons } from "@expo/vector-icons";
 
+// ─── Press-spring touchable (§4 — every touchable springs) ───────────────────
 
-// ─── 4-Factor Stat Bar ────────────────────────────────────────────────────────
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-const StatBar: React.FC<{
-  icon: string;
-  label: string;
-  value: number;
-  maxValue: number;
-  color: string;
-  delay?: number;
-}> = ({ icon, label, value, maxValue, color, delay = 0 }) => {
-  const pct = Math.min((value / maxValue) * 100, 100);
-  const { style: barStyle } = useStatBarFill(pct, delay);
-
+const TouchableScale: React.FC<
+  React.ComponentProps<typeof TouchableOpacity>
+> = ({ onPressIn, onPressOut, style, ...rest }) => {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
   return (
-    <View style={statStyles.statRow}>
-      <Text variant="body" color="primary">
-        {icon}
-      </Text>
-      <View style={statStyles.statBarBg}>
-        <Animated.View
-          style={[statStyles.statBarFill, { backgroundColor: color }, barStyle]}
-        />
-      </View>
-      <Text variant="caption" color="primary">
-        {value.toLocaleString("fa-IR")}
-      </Text>
-    </View>
+    <AnimatedTouchable
+      {...rest}
+      style={[animatedStyle, style]}
+      onPressIn={(e) => {
+        scale.value = withSpring(0.97, Motion.press);
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        scale.value = withSpring(1, Motion.press);
+        onPressOut?.(e);
+      }}
+    />
   );
 };
 
-// ─── Resource Chip ────────────────────────────────────────────────────────────
+// ─── Career plate (tinted with the career's own color from careers.ts) ───────
 
-const ResourceChip: React.FC<{
-  icon: string;
-  value: number;
-  color?: string;
-}> = ({ icon, value, color = "#FFFFFF" }) => (
-  <View style={chipStyles.chip}>
-    <Text variant="body" color="primary">
-      {icon}
-    </Text>
-    <Text variant="caption" color="primary">
-      {value.toLocaleString("fa-IR")}
-    </Text>
+const CareerPlate: React.FC<{ color: string }> = ({ color }) => (
+  <View
+    style={{
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: `${color}22`,
+      borderWidth: 1,
+      borderColor: `${color}3D`,
+    }}
+  >
+    <Ionicons name="ribbon" size={17} color={color} />
   </View>
 );
 
@@ -82,16 +96,18 @@ const ResourceChip: React.FC<{
 
 export const HUD: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const player = usePlayerStore((s) => s.player);
   const selectedTileId = useGameStore((s) => s.selectedTileId);
   const tiles = useGameStore((s) => s.tiles);
   const claimableCount = useMissionStore((s) => s.claimableCount);
-  
+
   const currentNeighborhood = useNeighborhoodStore((s) => s.currentNeighborhood);
   const neighborhoods = useNeighborhoodStore((s) => s.neighborhoods);
-  
+
   const mapCenter = useMapStore((s) => s.viewport.center);
-  
+
   const activeBoosts = useEconomyStore((s) => s.activeBoosts);
   const activeNpcCount = useNpcStore(
     (s) => Object.values(s.npcs).filter((n) => n.isWorking).length,
@@ -102,6 +118,9 @@ export const HUD: React.FC = () => {
   const [showMissionsPanel, setShowMissionsPanel] = useState(false);
   const [showCareerModal, setShowCareerModal] = useState(false);
   const [isClaimingDrip, setIsClaimingDrip] = useState(false);
+
+  // §4 — the ONLY looping animation on this screen: claimable CTA glow pulse
+  const claimPulse = useGlowPulse(0.75, 1);
 
   const selectedTile = selectedTileId ? tiles[selectedTileId] : null;
 
@@ -162,13 +181,29 @@ export const HUD: React.FC = () => {
     }
   };
 
+  // Selected-tile status visual (available jade / owned brass / rival crimson)
+  const tileStatus: {
+    icon: "ellipse" | "shield" | "close-circle";
+    color: string;
+    text: string;
+  } =
+    selectedTile?.status === "available"
+      ? {
+          icon: "ellipse",
+          color: c.jade,
+          text: "زمین آزاد — ضربه بزنید تا بسازید",
+        }
+      : selectedTile?.status === "owned"
+        ? { icon: "shield", color: c.brass[400], text: "قلمرو شما" }
+        : { icon: "close-circle", color: c.crimson, text: "قلمرو بازیکن دیگر" };
+
   return (
     <>
-      {/* Sub-bar: Neighborhood & Editor Panel Access */}
+      {/* Top chrome: neighborhood pill (start) + action plates (end) */}
       <View style={[styles.subBar, { top: insets.top + 68 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-          <TouchableOpacity
-            style={styles.modernNbBox}
+        <View style={styles.subBarStart}>
+          <TouchableScale
+            style={styles.hoodPill}
             onPress={() => {
               GameAudio.playTap();
               if (viewedNeighborhood) {
@@ -178,181 +213,154 @@ export const HUD: React.FC = () => {
               setShowDetailModal(true);
             }}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="جزئیات محله در حال نمایش"
           >
-            <LinearGradient
-              colors={["rgba(22, 28, 45, 0.95)", "rgba(10, 15, 30, 0.85)"]}
-              style={styles.modernNbBoxInner}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.modernNbBoxIcon}>
-                <Ionicons name="map" size={16} color="#34D399" />
-              </View>
-              <View style={styles.modernNbBoxTextContainer}>
-                <Text variant="caption" color="secondary" style={{ fontSize: 9, opacity: 0.7, marginBottom: -2 }}>
-                  محله در حال نمایش
-                </Text>
-                <Text variant="body" weight="bold" color="primary" style={{ fontSize: 13 }}>
-                  {viewedNeighborhood?.nameFa ?? "نقشه آزاد"}
-                </Text>
-              </View>
-              <View style={styles.modernNbBoxAction}>
-                <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.4)" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+            <IconPlate name="map" tone="jade" size="xs" />
+            <View style={styles.hoodTexts}>
+              <Text variant="caption" color="muted" style={styles.hoodKicker}>
+                محله در حال نمایش
+              </Text>
+              <Text variant="body" weight="semibold" numberOfLines={1}>
+                {viewedNeighborhood?.nameFa ?? "نقشه آزاد"}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={14} color={c.text.muted} />
+          </TouchableScale>
 
           {viewedNeighborhood && viewedNeighborhood.amenityTier !== undefined && viewedNeighborhood.amenityTier > 0 && (
             <NeighborhoodAmenityCard neighborhood={viewedNeighborhood} compact />
           )}
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {/* Career Path Button */}
-          <TouchableOpacity
-            style={[styles.missionsBtn, { borderColor: careerTheme.color }]}
+        <View style={styles.subBarEnd}>
+          {/* Career path plate — tinted with the career color from careers.ts */}
+          <TouchableScale
+            style={styles.iconBtn}
             onPress={() => {
               GameAudio.playTap();
               setShowCareerModal(true);
             }}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`مسیر شغلی: ${careerTheme.nameFa}`}
           >
-            <LinearGradient
-              colors={["rgba(22, 28, 45, 0.95)", "rgba(10, 15, 30, 0.85)"]}
-              style={styles.missionsBtnInner}
-            >
-              <Text style={{ fontSize: 16 }}>{careerTheme.icon}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+            <CareerPlate color={careerTheme.color} />
+          </TouchableScale>
 
-          {/* Missions Button */}
-          <TouchableOpacity
-            style={styles.missionsBtn}
+          {/* Missions plate with claimable badge (neon = live signal) */}
+          <TouchableScale
+            style={styles.iconBtn}
             onPress={() => {
               GameAudio.playTap();
               setShowMissionsPanel(true);
             }}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="ماموریت‌ها"
           >
-            <LinearGradient
-              colors={["rgba(22, 28, 45, 0.95)", "rgba(10, 15, 30, 0.85)"]}
-              style={styles.missionsBtnInner}
-            >
-              <Text style={{ fontSize: 16 }}>🎯</Text>
-              {claimableCount > 0 && (
-                <View style={styles.missionsBadge}>
-                  <Text variant="caption" weight="bold" color="inverse" style={{ fontSize: 10 }}>
-                    {claimableCount}
-                  </Text>
-                </View>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+            <IconPlate name="flag" tone="brass" size="sm" />
+            <Badge count={claimableCount} style={styles.plateBadge} />
+          </TouchableScale>
 
+          {/* §1 — THE one neon moment: claimable daily neighborhood drip */}
           {canClaimDrip && (
-            <TouchableOpacity
-              style={styles.claimDripBtn}
-              onPress={handleClaimDrip}
-              activeOpacity={0.8}
-              disabled={isClaimingDrip}
-            >
-              <LinearGradient
-                colors={["#10B981", "#059669"]}
-                style={styles.editorPillGradient}
-              >
-                <Text variant="body" weight="bold" color="inverse">
-                  {isClaimingDrip ? "..." : "⚡ پاداش محله"}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            <Animated.View style={claimPulse.style}>
+              <Button
+                label="پاداش محله"
+                variant="neon"
+                size="sm"
+                icon={<Ionicons name="flash" size={13} color={c.text.inverse} />}
+                onPress={handleClaimDrip}
+                disabled={isClaimingDrip}
+                loading={isClaimingDrip}
+              />
+            </Animated.View>
           )}
+
+          {/* Conditional editor access — brass-bordered secondary pill */}
           {isEditor && (
-            <TouchableOpacity
-              style={styles.editorPill}
+            <TouchableScale
+              style={[styles.pill, styles.pillBrass]}
               onPress={() => {
                 GameAudio.playTap();
                 setShowEditorModal(true);
               }}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="پنل ویرایشگر محله"
             >
-              <LinearGradient
-                colors={["#F59E0B", "#D97706"]}
-                style={styles.editorPillGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text variant="body" weight="semibold" color="inverse">
-                  🎖️ ویرایشگر
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              <Ionicons name="shield" size={14} color={c.brass[400]} />
+              <Text variant="caption" weight="semibold" style={styles.pillTextBrass}>
+                ویرایشگر
+              </Text>
+            </TouchableScale>
           )}
         </View>
       </View>
 
-      {/* Right side: 4-Factor Stats Panel */}
+      {/* Side panel: 4-factor stats */}
       <View style={[styles.statsPanel, { top: insets.top + 112 }]}>
-        <LinearGradient
-          colors={["rgba(8,12,26,0.9)", "rgba(13,21,51,0.85)"]}
-          style={styles.statsPanelInner}
-        >
+        <View style={styles.statsPanelInner}>
           <StatBar
-            icon="⚔️"
+            icon="flash"
             label="قدرت"
             value={player.power ?? 0}
             maxValue={500}
-            color="#A78BFA"
+            tone="power"
             delay={0}
+            compact
           />
           <StatBar
-            icon="💰"
+            icon="cash"
             label="ثروت"
             value={Math.min(player.wealth ?? 0, 999999)}
             maxValue={100000}
-            color="#FFD700"
+            tone="wealth"
             delay={100}
+            compact
           />
           <StatBar
-            icon="🔥"
+            icon="flame"
             label="فعالیت"
             value={player.activity ?? 0}
             maxValue={100}
-            color="#FB923C"
+            tone="activity"
             delay={200}
+            compact
           />
           <StatBar
-            icon="⭐"
+            icon="star"
             label="محبوبیت"
             value={player.popularity ?? 0}
             maxValue={200}
-            color="#34D399"
+            tone="popularity"
             delay={300}
+            compact
           />
-        </LinearGradient>
+        </View>
       </View>
 
       {/* Bottom: Selected Tile Info */}
       {selectedTile && (
-        <View style={[styles.tilePanel, { bottom: insets.bottom + 76 }]}>
-          <LinearGradient
-            colors={["rgba(8,12,26,0.95)", "rgba(13,21,51,0.9)"]}
-            style={styles.tilePanelInner}
-          >
-            <Text variant="body" color="primary">
-              {selectedTile.status === "available"
-                ? "🟢 زمین آزاد — ضربه بزنید تا بسازید"
-                : selectedTile.status === "owned"
-                  ? "🟡 قلمرو شما"
-                  : "🔴 قلمرو بازیکن دیگر"}
-            </Text>
-            <Text variant="caption" color="secondary" numberOfLines={1}>
+        <Animated.View
+          entering={FadeInDown.springify().damping(18)}
+          style={[styles.tilePanel, { bottom: insets.bottom + 76 }]}
+        >
+          <View style={styles.tilePanelInner}>
+            <View style={styles.tileStatusRow}>
+              <Ionicons name={tileStatus.icon} size={15} color={tileStatus.color} />
+              <Text variant="body" weight="semibold" numberOfLines={1}>
+                {tileStatus.text}
+              </Text>
+            </View>
+            <Text variant="caption" color="muted" numberOfLines={1} style={styles.tileId}>
               {selectedTile.id}
             </Text>
-          </LinearGradient>
-        </View>
+          </View>
+        </Animated.View>
       )}
 
-      {/* Neighborhood Editor Review Modal */}
       {/* Neighborhood Detail Modal */}
       <NeighborhoodDetailModal
         visible={showDetailModal}
@@ -377,237 +385,123 @@ export const HUD: React.FC = () => {
   );
 };
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// ─── Styles (colors via palette; glass is mode-aware per §2) ─────────────────
 
-const styles = StyleSheet.create({
-  topBar: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    zIndex: 10,
-  },
-  topBarInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) => {
+  const glass = {
+    backgroundColor:
+      c.mode === "dark" ? "rgba(10, 12, 16, 0.88)" : "rgba(255, 255, 255, 0.92)",
     borderWidth: 1,
-    borderColor: "rgba(108,99,255,0.3)",
-    shadowColor: "#6C63FF",
-    shadowRadius: 12,
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  playerBadge: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  avatarText: { fontSize: 16, fontWeight: "800", color: "#fff" },
-  playerInfo: { flex: 1 },
-  playerName: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
-  playerLevel: { color: "rgba(255,255,255,0.5)", fontSize: 10 },
-  resourceChips: { flexDirection: "row", gap: 12, alignItems: "center" },
+    borderColor: c.border.subtle,
+    borderRadius: Radii.lg,
+  };
 
-  subBar: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    zIndex: 9,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  neighborhoodPill: {
-    backgroundColor: "rgba(8,12,26,0.85)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "rgba(108,99,255,0.25)",
-  },
-  neighborhoodText: { color: "#CBD5E1", fontSize: 11, fontWeight: "700" },
+  return StyleSheet.create({
+    // Top chrome
+    subBar: {
+      position: "absolute",
+      left: Spacing.md,
+      right: Spacing.md,
+      zIndex: 9,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: Spacing.sm,
+    },
+    subBarStart: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      flex: 1,
+    },
+    subBarEnd: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+    },
 
-  editorPill: {
-    borderRadius: 12,
-    overflow: "hidden",
-    elevation: 6,
-    shadowColor: "#F59E0B",
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  claimDripBtn: {
-    borderRadius: 12,
-    overflow: "hidden",
-    elevation: 6,
-    shadowColor: "#10B981",
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  editorPillGradient: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  editorPillText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
+    hoodPill: {
+      ...glass,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      alignSelf: "flex-start",
+      maxWidth: 220,
+    },
+    hoodTexts: {
+      flexShrink: 1,
+      gap: 1,
+    },
+    hoodKicker: {
+      fontSize: Typography.sizes.xs,
+    },
 
-  missionsBtn: {
-    borderRadius: 14,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  missionsBtnInner: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  missionsBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#000',
-  },
+    iconBtn: {
+      ...glass,
+      width: 44,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    plateBadge: {
+      position: "absolute",
+      top: -4,
+      right: -4,
+    },
 
+    pill: {
+      ...glass,
+      borderRadius: Radii.full,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.xs + 2,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm - 2,
+    },
+    pillBrass: {
+      borderColor: c.border.brand,
+    },
+    pillTextBrass: {
+      color: c.brass[400],
+    },
 
-  // Tier badge under player name
-  tierBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(167,139,250,0.12)",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.25)",
-    alignSelf: "flex-start",
-    marginTop: 2,
-  },
+    // Stats panel
+    statsPanel: {
+      position: "absolute",
+      right: Spacing.md,
+      zIndex: 10,
+      width: 148,
+    },
+    statsPanelInner: {
+      ...glass,
+      padding: Spacing.md,
+      gap: Spacing.sm + 2,
+      ...Shadows.md,
+    },
 
-  // 2× boost active indicator chip
-  boostChip: {
-    backgroundColor: "rgba(251,146,60,0.15)",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: "rgba(251,146,60,0.4)",
-  },
-  modernNbBox: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  modernNbBoxInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 12,
-  },
-  modernNbBoxIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(52, 211, 153, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.3)',
-  },
-  modernNbBoxTextContainer: {
-    flexDirection: 'column',
-    justifyContent: 'center',
-  },
-  modernNbBoxAction: {
-    marginLeft: 'auto',
-    opacity: 0.8,
-    paddingLeft: 4,
-  },
-
-  statsPanel: {
-    position: "absolute",
-    right: 12,
-    zIndex: 10,
-    width: 135,
-  },
-  statsPanelInner: {
-    borderRadius: 14,
-    padding: 10,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: "rgba(108,99,255,0.2)",
-    shadowColor: "#000",
-    shadowRadius: 8,
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 6,
-  },
-
-  tilePanel: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    zIndex: 10,
-  },
-  tilePanelInner: {
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "rgba(108,99,255,0.3)",
-    gap: 4,
-  },
-  tileStatus: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
-  tileId: { color: "rgba(255,255,255,0.4)", fontSize: 11 },
-});
-
-const statStyles = StyleSheet.create({
-  statRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  statIcon: { fontSize: 12 },
-  statBarBg: {
-    flex: 1,
-    height: 5,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  statBarFill: { height: "100%", borderRadius: 3 },
-  statValue: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "600",
-    minWidth: 26,
-    textAlign: "right",
-  },
-});
-
-const chipStyles = StyleSheet.create({
-  chip: { flexDirection: "row", alignItems: "center", gap: 4 },
-  icon: { fontSize: 15 },
-  value: { fontSize: 13, fontWeight: "700" },
-});
+    // Selected tile bar
+    tilePanel: {
+      position: "absolute",
+      left: Spacing.md,
+      right: Spacing.md,
+      zIndex: 10,
+    },
+    tilePanelInner: {
+      ...glass,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      gap: Spacing.xxs,
+      ...Shadows.md,
+    },
+    tileStatusRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+    },
+    tileId: {
+      writingDirection: "ltr",
+    },
+  });
+};

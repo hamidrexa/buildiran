@@ -1,15 +1,24 @@
 /**
- * BuildIran — RTL-Aware Text Component
- * Always renders Vazirmatn (Persian) font with proper RTL direction.
+ * BuildIran — RTL-Aware Text Component (theme-reactive)
+ * Vazirmatn everywhere, palette-aware colors, warm hierarchy.
  */
 
 import React from 'react';
 import { Text as RNText, TextProps, StyleSheet } from 'react-native';
-import { Colors, Typography } from '@/theme';
+import { Typography } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
 
-type TextVariant = 'display' | 'heading' | 'title' | 'body' | 'caption' | 'label';
-type TextWeight = 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold';
-type TextColor = 'primary' | 'secondary' | 'muted' | 'brand' | 'inverse' | 'error';
+type TextVariant =
+  | 'display'
+  | 'heading'
+  | 'title'
+  | 'subtitle'
+  | 'body'
+  | 'caption'
+  | 'label';
+
+type TextWeight = 'light' | 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold' | 'black';
+type TextColor = 'primary' | 'secondary' | 'muted' | 'brand' | 'inverse' | 'error' | 'success' | 'info' | 'neon';
 
 interface Props extends TextProps {
   variant?: TextVariant;
@@ -19,30 +28,48 @@ interface Props extends TextProps {
 }
 
 const variantStyles: Record<TextVariant, object> = {
-  display: { fontSize: Typography.sizes['4xl'], lineHeight: Typography.sizes['4xl'] * Typography.lineHeights.tight },
-  heading: { fontSize: Typography.sizes['3xl'], lineHeight: Typography.sizes['3xl'] * Typography.lineHeights.tight },
-  title: { fontSize: Typography.sizes['2xl'], lineHeight: Typography.sizes['2xl'] * Typography.lineHeights.normal },
-  body: { fontSize: Typography.sizes.md, lineHeight: Typography.sizes.md * Typography.lineHeights.relaxed },
-  caption: { fontSize: Typography.sizes.sm, lineHeight: Typography.sizes.sm * Typography.lineHeights.normal },
-  label: { fontSize: Typography.sizes.xs, lineHeight: Typography.sizes.xs * Typography.lineHeights.normal, letterSpacing: 0.5 },
+  display: {
+    fontSize: Typography.sizes['4xl'],
+    lineHeight: Typography.sizes['4xl'] * Typography.lineHeights.tight,
+    letterSpacing: -0.5,
+  },
+  heading: {
+    fontSize: Typography.sizes['3xl'],
+    lineHeight: Typography.sizes['3xl'] * Typography.lineHeights.tight,
+    letterSpacing: -0.4,
+  },
+  title: {
+    fontSize: Typography.sizes['2xl'],
+    lineHeight: Typography.sizes['2xl'] * Typography.lineHeights.tight,
+  },
+  subtitle: {
+    fontSize: Typography.sizes.xl,
+    lineHeight: Typography.sizes.xl * Typography.lineHeights.tight,
+  },
+  body: {
+    fontSize: Typography.sizes.md,
+    lineHeight: Typography.sizes.md * Typography.lineHeights.relaxed,
+  },
+  caption: {
+    fontSize: Typography.sizes.sm,
+    lineHeight: Typography.sizes.sm * Typography.lineHeights.normal,
+  },
+  label: {
+    fontSize: Typography.sizes.xs,
+    lineHeight: Typography.sizes.xs * Typography.lineHeights.normal,
+    letterSpacing: 0.8,
+  },
 };
 
-const colorMap: Record<TextColor, string> = {
-  primary: Colors.text.primary,
-  secondary: Colors.text.secondary,
-  muted: Colors.text.muted,
-  brand: Colors.text.brand,
-  inverse: Colors.text.inverse,
-  error: Colors.semantic.error,
-};
-
-// Map weight to specific font family names that match the loaded fonts
+// Exact family names as loaded in app/_layout.tsx — do not rename.
 const weightToFontFamily: Record<TextWeight, string> = {
+  light: 'Vazirmatn-Light',
   regular: 'Vazirmatn',
   medium: 'VazirmatnMedium',
   semibold: 'Vazirmatn-SemiBold',
   bold: 'VazirmatnBold',
   extrabold: 'Vazirmatn-ExtraBold',
+  black: 'Vazirmatn-Black',
 };
 
 export const Text: React.FC<Props> = ({
@@ -54,17 +81,26 @@ export const Text: React.FC<Props> = ({
   children,
   ...rest
 }) => {
+  const { colors } = useTheme();
+
+  const colorMap: Record<TextColor, string> = {
+    primary: colors.text.primary,
+    secondary: colors.text.secondary,
+    muted: colors.text.muted,
+    brand: colors.text.brand,
+    inverse: colors.text.inverse,
+    error: colors.semantic.error,
+    success: colors.semantic.success,
+    info: colors.semantic.info,
+    neon: colors.neon[400],
+  };
+
   return (
     <RNText
       style={[
-        {
-          fontFamily: weightToFontFamily[weight],
-          writingDirection: 'rtl',
-          textAlign: 'right',
-          color: Colors.text.primary,
-        },
+        styles.base,
         variantStyles[variant],
-        { color: colorMap[color] },
+        { fontFamily: weightToFontFamily[weight], color: colorMap[color] },
         center && styles.center,
         style,
       ]}
@@ -77,10 +113,8 @@ export const Text: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   base: {
-    fontFamily: Typography.fonts.persian,
     writingDirection: 'rtl',
     textAlign: 'right',
-    color: Colors.text.primary,
   },
   center: {
     textAlign: 'center',

@@ -1,31 +1,40 @@
 /**
- * BuildIran — Neighborhood Editor Dashboard Modal
+ * BuildIran — Neighborhood Editor Review Panel — «Gentleman Neon» (v2)
  * Visible to high-power players (power >= minEditorPower in the neighborhood).
- * Allows neighborhood editors to review, approve, or reject player-proposed building types.
+ * Allows neighborhood editors to review, approve, or reject player-proposed
+ * building types. All store calls, power checks, audio and alerts unchanged;
+ * public props ({visible, onClose}) unchanged.
  */
 
 import { Text } from '@/components/ui/Text';
+import { Sheet } from '@/components/ui/Sheet';
+import { Card } from '@/components/ui/Card';
+import { Chip } from '@/components/ui/Chip';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { IconPlate } from '@/components/ui/IconPlate';
+import { SectionTitle } from '@/components/ui/SectionTitle';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Spacing, Radii, Motion } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Palette } from '@/theme/palettes';
 import { GameAudio } from '@/lib/audio';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import type { CustomBuildingType } from '@/types/game.types';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
-const { height: SCREEN_H } = Dimensions.get('window');
+const fa = (n: number) => n.toLocaleString('fa-IR');
 
 interface NeighborhoodEditorModalProps {
   visible: boolean;
@@ -33,6 +42,9 @@ interface NeighborhoodEditorModalProps {
 }
 
 export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditorModalProps) {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
+
   const player = usePlayerStore((s) => s.player);
   const {
     neighborhoods,
@@ -105,364 +117,304 @@ export function NeighborhoodEditorModal({ visible, onClose }: NeighborhoodEditor
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} onPress={onClose} activeOpacity={1} />
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title="پنل بازبینی ویرایشگران محله"
+      subtitle={`محله ${currentNeighborhood.nameFa} (${currentNeighborhood.city})`}
+      maxHeight={0.88}
+    >
+      {/* Power status */}
+      <Card padded={false} style={isEditor ? styles.powerCardActive : undefined}>
+        <View style={styles.powerRow}>
+          <IconPlate
+            name={isEditor ? 'shield-checkmark' : 'lock-closed'}
+            size="sm"
+            tone={isEditor ? 'jade' : 'neutral'}
+          />
+          <View style={styles.powerTexts}>
+            <Text variant="body" weight="semibold" color={isEditor ? 'success' : 'secondary'}>
+              {isEditor ? 'ویرایشگر مجاز' : 'فاقد قدرت کافی'}
+            </Text>
+            <Text variant="caption" color="secondary" style={styles.tabular}>
+              قدرت شما: {fa(player.power)} / حداقل {fa(currentNeighborhood.minEditorPower)}
+            </Text>
+          </View>
+        </View>
+      </Card>
 
-        <Animated.View entering={SlideInDown.springify().damping(18)} style={styles.sheet}>
-          <LinearGradient
-            colors={['#0E172F', '#060B1A']}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
+      {/* Neighborhood selector chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsScroll}
+      >
+        {neighborhoods.map((n) => {
+          const active = currentNeighborhood.id === n.id;
+          return (
+            <TouchableOpacity
+              key={n.id}
+              style={[styles.nbChip, active && styles.nbChipActive]}
+              onPress={() => {
+                setCurrentNeighborhood(n);
+                GameAudio.playTap();
+              }}
+              hitSlop={{ top: 8, bottom: 8 }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`محله ${n.nameFa}`}
+            >
+              <Ionicons
+                name="location"
+                size={13}
+                color={active ? c.brass[400] : c.text.muted}
+              />
+              <Text
+                variant="caption"
+                weight={active ? 'bold' : 'medium'}
+                color={active ? 'brand' : 'secondary'}
+              >
+                {n.nameFa}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Content */}
+      {!isEditor ? (
+        <EmptyState
+          icon="lock-closed"
+          tone="neutral"
+          title="شما هنوز ویرایشگر این محله نیستید"
+          body={`برای کسب حق رأی و ویرایشگری در محله «${currentNeighborhood.nameFa}»، باید با ساخت و ارتقای سازه‌ها قدرت نفوذ خود را به حداقل ${fa(currentNeighborhood.minEditorPower)} برسانید (قدرت فعلی: ${fa(player.power)}).`}
+        />
+      ) : isLoading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={c.brass[400]} />
+          <Text variant="caption" color="secondary">
+            در حال دریافت طرح‌ها...
+          </Text>
+        </View>
+      ) : pendingProposals.length === 0 ? (
+        <EmptyState
+          icon="mail-open"
+          tone="steel"
+          title="هیچ طرح معلقی وجود ندارد"
+          body="تمامی طرح‌های پیشنهادی بازیکنان در این محله بررسی شده‌اند."
+        />
+      ) : (
+        <View style={styles.proposalList}>
+          <SectionTitle
+            kicker="بازبینی"
+            title="طرح‌های در انتظار بررسی"
+            trailing={<Chip value={pendingProposals.length} tone="brass" />}
           />
 
-          <View style={styles.handle} />
-
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerTitleRow}>
-              <Text variant="display" color="brand">🎖️</Text>
-              <View>
-                <Text variant="heading" weight="bold" color="primary">پنل بازبینی ویرایشگران محله</Text>
-                <Text variant="body" color="secondary">
-                  محله {currentNeighborhood.nameFa} ({currentNeighborhood.city})
-                </Text>
-              </View>
-            </View>
-
-            {/* Power Status Badge */}
-            <View style={[styles.powerBadge, isEditor ? styles.editorActive : styles.editorInactive]}>
-              <Text variant="body" weight="semibold" color={isEditor ? 'inverse' : 'muted'}>
-                {isEditor ? '⭐ ویرایشگر مجاز' : '🔒 فاقد قدرت کافی'}
-              </Text>
-              <Text variant="caption" color={isEditor ? 'inverse' : 'muted'}>
-                قدرت شما: {player.power} / حداقل {currentNeighborhood.minEditorPower}
-              </Text>
-            </View>
-          </View>
-
-          {/* Neighborhood Selector Chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
-            {neighborhoods.map((n) => {
-              const active = currentNeighborhood.id === n.id;
-              return (
-                <TouchableOpacity
-                  key={n.id}
-                  style={[styles.chip, active && styles.chipActive]}
-                  onPress={() => {
-                    setCurrentNeighborhood(n);
-                    GameAudio.playTap();
-                  }}
+          {pendingProposals.map((p, i) => {
+            const isSelected = selectedProposal?.id === p.id;
+            return (
+              <Animated.View
+                key={p.id}
+                entering={FadeInDown.delay(Motion.stagger(i)).duration(Motion.durations.normal)}
+              >
+                <Card
+                  padded={false}
+                  elevated={isSelected}
+                  style={[styles.proposalCard, isSelected && styles.proposalCardSelected]}
                 >
-                  <Text variant="body" color={active ? 'inverse' : 'primary'}>
-                    📍 {n.nameFa}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+                  <TouchableOpacity
+                    style={styles.cardHeader}
+                    onPress={() => {
+                      setSelectedProposal(isSelected ? null : p);
+                      GameAudio.playTap();
+                    }}
+                    activeOpacity={0.82}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: isSelected }}
+                  >
+                    <IconPlate name="business" tone="brass" size="md" />
+                    <View style={styles.cardHeaderTexts}>
+                      <Text variant="subtitle" weight="semibold">
+                        {p.nameFa}
+                      </Text>
+                      <Text variant="caption" color="muted">
+                        دسته‌بندی: {p.category}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={isSelected ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color={c.text.secondary}
+                    />
+                  </TouchableOpacity>
 
-          {/* Content Area */}
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            {!isEditor ? (
-              <View style={styles.lockedBox}>
-                <Text variant="display" color="brand">🛡️</Text>
-                <Text variant="heading" weight="bold" color="primary">شما هنوز ویرایشگر این محله نیستید</Text>
-                <Text variant="body" color="secondary">
-                  برای کسب حق رأی و ویرایشگری در محله «{currentNeighborhood.nameFa}»، باید با ساخت و ارتقای سازه‌ها قدرت نفوذ خود را به حداقل {currentNeighborhood.minEditorPower} برسانید (قدرت فعلی: {player.power}).
-                </Text>
-              </View>
-            ) : isLoading ? (
-              <ActivityIndicator size="large" color="#6C63FF" style={{ marginTop: 40 }} />
-            ) : pendingProposals.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Text variant="display" color="brand">📬</Text>
-                <Text variant="heading" weight="bold" color="primary">هیچ طرح معلقی وجود ندارد</Text>
-                <Text variant="body" color="secondary">
-                  تمامی طرح‌های پیشنهادی بازیکنان در این محله بررسی شده‌اند.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.proposalList}>
-                <Text variant="title" weight="semibold" color="primary">
-                  طرح‌های در انتظار بررسی ({pendingProposals.length}):
-                </Text>
+                  {/* Expanded proposal details */}
+                  {isSelected && (
+                    <View style={styles.detailsContainer}>
+                      <Text variant="body" color="secondary">
+                        {p.descriptionFa}
+                      </Text>
 
-                {pendingProposals.map((p) => {
-                  const isSelected = selectedProposal?.id === p.id;
-                  return (
-                    <View key={p.id} style={[styles.card, isSelected && styles.cardSelected]}>
-                      <TouchableOpacity
-                        style={styles.cardHeader}
-                        onPress={() => {
-                          setSelectedProposal(isSelected ? null : p);
-                          GameAudio.playTap();
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Text variant="display" color="brand">{p.emoji || '🏛️'}</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text variant="title" weight="semibold" color="primary">{p.nameFa}</Text>
-                          <Text variant="caption" color="secondary">دسته‌بندی: {p.category}</Text>
-                        </View>
-                        <Ionicons
-                          name={isSelected ? 'chevron-up' : 'chevron-down'}
-                          size={20}
-                          color="rgba(255,255,255,0.6)"
-                        />
-                      </TouchableOpacity>
+                      {/* Stats chips */}
+                      <View style={styles.statsRow}>
+                        <Chip icon="cash" tone="brass" value={fa(p.baseCost)} label="هزینه پایه" />
+                        <Chip icon="flash" tone="terracotta" value={`+${fa(p.powerBonus)}`} label="پاداش قدرت" />
+                        <Chip icon="trending-up" tone="jade" value={fa(p.incomeRate)} label="درآمد ساعتی" />
+                      </View>
 
-                      {/* Expanded Proposal Details */}
-                      {isSelected && (
-                        <View style={styles.detailsContainer}>
-                          <Text variant="body" color="secondary">{p.descriptionFa}</Text>
-
-                          {/* Stats Row */}
-                          <View style={styles.statsRow}>
-                            <View style={styles.statPill}>
-                              <Text variant="caption" color="secondary">هزینه پایه</Text>
-                              <Text variant="body" weight="medium" color="primary">💰 {p.baseCost.toLocaleString('fa-IR')}</Text>
-                            </View>
-                            <View style={styles.statPill}>
-                              <Text variant="caption" color="secondary">پاداش قدرت</Text>
-                              <Text variant="body" weight="medium" color="primary">⚔️ +{p.powerBonus}</Text>
-                            </View>
-                            <View style={styles.statPill}>
-                              <Text variant="caption" color="secondary">درآمد ساعتی</Text>
-                              <Text variant="body" weight="medium" color="primary">🪙 {p.incomeRate}</Text>
-                            </View>
+                      {/* Custom settings */}
+                      {p.customSettings && Object.keys(p.customSettings).length > 0 && (
+                        <View style={styles.customFeatureBox}>
+                          <View style={styles.customFeatureTitleRow}>
+                            <IconPlate name="sparkles" size="xxs" tone="brass" bordered={false} />
+                            <Text variant="label" color="brand">
+                              قابلیت ویژه پیشنهادی:
+                            </Text>
                           </View>
-
-                          {/* Custom Settings */}
-                          {p.customSettings && Object.keys(p.customSettings).length > 0 && (
-                            <View style={styles.customFeatureBox}>
-                              <Text variant="label" color="secondary">⚡ قابلیت ویژه پیشنهادی:</Text>
-                              <Text variant="body" color="primary">
-                                {p.customSettings.specialFeature || JSON.stringify(p.customSettings)}
-                              </Text>
-                            </View>
-                          )}
-
-                          {/* Review Note Input */}
-                          <TextInput
-                            style={styles.noteInput}
-                            value={reviewNotes}
-                            onChangeText={setReviewNotes}
-                            placeholder="یادداشت یا دلیل تصمیم‌گیری برای سازنده طرح..."
-                            placeholderTextColor="rgba(255,255,255,0.3)"
-                          />
-
-                          {/* Action Buttons */}
-                          <View style={styles.actionsRow}>
-                            <TouchableOpacity
-                              style={[styles.btn, styles.rejectBtn]}
-                              onPress={() => handleReject(p)}
-                              disabled={actionLoading}
-                            >
-                              <Text weight="semibold" color="inverse">❌ رد طرح</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                              style={[styles.btn, styles.approveBtn]}
-                              onPress={() => handleApprove(p)}
-                              disabled={actionLoading}
-                            >
-                              <LinearGradient
-                                colors={['#10B981', '#059669']}
-                                style={styles.btnGradient}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                              >
-                                {actionLoading ? (
-                                  <ActivityIndicator color="#fff" />
-                                ) : (
-                                  <Text weight="semibold" color="inverse">✅ تأیید و انتشار در نقشه</Text>
-                                )}
-                              </LinearGradient>
-                            </TouchableOpacity>
-                          </View>
+                          <Text variant="caption" color="primary">
+                            {p.customSettings.specialFeature || JSON.stringify(p.customSettings)}
+                          </Text>
                         </View>
                       )}
+
+                      {/* Review note */}
+                      <Input
+                        value={reviewNotes}
+                        onChangeText={setReviewNotes}
+                        placeholder="یادداشت یا دلیل تصمیم‌گیری برای سازنده طرح..."
+                        multiline
+                        textAlignVertical="top"
+                      />
+
+                      {/* Actions — single primary (approve), reject is danger */}
+                      <View style={styles.actionsRow}>
+                        <Button
+                          label="رد طرح"
+                          variant="danger"
+                          size="sm"
+                          onPress={() => handleReject(p)}
+                          disabled={actionLoading}
+                          style={styles.actionBtn}
+                        />
+                        <Button
+                          label="تأیید و انتشار در نقشه"
+                          size="sm"
+                          onPress={() => handleApprove(p)}
+                          loading={actionLoading}
+                          style={styles.actionBtn}
+                        />
+                      </View>
                     </View>
-                  );
-                })}
-              </View>
-            )}
-          </ScrollView>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
+                  )}
+                </Card>
+              </Animated.View>
+            );
+          })}
+        </View>
+      )}
+    </Sheet>
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.7)' },
-  sheet: {
-    maxHeight: SCREEN_H * 0.88,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.35)',
-    overflow: 'hidden',
-    paddingBottom: 24,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 44,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginVertical: 12,
-  },
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    tabular: {
+      fontVariant: ['tabular-nums'],
+    },
 
-  header: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  badgeEmoji: { fontSize: 28 },
-  title: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
-  subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+    powerCardActive: {
+      borderColor: `${c.jade}4D`,
+    },
+    powerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      padding: Spacing.md,
+    },
+    powerTexts: {
+      flex: 1,
+      gap: 2,
+    },
 
-  powerBadge: {
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignItems: 'flex-end',
-    borderWidth: 1,
-  },
-  editorActive: {
-    backgroundColor: 'rgba(16,185,129,0.15)',
-    borderColor: 'rgba(16,185,129,0.4)',
-  },
-  editorInactive: {
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    borderColor: 'rgba(239,68,68,0.4)',
-  },
-  powerBadgeText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
-  powerSub: { fontSize: 9, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
+    chipsScroll: {
+      gap: Spacing.sm,
+      paddingVertical: Spacing.xs,
+    },
+    nbChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs + 2,
+      backgroundColor: c.ink[600],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      borderRadius: Radii.full,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs + 2,
+    },
+    nbChipActive: {
+      borderColor: c.border.brand,
+      backgroundColor: `${c.brass[400]}1F`,
+    },
 
-  chipsScroll: { paddingHorizontal: 20, maxHeight: 42, marginBottom: 14 },
-  chip: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    marginRight: 8,
-  },
-  chipActive: {
-    borderColor: '#F59E0B',
-    backgroundColor: 'rgba(245,158,11,0.2)',
-  },
-  chipText: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: '#FCD34D', fontWeight: '800' },
+    loadingBox: {
+      alignItems: 'center',
+      gap: Spacing.md,
+      paddingVertical: Spacing['2xl'],
+    },
 
-  content: { paddingHorizontal: 20, paddingBottom: 20 },
+    proposalList: {
+      gap: Spacing.md,
+    },
+    proposalCard: {
+      overflow: 'hidden',
+    },
+    proposalCardSelected: {
+      borderColor: c.border.brand,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      padding: Spacing.md,
+      minHeight: 44,
+    },
+    cardHeaderTexts: {
+      flex: 1,
+      gap: 1,
+    },
 
-  lockedBox: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: 'rgba(239,68,68,0.08)',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.25)',
-    marginTop: 20,
-    gap: 10,
-  },
-  lockedEmoji: { fontSize: 48 },
-  lockedTitle: { fontSize: 18, fontWeight: '800', color: '#F87171' },
-  lockedDesc: { color: 'rgba(255,255,255,0.7)', fontSize: 13, textAlign: 'center', lineHeight: 22 },
-
-  emptyBox: { alignItems: 'center', padding: 40, gap: 10 },
-  emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
-  emptySub: { fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
-
-  sectionHeading: { fontSize: 14, fontWeight: '700', color: '#E2E8F0', marginBottom: 12 },
-  proposalList: { gap: 12 },
-
-  card: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    overflow: 'hidden',
-  },
-  cardSelected: {
-    borderColor: '#6C63FF',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    gap: 12,
-  },
-  cardEmoji: { fontSize: 32 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
-  cardCategory: { fontSize: 11, color: '#A78BFA', marginTop: 2 },
-
-  detailsContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingTop: 12,
-    gap: 12,
-  },
-  detailsDesc: { fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 20 },
-
-  statsRow: { flexDirection: 'row', gap: 8 },
-  statPill: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 10,
-    padding: 8,
-    alignItems: 'center',
-  },
-  statPillLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
-  statPillVal: { fontSize: 12, fontWeight: '700', color: '#FFFFFF', marginTop: 2 },
-
-  customFeatureBox: {
-    backgroundColor: 'rgba(108,99,255,0.12)',
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.3)',
-  },
-  customFeatureTitle: { fontSize: 12, fontWeight: '700', color: '#A78BFA' },
-  customFeatureText: { fontSize: 12, color: '#FFFFFF', marginTop: 2 },
-
-  noteInput: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    color: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 12,
-    textAlign: 'right',
-  },
-
-  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  btn: { flex: 1, borderRadius: 12, overflow: 'hidden' },
-  rejectBtn: {
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-  },
-  rejectBtnText: { color: '#F87171', fontWeight: '700', fontSize: 13 },
-  approveBtn: {},
-  btnGradient: { paddingVertical: 12, alignItems: 'center' },
-  approveBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
-});
+    detailsContainer: {
+      paddingHorizontal: Spacing.md,
+      paddingBottom: Spacing.md,
+      paddingTop: Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: c.border.subtle,
+      gap: Spacing.md,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+    },
+    customFeatureBox: {
+      backgroundColor: `${c.brass[400]}0F`,
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: `${c.brass[400]}33`,
+      gap: Spacing.xs + 2,
+    },
+    customFeatureTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+    },
+    actionsRow: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+    },
+    actionBtn: {
+      flex: 1,
+    },
+  });

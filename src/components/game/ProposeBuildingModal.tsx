@@ -1,48 +1,91 @@
 /**
- * BuildIran — Propose Custom Building Modal
+ * BuildIran — Propose Custom Building Modal (v2 «Gentleman Neon», dual theme)
  * Allows any player to propose a new building type with custom features and settings.
  * The proposal is saved to Supabase and routed to neighborhood editors for revision.
+ * Form uses the Input primitive; the emoji selector is kept because the chosen
+ * symbol is user-generated payload data (stored with the proposal), not UI chrome —
+ * only the plates around it are styled with theme tokens.
  */
 
+import React, { useMemo } from 'react';
 import { Text } from '@/components/ui/Text';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { IconPlate } from '@/components/ui/IconPlate';
+import { Sheet } from '@/components/ui/Sheet';
 import { GameAudio } from '@/lib/audio';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { Motion, Radii, Spacing } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Palette } from '@/theme/palettes';
 import type { BuildingCategory } from '@/types/game.types';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
-    Dimensions,
-    Modal,
     ScrollView,
     StyleSheet,
-    TextInput,
+    TextStyle,
     TouchableOpacity,
     View,
 } from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 
-const { height: SCREEN_H } = Dimensions.get('window');
+// ─── Press-spring touchable (§4 — every touchable springs) ───────────────────
+
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+const TouchableScale: React.FC<
+  React.ComponentProps<typeof TouchableOpacity>
+> = ({ onPressIn, onPressOut, style, ...rest }) => {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  return (
+    <AnimatedTouchable
+      {...rest}
+      style={[animatedStyle, style]}
+      onPressIn={(e) => {
+        scale.value = withSpring(0.97, Motion.press);
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        scale.value = withSpring(1, Motion.press);
+        onPressOut?.(e);
+      }}
+    />
+  );
+};
+
+type IconName = keyof typeof Ionicons.glyphMap;
+
+const tabular: TextStyle = { fontVariant: ['tabular-nums'] };
 
 interface ProposeBuildingModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
-const CATEGORIES: { key: BuildingCategory; label: string; emoji: string }[] = [
-  { key: 'commercial',  label: 'تجاری',           emoji: '🏬' },
-  { key: 'tech',        label: 'فناوری و استارتاپ', emoji: '🚀' },
-  { key: 'cultural',    label: 'فرهنگی و تفریحی', emoji: '🎭' },
-  { key: 'residential', label: 'مسکونی مدرن',     emoji: '🏡' },
-  { key: 'industrial',  label: 'صنعتی و تولیدی',  emoji: '🏭' },
-  { key: 'military',    label: 'دفاعی و امنیتی',  emoji: '🛡️' },
+const CATEGORIES: { key: BuildingCategory; label: string; icon: IconName }[] = [
+  { key: 'commercial',  label: 'تجاری',           icon: 'storefront' },
+  { key: 'tech',        label: 'فناوری و استارتاپ', icon: 'hardware-chip' },
+  { key: 'cultural',    label: 'فرهنگی و تفریحی',  icon: 'color-palette' },
+  { key: 'residential', label: 'مسکونی مدرن',     icon: 'home' },
+  { key: 'industrial',  label: 'صنعتی و تولیدی',  icon: 'construct' },
+  { key: 'military',    label: 'دفاعی و امنیتی',  icon: 'shield' },
 ];
 
 const EMOJIS = ['🏛️', '☕', '🏢', '⚡', '🏥', '🔬', '🚁', '🌿', '🎪', '📡'];
 
 export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalProps) {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const player = usePlayerStore((s) => s.player);
   const currentNeighborhood = useNeighborhoodStore((s) => s.currentNeighborhood);
   const proposeCustomBuilding = useNeighborhoodStore((s) => s.proposeCustomBuilding);
@@ -129,282 +172,235 @@ export function ProposeBuildingModal({ visible, onClose }: ProposeBuildingModalP
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
-      <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} onPress={handleClose} activeOpacity={1} />
+    <Sheet
+      visible={visible}
+      onClose={handleClose}
+      title="پیشنهاد نوع سازه جدید"
+      subtitle={currentNeighborhood ? `محله ${currentNeighborhood.nameFa} — بازبینی توسط ویرایشگران` : undefined}
+      maxHeight={0.88}
+      footer={
+        submitted ? undefined : (
+          <View style={styles.footerRow}>
+            <Button label="انصراف" variant="ghost" onPress={handleClose} />
+            <Button
+              label="ثبت پیشنهاد"
+              onPress={handleSubmit}
+              disabled={submitting}
+              loading={submitting}
+              style={styles.submitBtn}
+            />
+          </View>
+        )
+      }
+    >
+      {submitted ? (
+        <View style={styles.successContainer}>
+          <IconPlate name="checkmark-circle" tone="jade" size="lg" bordered={false} />
+          <Text variant="heading" weight="bold" color="primary" center>طرح سازه با موفقیت ثبت شد!</Text>
+          <Text variant="body" color="secondary" center>
+            طرح برای ویرایشگران محله «{currentNeighborhood?.nameFa ?? 'منتخب'}» ارسال شد. به محض تأیید، روی نقشه قابل ساخت خواهد بود.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          <Text variant="body" color="secondary">
+            طرح ساختمانی دلخواه خود را در محله «{currentNeighborhood?.nameFa}» طراحی کنید تا توسط ویرایشگران محله بازبینی شود.
+          </Text>
 
-        <Animated.View entering={SlideInDown.springify().damping(18)} style={styles.sheet}>
-          <LinearGradient
-            colors={['#101736', '#080C1A']}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
+          {/* Symbol selector — user-generated payload data (stored with the proposal) */}
+          <View style={styles.fieldGroup}>
+            <Text variant="label" color="secondary">نماد سازه (روی نقشه):</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiRow} contentContainerStyle={styles.emojiRowContent}>
+              {EMOJIS.map((emoji) => (
+                <TouchableScale
+                  key={emoji}
+                  style={[styles.emojiBtn, selectedEmoji === emoji && styles.emojiBtnActive]}
+                  onPress={() => {
+                    setSelectedEmoji(emoji);
+                    GameAudio.playTap();
+                  }}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: selectedEmoji === emoji }}
+                >
+                  <Text variant="body" color="primary">{emoji}</Text>
+                </TouchableScale>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Persian Name */}
+          <Input
+            label="نام فارسی سازه: *"
+            icon="create"
+            value={nameFa}
+            onChangeText={setNameFa}
+            placeholder="مثلاً: هاب نوآوری، کافه کتاب، کلینیک تخصصی..."
           />
 
-          <View style={styles.handle} />
-
-          {submitted ? (
-            <View style={styles.successContainer}>
-              <Text variant="display" color="brand" center>📜✨</Text>
-              <Text variant="heading" weight="bold" color="primary" center>طرح سازه با موفقیت ثبت شد!</Text>
-              <Text variant="body" color="secondary" center>
-                طرح برای ویرایشگران محله «{currentNeighborhood?.nameFa ?? 'منتخب'}» ارسال شد. به محض تأیید، روی نقشه قابل ساخت خواهد بود.
-              </Text>
-            </View>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-              {/* Header */}
-              <View style={styles.header}>
-                <View style={styles.headerTitleRow}>
-                  <Text variant="display" color="brand">📐</Text>
-                  <Text variant="heading" weight="bold" color="primary">پیشنهاد نوع سازه جدید</Text>
-                </View>
-                <Text variant="body" color="secondary">
-                  طرح ساختمانی دلخواه خود را در محله «{currentNeighborhood?.nameFa}» طراحی کنید تا توسط ویرایشگران محله بازبینی شود.
-                </Text>
-              </View>
-
-              {/* Emoji Selector */}
-              <Text variant="label" color="secondary">آیکون / نماد سازه:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiRow}>
-                {EMOJIS.map((emoji) => (
-                  <TouchableOpacity
-                    key={emoji}
-                    style={[styles.emojiBtn, selectedEmoji === emoji && styles.emojiBtnActive]}
+          {/* Category */}
+          <View style={styles.fieldGroup}>
+            <Text variant="label" color="secondary">دسته‌بندی:</Text>
+            <View style={styles.catGrid}>
+              {CATEGORIES.map((cat) => {
+                const active = category === cat.key;
+                return (
+                  <TouchableScale
+                    key={cat.key}
+                    style={[styles.catBtn, active && styles.catBtnActive]}
                     onPress={() => {
-                      setSelectedEmoji(emoji);
+                      setCategory(cat.key);
                       GameAudio.playTap();
                     }}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
                   >
-                    <Text variant="body" color="primary">{emoji}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                    <Ionicons
+                      name={cat.icon}
+                      size={13}
+                      color={active ? c.brass[400] : c.text.secondary}
+                    />
+                    <Text variant="caption" color={active ? 'brand' : 'secondary'}>{cat.label}</Text>
+                  </TouchableScale>
+                );
+              })}
+            </View>
+          </View>
 
-              {/* Persian Name */}
-              <Text variant="label" color="secondary">نام فارسی سازه: *</Text>
-              <TextInput
-                style={styles.input}
-                value={nameFa}
-                onChangeText={setNameFa}
-                placeholder="مثلاً: هاب نوآوری، کافه کتاب، کلینیک تخصصی..."
-                placeholderTextColor="rgba(255,255,255,0.3)"
-              />
+          {/* Description */}
+          <Input
+            label="توضیحات و کارکرد: *"
+            icon="document-text"
+            value={descriptionFa}
+            onChangeText={setDescriptionFa}
+            multiline
+            numberOfLines={3}
+            placeholder="این سازه چه ویژگی دارد و چه سودی به بازیکنان این محله می‌رساند؟"
+            style={styles.textArea}
+          />
 
-              {/* Category */}
-              <Text variant="label" color="secondary">دسته‌بندی:</Text>
-              <View style={styles.catGrid}>
-                {CATEGORIES.map((c) => {
-                  const active = category === c.key;
-                  return (
-                    <TouchableOpacity
-                      key={c.key}
-                      style={[styles.catBtn, active && styles.catBtnActive]}
-                      onPress={() => {
-                        setCategory(c.key);
-                        GameAudio.playTap();
-                      }}
-                    >
-                      <Text variant="body" color={active ? 'inverse' : 'primary'}>{c.emoji} {c.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <Input
+              label="هزینه ساخت"
+              icon="cash"
+              value={baseCost}
+              onChangeText={setBaseCost}
+              keyboardType="numeric"
+              placeholder="5000"
+              inputStyle={styles.statInput}
+              containerStyle={styles.statCol}
+            />
+            <Input
+              label="پاداش قدرت"
+              icon="flash"
+              value={powerBonus}
+              onChangeText={setPowerBonus}
+              keyboardType="numeric"
+              placeholder="10"
+              inputStyle={styles.statInput}
+              containerStyle={styles.statCol}
+            />
+            <Input
+              label="درآمد ساعتی"
+              icon="trending-up"
+              value={incomeRate}
+              onChangeText={setIncomeRate}
+              keyboardType="numeric"
+              placeholder="150"
+              inputStyle={styles.statInput}
+              containerStyle={styles.statCol}
+            />
+          </View>
 
-              {/* Description */}
-              <Text variant="label" color="secondary">توضیحات و کارکرد: *</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={descriptionFa}
-                onChangeText={setDescriptionFa}
-                multiline
-                numberOfLines={3}
-                placeholder="این سازه چه ویژگی دارد و چه سودی به بازیکنان این محله می‌رساند؟"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-              />
-
-              {/* Stats Row */}
-              <View style={styles.statsRow}>
-                <View style={styles.statCol}>
-                  <Text variant="caption" color="secondary">هزینه ساخت (💰):</Text>
-                  <TextInput
-                    style={styles.statInput}
-                    value={baseCost}
-                    onChangeText={setBaseCost}
-                    keyboardType="numeric"
-                    placeholder="5000"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                  />
-                </View>
-                <View style={styles.statCol}>
-                  <Text variant="caption" color="secondary">پاداش قدرت (⚔️):</Text>
-                  <TextInput
-                    style={styles.statInput}
-                    value={powerBonus}
-                    onChangeText={setPowerBonus}
-                    keyboardType="numeric"
-                    placeholder="10"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                  />
-                </View>
-                <View style={styles.statCol}>
-                  <Text variant="caption" color="secondary">درآمد ساعتی (🪙):</Text>
-                  <TextInput
-                    style={styles.statInput}
-                    value={incomeRate}
-                    onChangeText={setIncomeRate}
-                    keyboardType="numeric"
-                    placeholder="150"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                  />
-                </View>
-              </View>
-
-              {/* Custom Feature */}
-              <Text variant="label" color="secondary">ویژگی یا تنظیمات ویژه (Special Setting):</Text>
-              <TextInput
-                style={styles.input}
-                value={customFeature}
-                onChangeText={setCustomFeature}
-                placeholder="مثلاً: تخفیف ۱۰٪ مالیات، پناهگاه در زمان جنگ، تقویت تجارت..."
-                placeholderTextColor="rgba(255,255,255,0.3)"
-              />
-
-              {/* Submit Button */}
-              <TouchableOpacity
-                style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
-                onPress={handleSubmit}
-                disabled={submitting}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={['#6C63FF', '#8B5CF6']}
-                  style={styles.btnGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {submitting ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text weight="semibold" color="inverse">🚀  ارسال طرح برای ویرایشگران محله</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-        </Animated.View>
-      </Animated.View>
-    </Modal>
+          {/* Custom Feature */}
+          <Input
+            label="ویژگی یا تنظیمات ویژه (Special Setting):"
+            icon="options"
+            value={customFeature}
+            onChangeText={setCustomFeature}
+            placeholder="مثلاً: تخفیف ۱۰٪ مالیات، پناهگاه در زمان جنگ، تقویت تجارت..."
+          />
+        </ScrollView>
+      )}
+    </Sheet>
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.65)' },
-  sheet: {
-    maxHeight: SCREEN_H * 0.88,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.4)',
-    overflow: 'hidden',
-    paddingBottom: 24,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 44,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginVertical: 12,
-  },
-  content: { paddingHorizontal: 20, paddingBottom: 24 },
-  header: { marginBottom: 16 },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerEmoji: { fontSize: 24 },
-  title: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
-  subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 4, lineHeight: 20 },
-
-  label: { fontSize: 13, fontWeight: '700', color: '#CBD5E1', marginTop: 12, marginBottom: 6 },
-  labelSmall: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 4 },
-
-  emojiRow: { flexDirection: 'row', marginBottom: 6 },
-  emojiBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  emojiBtnActive: {
-    borderColor: '#6C63FF',
-    backgroundColor: 'rgba(108,99,255,0.25)',
-  },
-  emojiText: { fontSize: 22 },
-
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    color: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    textAlign: 'right',
-  },
-  textArea: { height: 75, textAlignVertical: 'top' },
-
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  catBtn: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  catBtnActive: {
-    borderColor: '#8B5CF6',
-    backgroundColor: 'rgba(139,92,246,0.25)',
-  },
-  catText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
-
-  statsRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  statCol: { flex: 1 },
-  statInput: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    color: '#FFD700',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    fontSize: 14,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-
-  submitBtn: {
-    marginTop: 20,
-    borderRadius: 14,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#6C63FF',
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  submitBtnDisabled: { opacity: 0.5 },
-  btnGradient: { paddingVertical: 15, alignItems: 'center' },
-  submitText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
-
-  successContainer: { alignItems: 'center', justifyContent: 'center', padding: 36, gap: 12 },
-  successEmoji: { fontSize: 56 },
-  successTitle: { fontSize: 22, fontWeight: '800', color: '#34D399', textAlign: 'center' },
-  successSub: { color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center', lineHeight: 22 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    footerRow: {
+      flexDirection: 'row-reverse',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.sm,
+    },
+    submitBtn: {
+      minWidth: 148,
+      minHeight: 44,
+    },
+    content: {
+      gap: Spacing.lg,
+      paddingBottom: Spacing.sm,
+    },
+    fieldGroup: { gap: Spacing.sm },
+    emojiRow: { flexGrow: 0 },
+    emojiRowContent: { gap: Spacing.sm, paddingRight: Spacing.xs },
+    emojiBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: Radii.md,
+      backgroundColor: c.ink[600],
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+    },
+    emojiBtnActive: {
+      borderColor: c.brass[400],
+      backgroundColor: c.ink[500],
+    },
+    catGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+    },
+    catBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs + 2,
+      backgroundColor: c.ink[600],
+      borderRadius: Radii.full,
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm - 2,
+      minHeight: 44,
+    },
+    catBtnActive: {
+      borderColor: c.brass[400],
+      backgroundColor: c.ink[500],
+    },
+    textArea: {
+      height: 75,
+      textAlignVertical: 'top',
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+    },
+    statCol: {
+      flex: 1,
+    },
+    statInput: {
+      textAlign: 'center',
+      ...tabular,
+    },
+    successContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Spacing['3xl'],
+      gap: Spacing.md,
+    },
+  });

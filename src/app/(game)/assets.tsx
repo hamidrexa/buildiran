@@ -1,32 +1,46 @@
 /**
- * BuildIran — Assets Screen
+ * BuildIran — Assets Screen («Gentleman Neon» v2)
  * Lists all assets owned by the current player.
  * Includes nested Workers sub-screen (NPC management) as a tab inside Assets.
+ *
+ * Dual theme via useTheme() · brass hero accents · IconPlate instead of emoji ·
+ * tabular fa-IR numerals · staggered FadeInDown entrances · floating-dock spacing.
  */
 
 import { Text } from '@/components/ui/Text';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Chip } from '@/components/ui/Chip';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { IconPlate } from '@/components/ui/IconPlate';
+import { Input } from '@/components/ui/Input';
+import { SectionTitle } from '@/components/ui/SectionTitle';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { Sheet } from '@/components/ui/Sheet';
 import { GameAudio } from '@/lib/audio';
 import { supabase } from '@/lib/supabase';
 import { BUILDING_CONFIG, useAssetStore } from '@/store/useAssetStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import type { Asset, BuildingType } from '@/types/game.types';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Motion, Spacing } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Palette } from '@/theme/palettes';
 import { WorkersPanel } from '@/components/game/WorkersPanel';
 
+type PlateIcon = React.ComponentProps<typeof IconPlate>['name'];
+type PlateTone = React.ComponentProps<typeof IconPlate>['tone'];
+type ChipTone = React.ComponentProps<typeof Chip>['tone'];
+
+/**
+ * Legacy export kept for backwards compatibility (module contract).
+ * The redesigned UI never renders emoji — it uses BUILDING_ICON below,
+ * which maps this record's exact key set to Ionicons + IconPlate tones.
+ */
 export const BUILDING_EMOJI: Record<string, string> = {
   house: '🏠', villa: '🏡', tower: '🏢',
   shop: '🏪', cafe: '☕', gym: '🏋️', restaurant: '🍽️', mall: '🏬', exchange: '💱', warehouse: '🏭', market: '🏦', office: '🏢',
@@ -47,11 +61,43 @@ export const BUILDING_LABEL: Record<string, string> = {
   main_house: 'خانه اصلی', resident_house: 'خوابگاه کارگران',
 };
 
+/** Building type → Ionicon + IconPlate tone (DESIGN.md §4 iconography map). */
+export const BUILDING_ICON: Record<string, { name: PlateIcon; tone: PlateTone }> = {
+  // Residential — steel
+  house: { name: 'home', tone: 'steel' },
+  villa: { name: 'home', tone: 'steel' },
+  tower: { name: 'business', tone: 'steel' },
+  main_house: { name: 'home', tone: 'brass' }, // the player's own territory
+  resident_house: { name: 'bed', tone: 'steel' },
+  // Commercial — brass
+  shop: { name: 'storefront', tone: 'brass' },
+  cafe: { name: 'cafe', tone: 'brass' },
+  gym: { name: 'barbell', tone: 'brass' },
+  restaurant: { name: 'restaurant', tone: 'brass' },
+  mall: { name: 'storefront', tone: 'brass' },
+  exchange: { name: 'swap-horizontal', tone: 'brass' },
+  market: { name: 'storefront', tone: 'brass' },
+  office: { name: 'business', tone: 'brass' },
+  // Industrial — ember
+  warehouse: { name: 'cube', tone: 'ember' },
+  farm: { name: 'nutrition', tone: 'ember' },
+  factory: { name: 'construct', tone: 'ember' },
+  // Civic — jade
+  hospital: { name: 'medkit', tone: 'jade' },
+  park: { name: 'leaf', tone: 'jade' },
+  university: { name: 'school', tone: 'jade' },
+  bank: { name: 'business', tone: 'jade' },
+  // Military — crimson
+  barracks: { name: 'shield', tone: 'crimson' },
+};
+
 // Active tab type for the Assets screen
 type AssetsTab = 'assets' | 'workers';
 
 export default function AssetsScreen() {
   const insets = useSafeAreaInsets();
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [saleModal, setSaleModal] = useState<Asset | null>(null);
@@ -87,13 +133,13 @@ export default function AssetsScreen() {
     const upgradeCost = Math.floor(cfg.cost * 0.5 * asset.level);
     if ((player?.cash ?? 0) < upgradeCost) {
       GameAudio.playError();
-      Alert.alert('موجودی ناکافی', `برای ارتقاء به ${upgradeCost.toLocaleString('fa-IR')} 💰 نیاز دارید.`);
+      Alert.alert('موجودی ناکافی', `برای ارتقاء به ${upgradeCost.toLocaleString('fa-IR')} نیاز دارید.`);
       return;
     }
 
     Alert.alert(
       `ارتقاء ${BUILDING_LABEL[asset.type]}`,
-      `هزینه ارتقاء به سطح ${asset.level + 1}: ${upgradeCost.toLocaleString('fa-IR')} 💰`,
+      `هزینه ارتقاء به سطح ${asset.level + 1}: ${upgradeCost.toLocaleString('fa-IR')}`,
       [
         { text: 'انصراف', style: 'cancel' },
         {
@@ -132,7 +178,7 @@ export default function AssetsScreen() {
     const ok = await listForSale(saleModal.id, price);
     if (ok) {
       GameAudio.playSell();
-      Alert.alert('✅ موفق', 'دارایی شما در بازار فروش لیست شد.');
+      Alert.alert('موفق', 'دارایی شما در بازار فروش لیست شد.');
     } else {
       GameAudio.playError();
     }
@@ -148,139 +194,156 @@ export default function AssetsScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['#080C1A', '#0D1533']}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Top Tab Switcher: Assets | Workers */}
-      <View style={[styles.tabSwitcher, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'assets' && styles.tabBtnActive]}
-          onPress={() => { setActiveTab('assets'); GameAudio.playTap(); }}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: activeTab === 'assets' }}
-        >
-          <Text variant="body" weight={activeTab === 'assets' ? 'bold' : 'regular'}
-            color={activeTab === 'assets' ? 'brand' : 'secondary'}>🏛️ دارایی‌ها</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'workers' && styles.tabBtnActive]}
-          onPress={() => { setActiveTab('workers'); GameAudio.playTap(); }}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: activeTab === 'workers' }}
-        >
-          <Text variant="body" weight={activeTab === 'workers' ? 'bold' : 'regular'}
-            color={activeTab === 'workers' ? 'brand' : 'secondary'}>👷 کارگران</Text>
-        </TouchableOpacity>
+      {/* Header: kicker + title + count, then the assets/workers switcher */}
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
+        <SectionTitle
+          kicker="امپراتوری شما"
+          title="دارایی‌های من"
+          trailing={
+            <Text variant="caption" color="secondary">
+              {myAssets.length.toLocaleString('fa-IR')} سازه
+            </Text>
+          }
+        />
+        <SegmentedTabs
+          items={[
+            { key: 'assets', label: 'دارایی‌ها' },
+            { key: 'workers', label: 'کارگران' },
+          ]}
+          value={activeTab}
+          onChange={(key) => {
+            GameAudio.playTap();
+            setActiveTab(key);
+          }}
+        />
       </View>
 
       {/* Workers Panel (sub-screen, no new tab) */}
       {activeTab === 'workers' ? (
         <WorkersPanel userId={userId} />
       ) : (
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: 12 },
-        ]}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />
-        }
-      >
-        {/* Header Stats */}
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
-          <Text variant="heading" weight="bold" color="primary">🏛️ دارایی‌های من</Text>
-          <Text variant="body" color="secondary">{myAssets.length} سازه</Text>
-        </Animated.View>
-
-        {/* Summary Cards */}
-        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.summaryRow}>
-          <View style={[styles.summaryCard, { borderColor: '#FFD700' }]}>
-            <Text variant="body" weight="medium" color="primary">💰 {totalValue.toLocaleString('fa-IR')}</Text>
-            <Text variant="caption" color="secondary">ارزش کل</Text>
-          </View>
-          <View style={[styles.summaryCard, { borderColor: '#A78BFA' }]}>
-            <Text variant="body" weight="medium" color="primary">⚔️ +{totalPower}</Text>
-            <Text variant="caption" color="secondary">قدرت کل</Text>
-          </View>
-          <View style={[styles.summaryCard, { borderColor: '#34D399' }]}>
-            <Text variant="body" weight="medium" color="primary">💵 {(player?.cash ?? 0).toLocaleString('fa-IR')}</Text>
-            <Text variant="caption" color="secondary">موجودی</Text>
-          </View>
-        </Animated.View>
-
-        {/* Asset List */}
-        {myAssets.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text variant="display" color="brand">🏗️</Text>
-            <Text variant="heading" weight="bold" color="primary">هنوز سازه‌ای ندارید</Text>
-            <Text variant="body" color="secondary">روی نقشه ضربه بزنید تا اولین ساختمان خود را بسازید</Text>
-          </View>
-        ) : (
-          myAssets.map((asset, i) => (
-            <AssetCard
-              key={asset.id}
-              asset={asset}
-              index={i}
-              onUpgrade={() => handleUpgrade(asset)}
-              onList={() => {
-                if (asset.isForSale) {
-                  Alert.alert(
-                    'لغو فروش',
-                    'آیا می‌خواهید این دارایی را از فروش خارج کنید؟',
-                    [
-                      { text: 'خیر', style: 'cancel' },
-                      { text: 'بله', onPress: () => cancelListing(asset.id).then(() => GameAudio.playTap()) },
-                    ]
-                  );
-                } else {
-                  setSaleModal(asset);
-                  setSalePrice(String(asset.marketValue));
-                }
-              }}
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 110 }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={c.brass[400]}
+              colors={[c.brass[400]]}
+              progressBackgroundColor={c.ink[800]}
             />
-          ))
-        )}
-      </ScrollView>
+          }
+        >
+          {/* Summary — 3 small cards */}
+          <View style={styles.summaryRow}>
+            <SummaryCard index={0} icon="cash" tone="brass" value={totalValue} label="ارزش کل" />
+            <SummaryCard index={1} icon="flash" tone="terracotta" value={totalPower} label="قدرت کل" />
+            <SummaryCard index={2} icon="wallet" tone="steel" value={player?.cash ?? 0} label="موجودی" />
+          </View>
+
+          {/* Asset list */}
+          {myAssets.length === 0 ? (
+            <Animated.View entering={FadeInDown.duration(Motion.durations.slow)}>
+              <EmptyState
+                icon="business"
+                title="هنوز سازه‌ای ندارید"
+                body="روی نقشه ضربه بزنید تا اولین ساختمان خود را بسازید"
+                style={styles.emptyState}
+              />
+            </Animated.View>
+          ) : (
+            myAssets.map((asset, i) => (
+              <AssetCard
+                key={asset.id}
+                asset={asset}
+                index={i}
+                onUpgrade={() => handleUpgrade(asset)}
+                onList={() => {
+                  if (asset.isForSale) {
+                    Alert.alert(
+                      'لغو فروش',
+                      'آیا می‌خواهید این دارایی را از فروش خارج کنید؟',
+                      [
+                        { text: 'خیر', style: 'cancel' },
+                        { text: 'بله', onPress: () => cancelListing(asset.id).then(() => GameAudio.playTap()) },
+                      ]
+                    );
+                  } else {
+                    setSaleModal(asset);
+                    setSalePrice(String(asset.marketValue));
+                  }
+                }}
+              />
+            ))
+          )}
+        </ScrollView>
       )}
 
-      {/* List for Sale Modal */}
-      <Modal visible={!!saleModal} transparent animationType="slide" onRequestClose={() => setSaleModal(null)}>
-        <View style={saleStyles.overlay}>
-          <View style={saleStyles.sheet}>
-            <LinearGradient colors={['#0D1533', '#080C1A']} style={StyleSheet.absoluteFill} />
-            <Text variant="title" weight="semibold" color="primary">
-              💰 قیمت فروش {saleModal ? BUILDING_LABEL[saleModal.type] : ''}
-            </Text>
-            <Text variant="body" color="secondary">ارزش بازار: {saleModal?.marketValue?.toLocaleString('fa-IR')}</Text>
-            <View style={saleStyles.inputWrapper}>
-              <TextInput
-                style={saleStyles.input}
-                value={salePrice}
-                onChangeText={setSalePrice}
-                keyboardType="numeric"
-                placeholder="قیمت پیشنهادی"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                textAlign="right"
-              />
-            </View>
-            <View style={saleStyles.btnRow}>
-              <TouchableOpacity style={saleStyles.cancelBtn} onPress={() => setSaleModal(null)}>
-                <Text variant="body" color="secondary">انصراف</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={saleStyles.confirmBtn} onPress={handleListForSale} disabled={loading}>
-                <LinearGradient colors={['#6C63FF', '#A78BFA']} style={saleStyles.confirmGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  {loading ? <ActivityIndicator color="#fff" /> : <Text weight="semibold" color="inverse">فروش در بازار</Text>}
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+      {/* List for Sale — bottom Sheet */}
+      <Sheet
+        visible={!!saleModal}
+        onClose={() => setSaleModal(null)}
+        title="قیمت گذاری"
+        subtitle={saleModal ? (BUILDING_LABEL[saleModal.type] ?? saleModal.type) : undefined}
+        footer={
+          <View style={saleStyles.footerRow}>
+            <Button
+              label="انصراف"
+              variant="ghost"
+              onPress={() => setSaleModal(null)}
+              style={saleStyles.footerBtn}
+            />
+            <Button
+              label="فروش در بازار"
+              variant="primary"
+              loading={loading}
+              onPress={handleListForSale}
+              style={saleStyles.footerConfirm}
+            />
           </View>
+        }
+      >
+        <View style={saleStyles.body}>
+          <View style={saleStyles.marketRow}>
+            <Text variant="caption" color="secondary">ارزش بازار</Text>
+            <Text variant="caption" weight="bold" style={saleStyles.tabular}>
+              {(saleModal?.marketValue ?? 0).toLocaleString('fa-IR')}
+            </Text>
+          </View>
+          <Input
+            label="قیمت پیشنهادی"
+            icon="cash"
+            value={salePrice}
+            onChangeText={setSalePrice}
+            keyboardType="numeric"
+            placeholder="قیمت پیشنهادی"
+          />
         </View>
-      </Modal>
+      </Sheet>
     </View>
   );
 }
+
+// ─── SummaryCard ──────────────────────────────────────────────────────────────
+
+const SummaryCard: React.FC<{
+  icon: PlateIcon;
+  tone: ChipTone;
+  value: number | string;
+  label: string;
+  index: number;
+}> = ({ icon, tone, value, label, index }) => (
+  <Animated.View
+    entering={FadeInDown.delay(Motion.stagger(index)).duration(Motion.durations.slow)}
+    style={summaryStyles.cell}
+  >
+    <Card padded={false} style={summaryStyles.card}>
+      <Chip icon={icon} value={value} tone={tone} />
+      <Text variant="caption" color="secondary">{label}</Text>
+    </Card>
+  </Animated.View>
+);
 
 // ─── AssetCard ────────────────────────────────────────────────────────────────
 
@@ -289,196 +352,174 @@ const AssetCard: React.FC<{
   index: number;
   onUpgrade: () => void;
   onList: () => void;
-}> = ({ asset, index, onUpgrade, onList }) => (
-  <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
-    <View style={cardStyles.card}>
-      <LinearGradient
-        colors={['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.02)']}
-        style={StyleSheet.absoluteFill}
-      />
+}> = ({ asset, index, onUpgrade, onList }) => {
+  const { colors: c } = useTheme();
+  const plate = BUILDING_ICON[asset.type] ?? { name: 'business' as PlateIcon, tone: 'neutral' as PlateTone };
 
-      {/* Header */}
-      <View style={cardStyles.cardHeader}>
-        <View style={cardStyles.emojiBox}>
-          <Text variant="display" color="brand">{BUILDING_EMOJI[asset.type]}</Text>
-        </View>
-        <View style={cardStyles.info}>
-          <View style={cardStyles.titleRow}>
-            <Text variant="title" weight="semibold" color="primary">{BUILDING_LABEL[asset.type]}</Text>
-            <View style={[cardStyles.levelBadge, asset.isForSale && cardStyles.saleBadge]}>
-              <Text variant="caption" weight="medium" color={asset.isForSale ? 'inverse' : 'primary'}>
-                {asset.isForSale ? '🔖 فروش' : `سطح ${asset.level}`}
+  return (
+    <Animated.View entering={FadeInDown.delay(Motion.stagger(index)).duration(Motion.durations.slow)}>
+      <Card sheen>
+        {/* Header */}
+        <View style={cardStyles.headerRow}>
+          <IconPlate name={plate.name} tone={plate.tone} size="md" />
+          <View style={cardStyles.info}>
+            <View style={cardStyles.titleRow}>
+              <Text variant="subtitle" weight="semibold" numberOfLines={1} style={cardStyles.nameText}>
+                {BUILDING_LABEL[asset.type] ?? asset.type}
+              </Text>
+              {asset.isForSale ? (
+                <Chip icon="pricetag" label="فروش" tone="brass" />
+              ) : (
+                <Chip label={`سطح ${asset.level.toLocaleString('fa-IR')}`} tone="neutral" />
+              )}
+            </View>
+            <View style={cardStyles.coordsRow}>
+              <Ionicons name="location" size={11} color={c.text.muted} />
+              <Text variant="caption" color="muted" style={cardStyles.coords}>
+                {asset.latitude.toFixed(3)}°, {asset.longitude.toFixed(3)}°
               </Text>
             </View>
           </View>
-          <Text variant="caption" color="secondary">
-            📍 {asset.latitude.toFixed(3)}°, {asset.longitude.toFixed(3)}°
-          </Text>
-          <View style={cardStyles.statsRow}>
-            <Text variant="caption" color="secondary">💰 {asset.marketValue.toLocaleString('fa-IR')}</Text>
-            <Text variant="caption" color="secondary">⚔️ +{asset.powerBonus}</Text>
-          </View>
         </View>
-      </View>
 
-      {/* Actions */}
-      <View style={cardStyles.actions}>
-        <TouchableOpacity style={cardStyles.upgradeBtn} onPress={onUpgrade}>
-          <Text variant="caption" weight="medium" color="primary">⬆️ ارتقاء</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[cardStyles.listBtn, asset.isForSale && cardStyles.listBtnActive]}
-          onPress={onList}
-        >
-          <Text variant="caption" weight="medium" color={asset.isForSale ? 'muted' : 'primary'}>
-            {asset.isForSale ? '🚫 لغو فروش' : '🏷️ فروش'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </Animated.View>
-);
+        {/* Data */}
+        <View style={cardStyles.statsRow}>
+          <Chip icon="cash" value={asset.marketValue} label="ارزش" tone="brass" />
+          <Chip icon="flash" value={asset.powerBonus} label="قدرت" tone="terracotta" />
+        </View>
+
+        {/* Actions */}
+        <View style={cardStyles.actions}>
+          <Button
+            label="ارتقاء"
+            variant="secondary"
+            size="sm"
+            icon={<Ionicons name="trending-up" size={14} color={c.text.brand} />}
+            onPress={onUpgrade}
+            style={cardStyles.actionBtn}
+          />
+          <Button
+            label={asset.isForSale ? 'لغو فروش' : 'فروش'}
+            variant="ghost"
+            size="sm"
+            icon={
+              <Ionicons
+                name={asset.isForSale ? 'close-circle' : 'pricetag'}
+                size={14}
+                color={c.text.secondary}
+              />
+            }
+            onPress={onList}
+            style={cardStyles.actionBtn}
+          />
+        </View>
+      </Card>
+    </Animated.View>
+  );
+};
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  tabSwitcher: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.2)',
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  tabBtnActive: {
-    backgroundColor: 'rgba(108,99,255,0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.4)',
-  },
-  content: { padding: 16, gap: 12, paddingBottom: 32 },
-  header: { gap: 4, marginBottom: 4 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
-  headerSub: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
-  summaryRow: { flexDirection: 'row', gap: 10 },
-  summaryCard: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: 12,
-    alignItems: 'center',
-    gap: 4,
-  },
-  summaryValue: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
-  summaryLabel: { fontSize: 11, color: 'rgba(255,255,255,0.45)', textAlign: 'center' },
-  emptyState: { alignItems: 'center', paddingVertical: 60, gap: 12 },
-  emptyEmoji: { fontSize: 64 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
-  emptySub: { color: 'rgba(255,255,255,0.4)', textAlign: 'center', lineHeight: 22, fontSize: 14 },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg.primary,
+    },
+    header: {
+      paddingHorizontal: Spacing.lg,
+      paddingBottom: Spacing.sm,
+      gap: Spacing.md,
+    },
+    content: {
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.lg,
+      gap: Spacing.md,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+    },
+    emptyState: {
+      paddingVertical: Spacing.xl,
+    },
+  });
 
-
-const cardStyles = StyleSheet.create({
+/** Geometry-only summary tiles — mode-independent, safe at module scope. */
+const summaryStyles = StyleSheet.create({
+  cell: {
+    flex: 1,
+  },
   card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.2)',
-    overflow: 'hidden',
-    padding: 14,
-    gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  cardHeader: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  emojiBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: 'rgba(108,99,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
   },
-  emoji: { fontSize: 28 },
-  info: { flex: 1, gap: 4 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
-  levelBadge: {
-    backgroundColor: 'rgba(108,99,255,0.25)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: '#6C63FF',
+});
+
+const cardStyles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    alignItems: 'flex-start',
   },
-  saleBadge: { backgroundColor: 'rgba(255,211,0,0.2)', borderColor: '#FFD700' },
-  levelText: { color: '#A78BFA', fontSize: 11, fontWeight: '600' },
-  coords: { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
-  statsRow: { flexDirection: 'row', gap: 12 },
-  statText: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
-  actions: { flexDirection: 'row', gap: 10 },
-  upgradeBtn: {
+  info: {
     flex: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(52,211,153,0.4)',
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: 'rgba(52,211,153,0.1)',
+    gap: Spacing.xs,
   },
-  upgradeBtnText: { color: '#34D399', fontSize: 13, fontWeight: '600' },
-  listBtn: {
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  nameText: {
+    flexShrink: 1,
+  },
+  coordsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xxs,
+  },
+  coords: {
+    writingDirection: 'ltr',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  actionBtn: {
     flex: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.4)',
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: 'rgba(108,99,255,0.1)',
   },
-  listBtnActive: { borderColor: 'rgba(239,68,68,0.4)', backgroundColor: 'rgba(239,68,68,0.1)' },
-  listBtnText: { color: '#A78BFA', fontSize: 13, fontWeight: '600' },
 });
 
 const saleStyles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
-  sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.3)',
-    overflow: 'hidden',
-    padding: 24,
-    gap: 16,
-    paddingBottom: 40,
+  body: {
+    gap: Spacing.lg,
   },
-  title: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
-  sub: { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
-  inputWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.3)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  input: { color: '#FFFFFF', fontSize: 16 },
-  btnRow: { flexDirection: 'row', gap: 12 },
-  cancelBtn: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    paddingVertical: 14,
+  marketRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  confirmBtn: { flex: 2, borderRadius: 12, overflow: 'hidden', elevation: 6 },
-  confirmGradient: { paddingVertical: 14, alignItems: 'center' },
+  tabular: {
+    fontVariant: ['tabular-nums'],
+  },
+  footerRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  footerBtn: {
+    flex: 1,
+  },
+  footerConfirm: {
+    flex: 2,
+  },
 });

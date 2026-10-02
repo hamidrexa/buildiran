@@ -28,6 +28,7 @@ import type {
 import { create } from "zustand";
 // Neighborhood cost multiplier — imported lazily inside actions to avoid circular dependency
 import { useNeighborhoodStore } from "@/store/useNeighborhoodStore";
+import { usePlayerStore } from "@/store/usePlayerStore";
 
 // ─── Building Config ──────────────────────────────────────────────────────────
 // cost  = fast-mode build cost (land + construction, bundled)
@@ -457,6 +458,15 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
   },
 
   subscribeToAssets: () => {
+    // Idempotent: a second caller (React strict-mode double effects, or two
+    // screens) must reuse the live channel instead of adding callbacks
+    // after `subscribe()` — which throws at runtime.
+    const existing = supabase.getChannels().find((ch) => ch.topic === "public:assets");
+    if (existing) {
+      return () => {
+        supabase.removeChannel(existing);
+      };
+    }
     const channel = supabase
       .channel("public:assets")
       .on(

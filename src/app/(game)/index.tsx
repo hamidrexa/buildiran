@@ -10,6 +10,7 @@ import { GameMap } from "@/components/map/GameMap";
 import { GameAudio } from "@/lib/audio";
 import { DEFAULT_BUILDING_SETBACK_METERS, MAP_DEFAULT_ZOOM, MAP_MAX_ZOOM } from "@/lib/constants";
 import { supabase } from "@/lib/supabase";
+import { useTheme } from "@/theme/ThemeProvider";
 import { useAssetStore } from "@/store/useAssetStore";
 import { useEconomyStore } from "@/store/useEconomyStore";
 import { useGameStore } from "@/store/useGameStore";
@@ -27,6 +28,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 export default function MapScreen() {
+  const { colors } = useTheme();
   const selectTile = useGameStore((s) => s.selectTile);
   const setViewport = useMapStore((s) => s.setViewport);
   const syncFromSupabase = usePlayerStore((s) => s.syncFromSupabase);
@@ -241,6 +243,7 @@ export default function MapScreen() {
       <GameMap
         assets={assetsList}
         neighborhoods={neighborhoods}
+        mapStyle={colors.mapStyle}
         currentUserId={player?.id ?? null}
         selectedAssetId={activeSelectedAsset?.id ?? null}
         onAssetPress={handleAssetPress}

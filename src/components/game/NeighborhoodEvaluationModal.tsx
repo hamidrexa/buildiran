@@ -1,30 +1,76 @@
 /**
- * BuildIran — Neighborhood Evaluation Modal (ارزیابی محله)
- * Detailed district assessment when player taps «ارزیابی محله».
- * Analyzes location metrics, land value, development index, and editor governance.
+ * BuildIran — Neighborhood Evaluation Modal — «Gentleman Neon» (v2)
+ * Detailed district assessment shown when the player taps «ارزیابی محله».
+ * Sheet with evaluation metric cards (IconPlate + tabular numerals),
+ * governance status, approved custom building rows, and two big option rows
+ * (LocationActionModal pattern) as the CTAs. The «احداث ملک» row keeps the
+ * brass primary treatment; nothing glows here (passive/admin surface).
+ * Tier colors from constants carry forbidden hexes — tier resolves to
+ * IconPlate tones and c.tier[n] tokens at render.
+ * Public props (visible, coordinate, onProceedToBuild, onOpenEditorPanel,
+ * onClose) and all data-flow logic are unchanged.
  */
 
 import { Text } from '@/components/ui/Text';
+import { Sheet } from '@/components/ui/Sheet';
+import { Card } from '@/components/ui/Card';
+import { IconPlate } from '@/components/ui/IconPlate';
+import { SectionTitle } from '@/components/ui/SectionTitle';
+import { Radii, Spacing, Typography, Motion } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Palette } from '@/theme/palettes';
 import { GameAudio } from '@/lib/audio';
 import { useAssetStore } from '@/store/useAssetStore';
 import { useNeighborhoodStore } from '@/store/useNeighborhoodStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import type { LatLng, Neighborhood } from '@/types/game.types';
 import { haversineDistance } from '@/utils/geo';
+import { getNeighborhoodTier } from '@/lib/constants';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo } from 'react';
-import {
-  Dimensions,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
-const { height: SCREEN_H } = Dimensions.get('window');
+type PlateTone = React.ComponentProps<typeof IconPlate>['tone'];
+type PlateIcon = React.ComponentProps<typeof IconPlate>['name'];
+
+/** Tier index → allowed tone / Ionicon (constants' tier palette has forbidden hexes). */
+const TIER_TONES: readonly PlateTone[] = ['neutral', 'jade', 'steel', 'steel', 'ember', 'brass'];
+const TIER_ICONS: readonly PlateIcon[] = ['home', 'leaf', 'business', 'school', 'medal', 'diamond'];
+
+const fa = (n: number) => n.toLocaleString('fa-IR');
+
+// ─── Press-spring touchable (§4 — every touchable springs) ───────────────────
+
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+const TouchableScale: React.FC<
+  React.ComponentProps<typeof TouchableOpacity>
+> = ({ onPressIn, onPressOut, style, ...rest }) => {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  return (
+    <AnimatedTouchable
+      {...rest}
+      style={[animatedStyle, style]}
+      onPressIn={(e) => {
+        scale.value = withSpring(0.97, Motion.press);
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        scale.value = withSpring(1, Motion.press);
+        onPressOut?.(e);
+      }}
+    />
+  );
+};
 
 interface NeighborhoodEvaluationModalProps {
   visible: boolean;
@@ -41,6 +87,9 @@ export const NeighborhoodEvaluationModal: React.FC<NeighborhoodEvaluationModalPr
   onOpenEditorPanel,
   onClose,
 }) => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
+
   const player = usePlayerStore((s) => s.player);
   const neighborhoods = useNeighborhoodStore((s) => s.neighborhoods);
   const currentNeighborhood = useNeighborhoodStore((s) => s.currentNeighborhood);
@@ -93,314 +142,301 @@ export const NeighborhoodEvaluationModal: React.FC<NeighborhoodEvaluationModalPr
 
   const isEditor = player ? player.power >= activeNeighborhood.minEditorPower : false;
 
+  const amenityScore = activeNeighborhood.amenityScore ?? 0;
+  const tierInfo = getNeighborhoodTier(amenityScore);
+  const tierIndex = Math.min(Math.max(tierInfo.tier, 0), TIER_TONES.length - 1);
+  const tierTone: PlateTone = TIER_TONES[tierIndex];
+  const tierIcon: PlateIcon = TIER_ICONS[tierIndex];
+  const tierColor = c.tier[tierIndex];
+
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} onPress={onClose} activeOpacity={1} />
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title={`گزارش ارزیابی محله «${activeNeighborhood.nameFa}»`}
+      subtitle={`شهر ${activeNeighborhood.city} • فاصله تا هسته مرکزی: ${fa(distanceKm)} کیلومتر`}
+      maxHeight={0.85}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Description */}
+        {activeNeighborhood.descriptionFa ? (
+          <Card>
+            <Text variant="body" color="secondary">
+              {activeNeighborhood.descriptionFa}
+            </Text>
+          </Card>
+        ) : null}
 
-        <Animated.View entering={SlideInDown.springify().damping(18)} style={styles.sheet}>
-          <LinearGradient
-            colors={['#0E172F', '#060B1A']}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          />
-
-          <View style={styles.handle} />
-
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerIcon}>
-              <Text style={{ fontSize: 26 }}>📊</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={styles.titleRow}>
-                <Text variant="heading" weight="bold" color="primary">
-                  گزارش ارزیابی محله «{activeNeighborhood.nameFa}»
-                </Text>
-              </View>
-              <Text variant="caption" color="secondary">
-                شهر {activeNeighborhood.city} • فاصله تا هسته مرکزی: {distanceKm.toLocaleString('fa-IR')} کیلومتر
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Ionicons name="close" size={20} color="rgba(255,255,255,0.7)" />
-            </TouchableOpacity>
+        {/* Development metrics */}
+        <SectionTitle kicker="شاخص‌ها" title="توسعه و پتانسیل سرمایه‌گذاری" />
+        <View style={styles.metricsGrid}>
+          <View style={styles.metricCard}>
+            <IconPlate name="stats-chart" size="sm" tone="brass" />
+            <Text variant="caption" color="secondary">
+              امتیاز امکانات
+            </Text>
+            <Text variant="subtitle" weight="bold" style={styles.metricValue}>
+              {fa(amenityScore)}
+            </Text>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-          >
-            {/* Description Banner */}
-            {activeNeighborhood.descriptionFa && (
-              <View style={styles.descBox}>
-                <Text variant="body" color="primary" style={styles.descText}>
-                  {activeNeighborhood.descriptionFa}
-                </Text>
-              </View>
-            )}
-
-            {/* 4-Metric Grid */}
-            <Text variant="title" weight="semibold" color="primary" style={styles.sectionTitle}>
-              شاخص‌های توسعه و پتانسیل سرمایه‌گذاری:
+          <View style={styles.metricCard}>
+            <IconPlate name={tierIcon} size="sm" tone={tierTone} />
+            <Text variant="caption" color="secondary">
+              سطح امکانات محله
             </Text>
-            <View style={styles.metricsGrid}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricEmoji}>📈</Text>
-                <Text variant="caption" color="secondary">شاخص رونق اقتصادی</Text>
-                <Text variant="heading" weight="bold" color="primary">۸۶ / ۱۰۰</Text>
-                <Text variant="caption" style={{ color: '#34D399' }}>رشد پرشتاب</Text>
-              </View>
+            <Text
+              variant="subtitle"
+              weight="bold"
+              style={[styles.metricValue, { color: tierColor }]}
+            >
+              {tierInfo.nameFa}
+            </Text>
+          </View>
 
-              <View style={styles.metricCard}>
-                <Text style={styles.metricEmoji}>🛡️</Text>
-                <Text variant="caption" color="secondary">امنیت سرمایه‌گذاری</Text>
-                <Text variant="heading" weight="bold" color="primary">۹۲٪</Text>
-                <Text variant="caption" style={{ color: '#60A5FA' }}>قلمرو باثبات</Text>
-              </View>
+          <View style={styles.metricCard}>
+            <IconPlate name="business" size="sm" tone="steel" />
+            <Text variant="caption" color="secondary">
+              تراکم سازه‌ها
+            </Text>
+            <Text variant="subtitle" weight="bold" style={styles.metricValue}>
+              {fa(districtBuildingsCount)} سازه
+            </Text>
+          </View>
 
-              <View style={styles.metricCard}>
-                <Text style={styles.metricEmoji}>🏢</Text>
-                <Text variant="caption" color="secondary">تراکم سازه‌ها</Text>
-                <Text variant="heading" weight="bold" color="primary">
-                  {districtBuildingsCount.toLocaleString('fa-IR')} سازه
-                </Text>
-                <Text variant="caption" color="muted">احداث‌شده توسط بازیکنان</Text>
-              </View>
+          <View style={styles.metricCard}>
+            <IconPlate name="flash" size="sm" tone="terracotta" />
+            <Text variant="caption" color="secondary">
+              حداقل قدرت ویرایشگر
+            </Text>
+            <Text variant="subtitle" weight="bold" style={styles.metricValue}>
+              +{fa(activeNeighborhood.minEditorPower)}
+            </Text>
+          </View>
+        </View>
 
-              <View style={styles.metricCard}>
-                <Text style={styles.metricEmoji}>🏛️</Text>
-                <Text variant="caption" color="secondary">پاداش قدرت حاکمیتی</Text>
-                <Text variant="heading" weight="bold" color="primary">
-                  +{activeNeighborhood.minEditorPower}
-                </Text>
-                <Text variant="caption" style={{ color: '#F59E0B' }}>حداقل قدرت ویرایشگر</Text>
-              </View>
+        {/* Governance / Editor status */}
+        <SectionTitle kicker="نظارت" title="وضعیت ویرایشگری محله" />
+        <Card>
+          <View style={styles.editorRow}>
+            <IconPlate
+              name={isEditor ? 'shield-checkmark' : 'lock-closed'}
+              size="sm"
+              tone={isEditor ? 'jade' : 'neutral'}
+            />
+            <View style={styles.editorTexts}>
+              <Text variant="body" weight="semibold">
+                ویرایشگری و نظارت محله
+              </Text>
+              <Text variant="caption" color="secondary">
+                {isEditor
+                  ? 'شما به عنوان ویرایشگر واجد شرایط این محله دارای حق رأی هستید.'
+                  : `نیاز به حداقل ${fa(activeNeighborhood.minEditorPower)} امتیاز قدرت نفوذ (قدرت فعلی شما: ${fa(player?.power ?? 0)})`}
+              </Text>
             </View>
+          </View>
+        </Card>
 
-            {/* Governance / Editor Status */}
-            <View style={styles.editorBox}>
-              <View style={styles.editorHeaderRow}>
-                <Text style={{ fontSize: 22 }}>🎖️</Text>
-                <View style={{ flex: 1 }}>
-                  <Text variant="body" weight="bold" color="primary">
-                    وضعیت ویرایشگری و نظارت محله
+        {/* Approved custom buildings */}
+        {approvedCustomTypes.length > 0 && (
+          <View style={styles.customSection}>
+            <SectionTitle
+              kicker="سازه‌های اختصاصی"
+              title="تأییدشده در این منطقه"
+              trailing={<Text variant="caption" color="muted" style={styles.tabular}>{fa(approvedCustomTypes.length)}</Text>}
+            />
+            <View style={styles.customList}>
+              {approvedCustomTypes.map((cb) => (
+                <View key={cb.id} style={styles.customRow}>
+                  <IconPlate name="business" size="sm" tone="jade" />
+                  <View style={styles.customTexts}>
+                    <Text variant="body" weight="medium" numberOfLines={1}>
+                      {cb.nameFa}
+                    </Text>
+                    <Text variant="caption" color="muted">
+                      دسته‌بندی: {cb.category}
+                    </Text>
+                  </View>
+                  <Text variant="caption" weight="bold" color="brand" style={styles.tabular}>
+                    {fa(cb.baseCost)}
                   </Text>
-                  <Text variant="caption" color="secondary">
-                    {isEditor
-                      ? 'شما به عنوان ویرایشگر واجد شرایط این محله دارای حق رأی هستید.'
-                      : `نیاز به حداقل ${activeNeighborhood.minEditorPower} امتیاز قدرت نفوذ (قدرت فعلی شما: ${player?.power ?? 0})`}
-                  </Text>
+                  <Ionicons name="cash" size={13} color={c.brass[400]} />
                 </View>
-                {isEditor && onOpenEditorPanel && (
-                  <TouchableOpacity
-                    style={styles.editorActionBtn}
-                    onPress={() => {
-                      onClose();
-                      onOpenEditorPanel();
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text variant="caption" weight="bold" color="inverse">پنل بازبینی</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              ))}
             </View>
+          </View>
+        )}
 
-            {/* Neighborhood Custom Approved Buildings */}
-            {approvedCustomTypes.length > 0 && (
-              <View style={styles.customSection}>
-                <Text variant="title" weight="semibold" color="primary" style={styles.sectionTitle}>
-                  سازه‌های اختصاصی تأییدشده در این منطقه:
-                </Text>
-                <View style={styles.customBadgesRow}>
-                  {approvedCustomTypes.map((c) => (
-                    <View key={c.id} style={styles.customBadge}>
-                      <Text style={{ fontSize: 16 }}>{c.emoji || '🏛️'}</Text>
-                      <Text variant="caption" weight="bold" color="primary">{c.nameFa}</Text>
-                      <Text variant="caption" style={{ color: '#FFD700' }}>💰 {c.baseCost.toLocaleString('fa-IR')}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-          </ScrollView>
-
-          {/* Bottom Action Footer */}
-          <View style={styles.footer}>
-            <TouchableOpacity
-              style={styles.buildBtn}
+        {/* Option rows — LocationActionModal pattern */}
+        <View style={styles.options}>
+          {/* Choice 1: احداث ملک — the one primary action, brass */}
+          <Animated.View entering={FadeInDown.delay(Motion.stagger(0)).duration(Motion.durations.normal)}>
+            <TouchableScale
+              style={[styles.optionRow, styles.optionRowPrimary]}
               onPress={() => {
                 GameAudio.playTap();
                 onProceedToBuild();
               }}
-              activeOpacity={0.85}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+              accessibilityLabel="احداث ملک در این موقعیت"
             >
-              <LinearGradient
-                colors={['#6C63FF', '#8B5CF6']}
-                style={styles.buildBtnGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text variant="body" weight="bold" color="inverse">
-                  🏗️ احداث ملک در این موقعیت (بررسی حریم ۵ متری)
+              <IconPlate name="construct" tone="brass" size="lg" />
+              <View style={styles.optionTexts}>
+                <View style={styles.optionTitleRow}>
+                  <Text variant="subtitle" weight="semibold">
+                    احداث ملک در این موقعیت
+                  </Text>
+                  <View style={styles.metaChip}>
+                    <Text style={styles.metaChipText}>بررسی حریم ۵ متری</Text>
+                  </View>
+                </View>
+                <Text variant="caption" color="secondary" numberOfLines={2}>
+                  ادامه به حالت ساخت با استعلام خودکار حریم ۵ متری از خیابان‌ها
                 </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
+              </View>
+              <Ionicons name="chevron-back" size={18} color={c.text.secondary} />
+            </TouchableScale>
+          </Animated.View>
+
+          {/* Choice 2: پنل بازبینی ویرایشگر (editors only) */}
+          {isEditor && onOpenEditorPanel && (
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(1)).duration(Motion.durations.normal)}>
+              <TouchableScale
+                style={styles.optionRow}
+                onPress={() => {
+                  onClose();
+                  onOpenEditorPanel();
+                }}
+                activeOpacity={0.82}
+                accessibilityRole="button"
+                accessibilityLabel="پنل بازبینی ویرایشگر"
+              >
+                <IconPlate name="shield-checkmark" tone="steel" size="lg" />
+                <View style={styles.optionTexts}>
+                  <View style={styles.optionTitleRow}>
+                    <Text variant="subtitle" weight="semibold">
+                      پنل بازبینی ویرایشگر
+                    </Text>
+                  </View>
+                  <Text variant="caption" color="secondary" numberOfLines={2}>
+                    بررسی و تأیید طرح‌های پیشنهادی بازیکنان در این محله
+                  </Text>
+                </View>
+                  <Ionicons name="chevron-back" size={18} color={c.text.secondary} />
+              </TouchableScale>
+            </Animated.View>
+          )}
+        </View>
+      </ScrollView>
+    </Sheet>
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFill as any,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-  },
-  sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
-    overflow: 'hidden',
-    paddingBottom: 20,
-    maxHeight: SCREEN_H * 0.82,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 44,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginVertical: 10,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 14,
-  },
-  descBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  descText: {
-    lineHeight: 22,
-    fontSize: 12,
-  },
-  sectionTitle: {
-    marginBottom: 4,
-    marginTop: 2,
-    fontSize: 13,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  metricCard: {
-    width: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    gap: 4,
-    alignItems: 'flex-start',
-  },
-  metricEmoji: {
-    fontSize: 22,
-    marginBottom: 2,
-  },
-  editorBox: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
-  },
-  editorHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  editorActionBtn: {
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  customSection: {
-    gap: 8,
-  },
-  customBadgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  customBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(108, 99, 255, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(108, 99, 255, 0.25)',
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  buildBtn: {
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  buildBtnGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    scrollContent: {
+      gap: Spacing.lg,
+      paddingBottom: Spacing.sm,
+    },
+    tabular: {
+      fontVariant: ['tabular-nums'],
+    },
+
+    metricsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.md,
+    },
+    metricCard: {
+      width: '47%',
+      backgroundColor: c.ink[700],
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      gap: Spacing.xs + 2,
+      alignItems: 'flex-start',
+    },
+    metricValue: {
+      fontVariant: ['tabular-nums'],
+    },
+
+    editorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+    },
+    editorTexts: {
+      flex: 1,
+      gap: 2,
+    },
+
+    customSection: {
+      gap: Spacing.md,
+    },
+    customList: {
+      gap: Spacing.sm,
+    },
+    customRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      backgroundColor: c.ink[700],
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm + 2,
+      minHeight: 44,
+    },
+    customTexts: {
+      flex: 1,
+      gap: 1,
+    },
+
+    options: {
+      gap: Spacing.md,
+    },
+    optionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      backgroundColor: c.ink[600],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      minHeight: 44,
+    },
+    /** «احداث ملک» — the primary CTA keeps the brass treatment (no neon). */
+    optionRowPrimary: {
+      backgroundColor: `${c.brass[400]}0F`,
+      borderColor: c.border.brand,
+    },
+    optionTexts: {
+      flex: 1,
+      gap: 2,
+    },
+    optionTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.sm,
+    },
+    metaChip: {
+      backgroundColor: c.ink[500],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      borderRadius: Radii.full,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 2,
+    },
+    metaChipText: {
+      fontSize: Typography.sizes.xs,
+      color: c.text.secondary,
+    },
+  });

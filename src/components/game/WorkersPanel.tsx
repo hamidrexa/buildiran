@@ -1,45 +1,94 @@
 /**
- * BuildIran — WorkersPanel
+ * BuildIran — WorkersPanel («Gentleman Neon» v2)
  * NPC workers management sub-screen nested inside the Assets tab.
  * Three inner segments:
- *   1. کارگران من   — owned NPCs: class badge, level, XP bar, assign/train/revoke
+ *   1. کارگران من   — owned NPCs: class plate, level, XP bar, assign/train/revoke
  *   2. درخواست‌ها   — pending assignment requests into my businesses
  *   3. مسکن        — housing overview (main_house + resident_house capacity)
+ *
+ * Dual theme via useTheme() · ink cards · IconPlates per role · Chip rows ·
+ * ProgressBar for XP/capacity · TouchableScale press springs on chips.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Chip } from '@/components/ui/Chip';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { IconPlate } from '@/components/ui/IconPlate';
+import { Input } from '@/components/ui/Input';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import { SectionTitle } from '@/components/ui/SectionTitle';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
+
 import { useNpcStore } from '@/store/useNpcStore';
 import { useAssetStore } from '@/store/useAssetStore';
 import type { Npc, NpcAssignment, NpcClass } from '@/types/game.types';
-import {
-  NPC_CLASS_CONFIG,
-  NPC_LEVEL_XP_TABLE,
-  computeResidentHouseCapacity,
-} from '@/lib/constants';
+import { NPC_CLASS_CONFIG, NPC_LEVEL_XP_TABLE } from '@/lib/constants';
+import { Motion, Spacing } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Palette } from '@/theme/palettes';
 
-// ─── Class Color Map ──────────────────────────────────────────────────────────
+// ─── Plate typing ─────────────────────────────────────────────────────────────
 
-const CLASS_COLORS: Record<NpcClass, string> = {
-  worker:     '#6C63FF',
-  foreman:    '#F59E0B',
-  engineer:   '#3B82F6',
-  doctor:     '#10B981',
-  specialist: '#8B5CF6',
-  physician:  '#EC4899',
+type PlateIcon = React.ComponentProps<typeof IconPlate>['name'];
+type BarTone = 'brass' | 'jade' | 'crimson' | 'steel' | 'ember' | 'terracotta';
+type ChipTone = React.ComponentProps<typeof Chip>['tone'];
+
+/** NPC class → Ionicon + tint (no emoji; DESIGN.md iconography map). */
+const CLASS_STYLE: Record<NpcClass, { icon: PlateIcon; tone: BarTone }> = {
+  worker: { icon: 'construct', tone: 'steel' },
+  foreman: { icon: 'hammer', tone: 'terracotta' },
+  engineer: { icon: 'cog', tone: 'brass' },
+  doctor: { icon: 'medical', tone: 'jade' },
+  specialist: { icon: 'flask', tone: 'ember' },
+  physician: { icon: 'pulse', tone: 'jade' },
+};
+
+// ─── TouchableScale (press spring, same recipe as HUD) ────────────────────────
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const TouchableScale: React.FC<
+  React.ComponentProps<typeof Pressable>
+> = ({ onPressIn, onPressOut, style, ...rest }) => {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  return (
+    <AnimatedPressable
+      {...rest}
+      style={[animatedStyle, style]}
+      onPressIn={(e) => {
+        scale.value = withSpring(0.97, Motion.press);
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        scale.value = withSpring(1, Motion.press);
+        onPressOut?.(e);
+      }}
+    />
+  );
 };
 
 // ─── Segment Type ─────────────────────────────────────────────────────────────
@@ -52,30 +101,27 @@ interface WorkersPanelProps {
   userId: string | null;
 }
 
-// ─── XP Progress Bar ──────────────────────────────────────────────────────────
+const HIRE_CLASSES: NpcClass[] = ['worker', 'foreman', 'engineer', 'doctor', 'specialist', 'physician'];
 
-const XpBar: React.FC<{ xp: number; level: number; color: string }> = ({ xp, level, color }) => {
-  const maxXp = NPC_LEVEL_XP_TABLE[Math.min(level - 1, NPC_LEVEL_XP_TABLE.length - 1)];
-  const pct = maxXp === Infinity ? 100 : Math.min((xp / maxXp) * 100, 100);
-  const width = useSharedValue(0);
+// ─── Stat Card (summary) ──────────────────────────────────────────────────────
 
-  useEffect(() => {
-    width.value = withTiming(pct, { duration: 800 });
-  }, [pct]);
-
-  const animStyle = useAnimatedStyle(() => ({ width: `${width.value}%` as any }));
-
-  return (
-    <View style={xpStyles.track}>
-      <Animated.View style={[xpStyles.fill, { backgroundColor: color }, animStyle]} />
-    </View>
-  );
-};
-
-const xpStyles = StyleSheet.create({
-  track: { height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden', flex: 1 },
-  fill: { height: '100%', borderRadius: 4 },
-});
+const PanelStat: React.FC<{
+  icon: PlateIcon;
+  tone: ChipTone;
+  value: number | string;
+  label: string;
+  index: number;
+}> = ({ icon, tone, value, label, index }) => (
+  <Animated.View
+    entering={FadeInDown.delay(Motion.stagger(index)).duration(Motion.durations.slow)}
+    style={panelStyles.statCell}
+  >
+    <Card padded={false} style={panelStyles.statCard}>
+      <Chip icon={icon} value={value} tone={tone} />
+      <Text variant="caption" color="secondary">{label}</Text>
+    </Card>
+  </Animated.View>
+);
 
 // ─── NPC Card ─────────────────────────────────────────────────────────────────
 
@@ -86,34 +132,44 @@ const NpcCard: React.FC<{
   onTrain: (npc: Npc) => void;
   onRevoke: (npc: Npc) => void;
 }> = ({ npc, index, onAssign, onTrain, onRevoke }) => {
+  const { colors: c } = useTheme();
   const cfg = NPC_CLASS_CONFIG[npc.class];
-  const color = CLASS_COLORS[npc.class];
+  const cls = CLASS_STYLE[npc.class];
+
+  const maxXp = NPC_LEVEL_XP_TABLE[Math.min(npc.level - 1, NPC_LEVEL_XP_TABLE.length - 1)];
+  const xpPct = maxXp === Infinity ? 100 : Math.min((npc.experience / maxXp) * 100, 100);
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
-      <View style={[npcCardStyles.card, { borderColor: `${color}40` }]}>
-        <LinearGradient
-          colors={[`${color}18`, 'transparent']}
-          style={StyleSheet.absoluteFill}
-        />
-
+    <Animated.View entering={FadeInDown.delay(Motion.stagger(index)).duration(Motion.durations.slow)}>
+      <Card sheen>
         {/* Header */}
-        <View style={npcCardStyles.header}>
-          <View style={[npcCardStyles.classBadge, { backgroundColor: `${color}30`, borderColor: `${color}60` }]}>
-            <Text variant="display" color="primary" style={npcCardStyles.emoji}>{cfg.emoji}</Text>
-          </View>
-          <View style={npcCardStyles.info}>
-            <View style={npcCardStyles.nameRow}>
-              <Text variant="body" weight="bold" color="primary">{npc.nameFa}</Text>
-              <View style={[npcCardStyles.statusDot, { backgroundColor: npc.isWorking ? '#10B981' : '#6B7280' }]} />
+        <View style={panelStyles.cardHeader}>
+          <IconPlate name={cls.icon} tone={cls.tone} size="md" />
+          <View style={panelStyles.cardInfo}>
+            <View style={panelStyles.nameRow}>
+              <Text variant="subtitle" weight="semibold" numberOfLines={1} style={panelStyles.nameText}>
+                {npc.nameFa}
+              </Text>
+              <Chip
+                icon={npc.isWorking ? 'checkmark-circle' : 'pause'}
+                label={npc.isWorking ? 'مشغول' : 'بیکار'}
+                tone={npc.isWorking ? 'jade' : 'neutral'}
+              />
             </View>
-            <Text variant="caption" color="secondary" style={{ color }}>
-              {cfg.nameFa} — سطح {npc.level}
+            <Text variant="caption" color="secondary">
+              {cfg.nameFa} — سطح {npc.level.toLocaleString('fa-IR')}
             </Text>
             {/* XP Row */}
-            <View style={npcCardStyles.xpRow}>
-              <XpBar xp={npc.experience} level={npc.level} color={color} />
-              <Text variant="caption" color="muted" style={npcCardStyles.xpLabel}>
+            <View style={panelStyles.xpRow}>
+              <ProgressBar
+                percent={xpPct}
+                tone={cls.tone}
+                height={5}
+                delay={Motion.stagger(index)}
+                sheen={false}
+                style={panelStyles.xpBar}
+              />
+              <Text variant="caption" color="muted" style={panelStyles.tabular}>
                 {npc.experience.toLocaleString('fa-IR')} XP
               </Text>
             </View>
@@ -122,105 +178,48 @@ const NpcCard: React.FC<{
 
         {/* Specialties */}
         {npc.specialties.length > 0 && (
-          <View style={npcCardStyles.specialtiesRow}>
+          <View style={panelStyles.specialtiesRow}>
             {npc.specialties.map((s) => (
-              <View key={s} style={npcCardStyles.specialtyChip}>
-                <Text variant="caption" color="secondary">🔬 {s}</Text>
-              </View>
+              <Chip key={s} label={s} tone="steel" />
             ))}
           </View>
         )}
 
-        {/* Status + Actions */}
-        <View style={npcCardStyles.actionsRow}>
-          <View style={[npcCardStyles.statusChip, { borderColor: npc.isWorking ? '#10B98140' : '#6B728040' }]}>
-            <Text variant="caption" color="secondary">
-              {npc.isWorking ? '🟢 مشغول' : '⚪ بیکار'}
-            </Text>
-          </View>
-
+        {/* Actions */}
+        <View style={panelStyles.actionsRow}>
           {!npc.isWorking && (
-            <TouchableOpacity
-              style={[npcCardStyles.actionBtn, { borderColor: `${color}50`, backgroundColor: `${color}15` }]}
+            <Button
+              label="تخصیص"
+              variant="secondary"
+              size="sm"
+              icon={<Ionicons name="location" size={14} color={c.text.brand} />}
               onPress={() => onAssign(npc)}
-              accessibilityLabel={`تخصیص کارگر ${npc.nameFa}`}
-            >
-              <Text variant="caption" weight="medium" color="primary">📍 تخصیص</Text>
-            </TouchableOpacity>
+              style={panelStyles.actionBtn}
+            />
           )}
-
-          <TouchableOpacity
-            style={[npcCardStyles.actionBtn, { borderColor: '#6C63FF50', backgroundColor: '#6C63FF15' }]}
+          <Button
+            label="آموزش"
+            variant="ghost"
+            size="sm"
+            icon={<Ionicons name="school" size={14} color={c.text.secondary} />}
             onPress={() => onTrain(npc)}
-            accessibilityLabel={`آموزش کارگر ${npc.nameFa}`}
-          >
-            <Text variant="caption" weight="medium" color="primary">🎓 آموزش</Text>
-          </TouchableOpacity>
-
+            style={panelStyles.actionBtn}
+          />
           {npc.isWorking && (
-            <TouchableOpacity
-              style={[npcCardStyles.actionBtn, { borderColor: '#EF444450', backgroundColor: '#EF444415' }]}
+            <Button
+              label="لغو"
+              variant="danger"
+              size="sm"
+              icon={<Ionicons name="close-circle" size={14} color={c.text.inverse} />}
               onPress={() => onRevoke(npc)}
-              accessibilityLabel={`لغو تخصیص کارگر ${npc.nameFa}`}
-            >
-              <Text variant="caption" weight="medium" color="primary">🚫 لغو</Text>
-            </TouchableOpacity>
+              style={panelStyles.actionBtn}
+            />
           )}
         </View>
-      </View>
+      </Card>
     </Animated.View>
   );
 };
-
-const npcCardStyles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    padding: 14,
-    gap: 10,
-    marginBottom: 10,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  header: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  classBadge: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emoji: { fontSize: 24 },
-  info: { flex: 1, gap: 4 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  xpRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
-  xpLabel: { fontSize: 10, minWidth: 60, textAlign: 'right' },
-  specialtiesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  specialtyChip: {
-    backgroundColor: 'rgba(139,92,246,0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(139,92,246,0.3)',
-  },
-  actionsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
-  statusChip: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  actionBtn: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-  },
-});
 
 // ─── Request Card ─────────────────────────────────────────────────────────────
 
@@ -230,63 +229,37 @@ const RequestCard: React.FC<{
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
 }> = ({ assignment, index, onApprove, onReject }) => (
-  <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
-    <View style={reqStyles.card}>
-      <LinearGradient colors={['rgba(245,158,11,0.12)', 'transparent']} style={StyleSheet.absoluteFill} />
-      <View style={reqStyles.topRow}>
-        <Text variant="body" weight="bold" color="primary">📨 درخواست تخصیص کارگر</Text>
-        <View style={reqStyles.pendingChip}>
-          <Text variant="caption" color="secondary">در انتظار</Text>
+  <Animated.View entering={FadeInDown.delay(Motion.stagger(index)).duration(Motion.durations.slow)}>
+    <Card sheen>
+      <View style={panelStyles.cardHeader}>
+        <IconPlate name="mail" tone="ember" size="md" />
+        <View style={panelStyles.cardInfo}>
+          <Text variant="body" weight="semibold">درخواست تخصیص کارگر</Text>
+          <Text variant="caption" color="secondary" numberOfLines={2}>
+            از: {assignment.requesterUsername ?? 'بازیکن'} — برای: {assignment.businessAssetType ?? 'کسب‌وکار'}
+          </Text>
         </View>
+        <Chip icon="time" label="در انتظار" tone="ember" />
       </View>
-      <Text variant="caption" color="secondary">
-        از: {assignment.requesterUsername ?? 'بازیکن'} — برای: {assignment.businessAssetType ?? 'کسب‌وکار'}
-      </Text>
-      <View style={reqStyles.btnRow}>
-        <TouchableOpacity
-          style={[reqStyles.btn, reqStyles.approveBtn]}
+      <View style={panelStyles.btnRow}>
+        <Button
+          label="تأیید"
+          variant="primary"
+          size="sm"
           onPress={() => onApprove(assignment.id)}
-          accessibilityLabel="تأیید درخواست"
-        >
-          <Text variant="caption" weight="bold" color="primary">✅ تأیید</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[reqStyles.btn, reqStyles.rejectBtn]}
+          style={panelStyles.flexBtn}
+        />
+        <Button
+          label="رد"
+          variant="ghost"
+          size="sm"
           onPress={() => onReject(assignment.id)}
-          accessibilityLabel="رد درخواست"
-        >
-          <Text variant="caption" weight="bold" color="primary">❌ رد</Text>
-        </TouchableOpacity>
+          style={panelStyles.flexBtn}
+        />
       </View>
-    </View>
+    </Card>
   </Animated.View>
 );
-
-const reqStyles = StyleSheet.create({
-  card: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
-    overflow: 'hidden',
-    padding: 14,
-    gap: 8,
-    marginBottom: 10,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pendingChip: {
-    borderRadius: 6,
-    backgroundColor: 'rgba(245,158,11,0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.4)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  btnRow: { flexDirection: 'row', gap: 10 },
-  btn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', borderWidth: 1 },
-  approveBtn: { backgroundColor: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.4)' },
-  rejectBtn: { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.4)' },
-});
 
 // ─── Housing Card ─────────────────────────────────────────────────────────────
 
@@ -297,73 +270,52 @@ const HousingCard: React.FC<{
   residents?: number;
   index: number;
 }> = ({ type, count, capacity = 0, residents = 0, index }) => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const isMain = type === 'main_house';
-  const color = isMain ? '#F59E0B' : '#6C63FF';
   const capacityPct = capacity > 0 ? Math.min((residents / capacity) * 100, 100) : 0;
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 80).duration(400)}>
-      <View style={[housingStyles.card, { borderColor: `${color}40` }]}>
-        <LinearGradient colors={[`${color}15`, 'transparent']} style={StyleSheet.absoluteFill} />
-        <View style={housingStyles.header}>
-          <Text variant="display" color="primary" style={housingStyles.icon}>
-            {isMain ? '🏡' : '🏘️'}
-          </Text>
-          <View style={housingStyles.info}>
-            <Text variant="body" weight="bold" color="primary">
+    <Animated.View entering={FadeInDown.delay(Motion.stagger(index)).duration(Motion.durations.slow)}>
+      <Card sheen>
+        <View style={panelStyles.cardHeader}>
+          <IconPlate name={isMain ? 'home' : 'bed'} tone={isMain ? 'brass' : 'steel'} size="md" />
+          <View style={panelStyles.cardInfo}>
+            <Text variant="body" weight="semibold">
               {isMain ? 'خانه اصلی' : 'خوابگاه کارگران'}
             </Text>
-            <Text variant="caption" color="secondary">{count} سازه</Text>
+            <Text variant="caption" color="secondary">{count.toLocaleString('fa-IR')} سازه</Text>
             {!isMain && capacity > 0 && (
-              <>
-                <View style={housingStyles.capRow}>
-                  <View style={housingStyles.capTrack}>
-                    <View style={[housingStyles.capFill, { width: `${capacityPct}%`, backgroundColor: color }]} />
-                  </View>
-                  <Text variant="caption" color="secondary">{residents}/{capacity}</Text>
-                </View>
-              </>
+              <View style={panelStyles.xpRow}>
+                <ProgressBar
+                  percent={capacityPct}
+                  tone="steel"
+                  height={5}
+                  delay={Motion.stagger(index)}
+                  sheen={false}
+                  style={panelStyles.xpBar}
+                />
+                <Text variant="caption" color="secondary" style={panelStyles.tabular}>
+                  {residents.toLocaleString('fa-IR')}/{capacity.toLocaleString('fa-IR')}
+                </Text>
+              </View>
             )}
           </View>
         </View>
         {isMain && count === 0 && (
-          <View style={housingStyles.warningRow}>
-            <Text variant="caption" color="secondary">⚠️ برای استخدام کارگر، ابتدا خانه اصلی بسازید</Text>
+          <View style={styles.warningRow}>
+            <Ionicons name="warning" size={13} color={c.ember} />
+            <Text variant="caption" color="secondary">
+              برای استخدام کارگر، ابتدا خانه اصلی بسازید
+            </Text>
           </View>
         )}
-      </View>
+      </Card>
     </Animated.View>
   );
 };
 
-const housingStyles = StyleSheet.create({
-  card: {
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: 'hidden',
-    padding: 14,
-    gap: 8,
-    marginBottom: 10,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  header: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  icon: { fontSize: 28 },
-  info: { flex: 1, gap: 4 },
-  capRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  capTrack: { flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' },
-  capFill: { height: '100%', borderRadius: 4 },
-  warningRow: {
-    backgroundColor: 'rgba(245,158,11,0.1)',
-    borderRadius: 8,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
-  },
-});
-
-// ─── Hire NPC Modal ────────────────────────────────────────────────────────────
-
-const HIRE_CLASSES: NpcClass[] = ['worker', 'foreman', 'engineer', 'doctor', 'specialist', 'physician'];
+// ─── Hire NPC Sheet ───────────────────────────────────────────────────────────
 
 const HireModal: React.FC<{
   visible: boolean;
@@ -371,6 +323,8 @@ const HireModal: React.FC<{
   onHire: (cls: NpcClass, name: string, homeId: string | null) => Promise<void>;
   residentHouses: Array<{ id: string; areaM2: number; floorCount: number; level: number; currentWorkerCount: number; maxCapacity: number }>;
 }> = ({ visible, onClose, onHire, residentHouses }) => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [selectedClass, setSelectedClass] = useState<NpcClass>('worker');
   const [name, setName] = useState('');
   const [selectedHome, setSelectedHome] = useState<string | null>(null);
@@ -386,166 +340,110 @@ const HireModal: React.FC<{
     onClose();
   };
 
-  if (!visible) return null;
-
   return (
-    <View style={hireStyles.overlay}>
-      <View style={hireStyles.sheet}>
-        <LinearGradient colors={['#0D1533', '#080C1A']} style={StyleSheet.absoluteFill} />
-
-        <Text variant="title" weight="bold" color="primary">👷 استخدام کارگر جدید</Text>
-
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title="استخدام کارگر جدید"
+      subtitle="کلاس، نام و خوابگاه کارگر را انتخاب کنید"
+      footer={
+        <View style={panelStyles.btnRow}>
+          <Button label="انصراف" variant="ghost" onPress={onClose} style={panelStyles.flexBtn} />
+          <Button
+            label={`استخدام — ${cfg.hiringCost.toLocaleString('fa-IR')}`}
+            variant="primary"
+            loading={loading}
+            onPress={handleHire}
+            style={panelStyles.hireBtn}
+          />
+        </View>
+      }
+    >
+      <View style={panelStyles.sheetBody}>
         {/* Class Selector */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={hireStyles.classList}>
+        <Text variant="label" color="secondary">کلاس کارگر</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={panelStyles.classList}>
           {HIRE_CLASSES.map((cls) => {
-            const c = NPC_CLASS_CONFIG[cls];
+            const cc = NPC_CLASS_CONFIG[cls];
+            const st = CLASS_STYLE[cls];
             const isActive = selectedClass === cls;
             return (
-              <TouchableOpacity
+              <TouchableScale
                 key={cls}
-                style={[hireStyles.classChip, isActive && { borderColor: CLASS_COLORS[cls], backgroundColor: `${CLASS_COLORS[cls]}25` }]}
                 onPress={() => setSelectedClass(cls)}
-                accessibilityLabel={c.nameFa}
+                accessibilityRole="button"
+                accessibilityLabel={cc.nameFa}
+                style={[styles.classChip, isActive && styles.classChipActive]}
               >
-                <Text variant="body" color="primary">{c.emoji}</Text>
-                <Text variant="caption" weight={isActive ? 'bold' : 'regular'} color={isActive ? 'brand' : 'secondary'}>
-                  {c.nameFa}
+                <IconPlate name={st.icon} tone={st.tone} size="sm" bordered={false} />
+                <Text variant="caption" weight={isActive ? 'semibold' : 'medium'} color={isActive ? 'brand' : 'primary'}>
+                  {cc.nameFa}
                 </Text>
-                <Text variant="caption" color="muted">💰 {c.hiringCost.toLocaleString('fa-IR')}</Text>
-              </TouchableOpacity>
+                <View style={panelStyles.costRow}>
+                  <Ionicons name="cash" size={11} color={c.brass[400]} />
+                  <Text variant="caption" color="muted" style={panelStyles.tabular}>
+                    {cc.hiringCost.toLocaleString('fa-IR')}
+                  </Text>
+                </View>
+              </TouchableScale>
             );
           })}
         </ScrollView>
 
         {/* Name Input */}
-        <TextInput
-          style={hireStyles.input}
+        <Input
+          label="نام کارگر"
+          icon="person"
           value={name}
           onChangeText={setName}
           placeholder="نام کارگر را وارد کنید..."
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          textAlign="right"
         />
 
         {/* Home Selector */}
         {residentHouses.length > 0 && (
-          <View style={hireStyles.homeSection}>
-            <Text variant="caption" color="secondary">انتخاب خوابگاه:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={hireStyles.homeList}>
+          <View style={panelStyles.homeSection}>
+            <Text variant="label" color="secondary">انتخاب خوابگاه</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={panelStyles.classList}>
               {residentHouses.map((h) => {
                 const cap = h.maxCapacity;
                 const isFull = h.currentWorkerCount >= cap;
                 const isSelected = selectedHome === h.id;
                 return (
-                  <TouchableOpacity
+                  <TouchableScale
                     key={h.id}
-                    style={[hireStyles.homeChip, isSelected && hireStyles.homeChipSelected, isFull && hireStyles.homeChipFull]}
                     onPress={() => !isFull && setSelectedHome(isSelected ? null : h.id)}
                     disabled={isFull}
+                    accessibilityRole="button"
                     accessibilityLabel={`خوابگاه ظرفیت ${cap}`}
+                    style={[
+                      styles.homeChip,
+                      isSelected && styles.homeChipSelected,
+                      isFull && panelStyles.homeChipFull,
+                    ]}
                   >
-                    <Text variant="caption" color="primary">🏘️ {cap} نفر</Text>
-                    <Text variant="caption" color="secondary">{h.currentWorkerCount}/{cap}</Text>
-                  </TouchableOpacity>
+                    <IconPlate name="bed" tone={isSelected ? 'brass' : 'steel'} size="xxs" bordered={false} />
+                    <Text variant="caption" color="primary" style={panelStyles.tabular}>
+                      {cap.toLocaleString('fa-IR')} نفر
+                    </Text>
+                    <Text variant="caption" color="muted" style={panelStyles.tabular}>
+                      {h.currentWorkerCount.toLocaleString('fa-IR')}/{cap.toLocaleString('fa-IR')}
+                    </Text>
+                  </TouchableScale>
                 );
               })}
             </ScrollView>
           </View>
         )}
-
-        {/* Action Buttons */}
-        <View style={hireStyles.btnRow}>
-          <TouchableOpacity style={hireStyles.cancelBtn} onPress={onClose}>
-            <Text variant="body" color="secondary">انصراف</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={hireStyles.hireBtn} onPress={handleHire} disabled={loading}>
-            <LinearGradient
-              colors={[CLASS_COLORS[selectedClass], '#6C63FF']}
-              style={hireStyles.hireBtnGradient}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text variant="body" weight="bold" color="inverse">
-                    {cfg.emoji} استخدام — {cfg.hiringCost.toLocaleString('fa-IR')} 💰
-                  </Text>
-              }
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
       </View>
-    </View>
+    </Sheet>
   );
 };
-
-const hireStyles = StyleSheet.create({
-  overlay: { ...(StyleSheet.absoluteFill as any), justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 100 },
-  sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: 'hidden',
-    padding: 24,
-    paddingBottom: 48,
-    gap: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.3)',
-  },
-  classList: { flexDirection: 'row' },
-  classChip: {
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    marginRight: 8,
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.3)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontFamily: 'VazirmatnMedium',
-    textAlign: 'right',
-  },
-  homeSection: { gap: 8 },
-  homeList: { flexDirection: 'row' },
-  homeChip: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.3)',
-    marginRight: 8,
-    gap: 2,
-    backgroundColor: 'rgba(108,99,255,0.1)',
-  },
-  homeChipSelected: { borderColor: '#6C63FF', backgroundColor: 'rgba(108,99,255,0.25)' },
-  homeChipFull: { opacity: 0.4 },
-  btnRow: { flexDirection: 'row', gap: 12 },
-  cancelBtn: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  hireBtn: { flex: 2, borderRadius: 12, overflow: 'hidden', elevation: 6 },
-  hireBtnGradient: { paddingVertical: 14, alignItems: 'center' },
-});
 
 // ─── WorkersPanel ──────────────────────────────────────────────────────────────
 
 export const WorkersPanel: React.FC<WorkersPanelProps> = ({ userId }) => {
   const insets = useSafeAreaInsets();
+  const { colors: c } = useTheme();
   const [segment, setSegment] = useState<WorkerSegment>('my_workers');
   const [showHireModal, setShowHireModal] = useState(false);
 
@@ -609,106 +507,70 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ userId }) => {
 
   const totalCapacity = residentHouses.reduce((s, h) => s + (h.maxCapacity || 0), 0);
   const totalResidents = residentHouses.reduce((s, h) => s + (h.currentWorkerCount || 0), 0);
-
-  // ── Segment Tabs ──────────────────────────────────────────────────────────
-
-  const SEGMENTS: Array<{ key: WorkerSegment; label: string; badge?: number }> = [
-    { key: 'my_workers', label: '👷 کارگران', badge: npcList.length },
-    { key: 'requests',   label: '📨 درخواست‌ها', badge: pendingRequests.length },
-    { key: 'housing',    label: '🏠 مسکن' },
-  ];
+  const workingCount = npcList.filter((n) => n.isWorking).length;
+  const idleCount = npcList.length - workingCount;
 
   return (
     <View style={panelStyles.root}>
-      {/* Segment Pills */}
-      <View style={panelStyles.segmentRow}>
-        {SEGMENTS.map(({ key, label, badge }) => {
-          const active = segment === key;
-          return (
-            <TouchableOpacity
-              key={key}
-              style={[panelStyles.segPill, active && panelStyles.segPillActive]}
-              onPress={() => setSegment(key)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-            >
-              <Text
-                variant="caption"
-                weight={active ? 'bold' : 'regular'}
-                color={active ? 'brand' : 'secondary'}
-              >
-                {label}
-              </Text>
-              {!!badge && badge > 0 && (
-                <View style={panelStyles.badge}>
-                  <Text variant="caption" weight="bold" color="primary" style={panelStyles.badgeText}>
-                    {badge}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
+      {/* Segment Tabs */}
+      <View style={panelStyles.tabsWrap}>
+        <SegmentedTabs
+          items={[
+            { key: 'my_workers', label: 'کارگران' },
+            { key: 'requests', label: 'درخواست‌ها' },
+            { key: 'housing', label: 'مسکن' },
+          ]}
+          value={segment}
+          onChange={setSegment}
+        />
       </View>
 
       {/* Content */}
       <ScrollView
-        contentContainerStyle={panelStyles.content}
+        contentContainerStyle={[panelStyles.content, { paddingBottom: insets.bottom + 110 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ── My Workers ── */}
         {segment === 'my_workers' && (
           <>
+            <SectionTitle
+              kicker="نیروی انسانی"
+              title="کارگران من"
+              trailing={
+                <Text variant="caption" color="secondary">
+                  {npcList.length.toLocaleString('fa-IR')} نفر
+                </Text>
+              }
+            />
+
             {/* Summary row */}
             <View style={panelStyles.summaryRow}>
-              <View style={panelStyles.summaryCard}>
-                <Text variant="body" weight="bold" color="primary">{npcList.length}</Text>
-                <Text variant="caption" color="secondary">کل کارگران</Text>
-              </View>
-              <View style={panelStyles.summaryCard}>
-                <Text variant="body" weight="bold" color="primary" style={{ color: '#10B981' }}>
-                  {npcList.filter((n) => n.isWorking).length}
-                </Text>
-                <Text variant="caption" color="secondary">مشغول</Text>
-              </View>
-              <View style={panelStyles.summaryCard}>
-                <Text variant="body" weight="bold" color="primary" style={{ color: '#6B7280' }}>
-                  {npcList.filter((n) => !n.isWorking).length}
-                </Text>
-                <Text variant="caption" color="secondary">بیکار</Text>
-              </View>
+              <PanelStat index={0} icon="people" tone="steel" value={npcList.length} label="کل کارگران" />
+              <PanelStat index={1} icon="checkmark-circle" tone="jade" value={workingCount} label="مشغول" />
+              <PanelStat index={2} icon="pause" tone="neutral" value={idleCount} label="بیکار" />
             </View>
 
-            {/* Hire Button */}
-            <TouchableOpacity
-              style={panelStyles.hireBtn}
+            {/* Hire — the one primary action */}
+            <Button
+              label="استخدام کارگر جدید"
+              variant="primary"
+              icon={<Ionicons name="person-add" size={16} color={c.text.inverse} />}
               onPress={() => setShowHireModal(true)}
-              accessibilityLabel="استخدام کارگر جدید"
-            >
-              <LinearGradient
-                colors={['#6C63FF', '#A78BFA']}
-                style={panelStyles.hireBtnGradient}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              >
-                <Text variant="body" weight="bold" color="inverse">+ استخدام کارگر جدید</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              fullWidth
+            />
 
-            {isLoading && <ActivityIndicator color="#6C63FF" style={{ marginTop: 20 }} />}
+            {isLoading && <ActivityIndicator color={c.brass[400]} style={panelStyles.loader} />}
 
             {!isLoading && npcList.length === 0 && (
-              <View style={panelStyles.emptyState}>
-                <Text variant="display" color="brand" style={{ fontSize: 48 }}>👷</Text>
-                <Text variant="heading" weight="bold" color="primary">هیچ کارگری ندارید</Text>
-                {mainHouses.length === 0 && (
-                  <Text variant="body" color="secondary" style={panelStyles.emptyHint}>
-                    ⚠️ ابتدا خانه اصلی بسازید
-                  </Text>
-                )}
-                <Text variant="body" color="secondary" style={panelStyles.emptyHint}>
-                  کارگران در کسب‌وکارهای شما فعالیت می‌کنند و حتی در آفلاین بازی، امتیاز فعالیت می‌سازند.
-                </Text>
-              </View>
+              <EmptyState
+                icon="people"
+                title="هیچ کارگری ندارید"
+                body={
+                  mainHouses.length === 0
+                    ? 'ابتدا خانه اصلی بسازید. کارگران در کسب‌وکارهای شما فعالیت می‌کنند و حتی در آفلاین بازی، امتیاز فعالیت می‌سازند.'
+                    : 'کارگران در کسب‌وکارهای شما فعالیت می‌کنند و حتی در آفلاین بازی، امتیاز فعالیت می‌سازند.'
+                }
+              />
             )}
 
             {npcList.map((npc, i) => (
@@ -727,14 +589,22 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ userId }) => {
         {/* ── Pending Requests ── */}
         {segment === 'requests' && (
           <>
-            {pendingRequests.length === 0 ? (
-              <View style={panelStyles.emptyState}>
-                <Text variant="display" color="brand" style={{ fontSize: 48 }}>📭</Text>
-                <Text variant="heading" weight="bold" color="primary">درخواستی ندارید</Text>
-                <Text variant="body" color="secondary" style={panelStyles.emptyHint}>
-                  وقتی بازیکنان دیگر کارگرشان را به کسب‌وکار شما تخصیص دهند، اینجا نمایش داده می‌شود.
+            <SectionTitle
+              kicker="تخصیص"
+              title="درخواست‌ها"
+              trailing={
+                <Text variant="caption" color="secondary">
+                  {pendingRequests.length.toLocaleString('fa-IR')} در انتظار
                 </Text>
-              </View>
+              }
+            />
+            {pendingRequests.length === 0 ? (
+              <EmptyState
+                icon="mail"
+                tone="steel"
+                title="درخواستی ندارید"
+                body="وقتی بازیکنان دیگر کارگرشان را به کسب‌وکار شما تخصیص دهند، اینجا نمایش داده می‌شود."
+              />
             ) : (
               pendingRequests.map((a, i) => (
                 <RequestCard
@@ -752,19 +622,26 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ userId }) => {
         {/* ── Housing ── */}
         {segment === 'housing' && (
           <>
-            <View style={panelStyles.housingStats}>
-              <View style={panelStyles.houseStat}>
-                <Text variant="title" weight="bold" color="primary">{mainHouses.length}</Text>
-                <Text variant="caption" color="secondary">خانه اصلی</Text>
-              </View>
-              <View style={panelStyles.houseStat}>
-                <Text variant="title" weight="bold" color="primary">{residentHouses.length}</Text>
-                <Text variant="caption" color="secondary">خوابگاه</Text>
-              </View>
-              <View style={panelStyles.houseStat}>
-                <Text variant="title" weight="bold" color="primary">{totalResidents}/{totalCapacity}</Text>
-                <Text variant="caption" color="secondary">ظرفیت</Text>
-              </View>
+            <SectionTitle
+              kicker="مسکن"
+              title="خانه و خوابگاه"
+              trailing={
+                <Text variant="caption" color="secondary" style={panelStyles.tabular}>
+                  {totalResidents.toLocaleString('fa-IR')}/{totalCapacity.toLocaleString('fa-IR')}
+                </Text>
+              }
+            />
+
+            <View style={panelStyles.summaryRow}>
+              <PanelStat index={0} icon="home" tone="brass" value={mainHouses.length} label="خانه اصلی" />
+              <PanelStat index={1} icon="bed" tone="steel" value={residentHouses.length} label="خوابگاه" />
+              <PanelStat
+                index={2}
+                icon="people"
+                tone="jade"
+                value={`${totalResidents.toLocaleString('fa-IR')}/${totalCapacity.toLocaleString('fa-IR')}`}
+                label="ظرفیت"
+              />
             </View>
 
             <HousingCard type="main_house" count={mainHouses.length} index={0} />
@@ -781,22 +658,23 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ userId }) => {
             ))}
 
             {residentHouses.length === 0 && mainHouses.length > 0 && (
-              <View style={panelStyles.infoBox}>
-                <Text variant="body" color="secondary">
-                  💡 خوابگاه کارگران را روی نقشه بسازید تا بتوانید کارگران بیشتری استخدام کنید.
-                </Text>
-                <Text variant="caption" color="muted" style={{ marginTop: 6 }}>
+              <Card sheen style={panelStyles.infoCard}>
+                <View style={panelStyles.infoHeader}>
+                  <IconPlate name="bulb" tone="jade" size="xxs" bordered={false} />
+                  <Text variant="body" color="secondary" style={panelStyles.infoText}>
+                    خوابگاه کارگران را روی نقشه بسازید تا بتوانید کارگران بیشتری استخدام کنید.
+                  </Text>
+                </View>
+                <Text variant="caption" color="muted">
                   ظرفیت خوابگاه = طبقه² × ضریب مساحت × ضریب طبقات
                 </Text>
-              </View>
+              </Card>
             )}
           </>
         )}
-
-        <View style={{ height: 80 }} />
       </ScrollView>
 
-      {/* Hire Modal */}
+      {/* Hire Sheet */}
       {showHireModal && (
         <HireModal
           visible={showHireModal}
@@ -804,7 +682,7 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ userId }) => {
           onHire={async (cls, name, homeId) => {
             const result = await hireNpc({ npcClass: cls, nameFa: name, homeAssetId: homeId });
             if (result) {
-              Alert.alert('✅ موفق', `کارگر "${result.nameFa}" استخدام شد!`);
+              Alert.alert('موفق', `کارگر "${result.nameFa}" استخدام شد!`);
             }
           }}
           residentHouses={residentHouses.map((h) => ({
@@ -821,89 +699,164 @@ export const WorkersPanel: React.FC<WorkersPanelProps> = ({ userId }) => {
   );
 };
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
+/** Tinted + composed styles (chips carry geometry too) — useMemo(makeStyles(c)). */
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    warningRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      backgroundColor: `${c.ember}14`,
+      borderWidth: 1,
+      borderColor: `${c.ember}3D`,
+      borderRadius: 8,
+      padding: Spacing.sm + 2,
+    },
+    classChip: {
+      alignItems: 'center',
+      gap: Spacing.xs,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm + 2,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.border.default,
+      backgroundColor: c.ink[600],
+    },
+    classChipActive: {
+      borderColor: c.brass[500],
+      backgroundColor: `${c.brass[400]}1F`,
+    },
+    homeChip: {
+      alignItems: 'center',
+      gap: Spacing.xxs,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: c.border.default,
+      backgroundColor: c.ink[600],
+    },
+    homeChipSelected: {
+      borderColor: c.brass[500],
+      backgroundColor: `${c.brass[400]}1F`,
+    },
+  });
+
+/** Geometry-only styles — mode-independent, safe at module scope. */
 const panelStyles = StyleSheet.create({
-  root: { flex: 1 },
-  segmentRow: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 10,
-    gap: 8,
-  },
-  segPill: {
+  root: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    gap: 4,
   },
-  segPillActive: {
-    borderColor: 'rgba(108,99,255,0.5)',
-    backgroundColor: 'rgba(108,99,255,0.15)',
+  tabsWrap: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
   },
-  badge: {
-    backgroundColor: '#EF4444',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
+  content: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    gap: Spacing.md,
   },
-  badgeText: { fontSize: 10, lineHeight: 14 },
-  content: { paddingHorizontal: 16, paddingBottom: 32, gap: 0 },
   summaryRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
+    gap: Spacing.sm,
   },
-  summaryCard: {
+  statCell: {
     flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: 12,
+  },
+  statCard: {
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    alignItems: 'flex-start',
+  },
+  cardInfo: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  nameText: {
+    flexShrink: 1,
+  },
+  xpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  xpBar: {
+    flex: 1,
+  },
+  specialtiesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  actionBtn: {
+    flexGrow: 1,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  flexBtn: {
+    flex: 1,
   },
   hireBtn: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 14,
-    elevation: 6,
+    flex: 2,
   },
-  hireBtnGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
+  infoCard: {
+    gap: Spacing.sm,
   },
-  emptyState: { alignItems: 'center', paddingVertical: 48, gap: 10 },
-  emptyHint: { textAlign: 'center', lineHeight: 22, marginTop: 4 },
-  housingStats: {
+  infoHeader: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
   },
-  houseStat: {
+  infoText: {
     flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: 12,
-    alignItems: 'center',
-    gap: 4,
   },
-  infoBox: {
-    backgroundColor: 'rgba(108,99,255,0.1)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(108,99,255,0.25)',
-    padding: 14,
-    marginTop: 6,
+  loader: {
+    marginTop: Spacing.xl,
+  },
+  sheetBody: {
+    gap: Spacing.lg,
+  },
+  classList: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingRight: Spacing.xxs,
+  },
+  costRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xxs,
+  },
+  homeSection: {
+    gap: Spacing.sm,
+  },
+  homeChipFull: {
+    opacity: 0.4,
+  },
+  tabular: {
+    fontVariant: ['tabular-nums'],
   },
 });
+
+export default WorkersPanel;

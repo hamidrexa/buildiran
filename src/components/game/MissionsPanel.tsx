@@ -1,84 +1,98 @@
 /**
- * BuildIran — MissionsPanel
- * Full-screen bottom sheet or modal for viewing and claiming missions.
- * Tabs: Daily, Weekly, Achievements, Story, Events, Location.
+ * BuildIran — MissionsPanel (Gentleman Neon, v2)
+ * «ماموریت‌ها» bottom sheet. Sections by status: claimable / active /
+ * completed / expired, each with a SectionTitle and staggered MissionCards.
+ * Empty state, pull-to-refresh and claim flow unchanged.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
-  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
 import { Text } from '@/components/ui/Text';
-import { Colors, Radii, Spacing } from '@/theme';
+import { Sheet } from '@/components/ui/Sheet';
+import { SectionTitle } from '@/components/ui/SectionTitle';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Spacing } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
 import { useMissionStore } from '@/store/useMissionStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import type { MissionCategory } from '@/types/missions.types';
+import type { MissionSlot } from '@/types/missions.types';
 import fa from '@/i18n/fa';
 import { MissionCard } from './MissionCard';
-import { GameAudio } from '@/lib/audio';
-import { CAREER_PATHS } from '@/lib/careers';
-
-const { height: SCREEN_H } = Dimensions.get('window');
 
 interface MissionsPanelProps {
   visible: boolean;
   onClose: () => void;
 }
 
-const TABS: { key: MissionCategory; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'daily', icon: 'today' },
-  { key: 'weekly', icon: 'calendar' },
-  { key: 'story', icon: 'book' },
-  { key: 'achievement', icon: 'trophy' },
-  { key: 'event', icon: 'star' },
-  { key: 'location', icon: 'map' },
-];
+// ─── Sections (store statuses → display buckets) ──────────────────────────────
+
+type SectionKey = 'claimable' | 'active' | 'completed' | 'expired';
+
+const SECTION_ORDER: SectionKey[] = ['claimable', 'active', 'completed', 'expired'];
+
+const SECTION_TITLE: Record<SectionKey, string> = {
+  claimable: 'قابل دریافت',
+  active: 'در جریان',
+  completed: 'تکمیل شده',
+  expired: 'منقضی شده',
+};
+
+const STATUS_SECTION: Record<string, SectionKey> = {
+  completed: 'claimable', // objectives done — reward ready
+  active: 'active',
+  locked: 'active', // renders muted inside the card
+  claimed: 'completed',
+  expired: 'expired',
+};
 
 export function MissionsPanel({ visible, onClose }: MissionsPanelProps) {
+  const { colors: c } = useTheme();
   const player = usePlayerStore((s) => s.player);
-  const { slots, isLoading, refresh, claimReward } = useMissionStore();
-  const [activeTab, setActiveTab] = useState<MissionCategory>('daily');
+  const slots = useMissionStore((s) => s.slots);
+  const isLoading = useMissionStore((s) => s.isLoading);
+  const claimReward = useMissionStore((s) => s.claimReward);
+  const refresh = useMissionStore((s) => s.refresh);
   const [claimingIds, setClaimingIds] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
-  const careerTheme = player ? CAREER_PATHS[player.careerPath] || CAREER_PATHS.citizen : CAREER_PATHS.citizen;
 
-  // Filter and sort slots for current tab
-  const tabSlots = useMemo(() => {
-    const arr = Object.values(slots).filter(
-      (s) => s.definition?.category === activeTab
-    );
+  const allSlots = useMemo(() => Object.values(slots), [slots]);
 
-    // Sort: claimable first, then active, then locked, then claimed, then expired
-    const statusWeight: Record<string, number> = {
-      completed: 1,
-      active: 2,
-      locked: 3,
-      claimed: 4,
-      expired: 5,
+  const sections = useMemo(() => {
+    const buckets: Record<SectionKey, MissionSlot[]> = {
+      claimable: [],
+      active: [],
+      completed: [],
+      expired: [],
     };
+    for (const slot of allSlots) {
+      const key = STATUS_SECTION[slot.status];
+      if (key) buckets[key].push(slot);
+    }
+    const byOrder = (a: MissionSlot, b: MissionSlot) =>
+      (a.definition?.sortOrder ?? 0) - (b.definition?.sortOrder ?? 0);
+    for (const key of SECTION_ORDER) buckets[key].sort(byOrder);
+    return buckets;
+  }, [allSlots]);
 
-    arr.sort((a, b) => {
-      const wA = statusWeight[a.status] ?? 99;
-      const wB = statusWeight[b.status] ?? 99;
-      if (wA !== wB) return wA - wB;
-      // Secondary sort: sortOrder from definition
-      const oA = a.definition?.sortOrder ?? 0;
-      const oB = b.definition?.sortOrder ?? 0;
-      return oA - oB;
-    });
+  // Continuous stagger index across all sections
+  const staggerIndex = useMemo(() => {
+    const map: Record<string, number> = {};
+    let i = 0;
+    for (const key of SECTION_ORDER) {
+      for (const slot of sections[key]) map[slot.id] = i++;
+    }
+    return map;
+  }, [sections]);
 
-    return arr;
-  }, [slots, activeTab]);
+  const isEmpty = allSlots.length === 0;
+  const doneCount = sections.completed.length + sections.claimable.length;
+  const summary = `${doneCount.toLocaleString('fa-IR')} از ${allSlots.length.toLocaleString('fa-IR')} تکمیل شده`;
 
   const handleClaim = async (slotId: string) => {
     setClaimingIds((prev) => new Set(prev).add(slotId));
@@ -97,217 +111,92 @@ export function MissionsPanel({ visible, onClose }: MissionsPanelProps) {
     setRefreshing(false);
   };
 
-  if (!visible) return null;
-
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
-        
-        <Animated.View entering={SlideInDown.springify()} style={styles.container}>
-          <LinearGradient
-            colors={[Colors.bg.tertiary, Colors.bg.secondary]}
-            style={styles.gradientBg}
-          >
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.headerTitle}>
-                <Text variant="title" weight="bold" color="primary">
-                  {fa.missions.badge} {fa.missions.title}
-                </Text>
-              </View>
-              <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                <Ionicons name="close" size={24} color={Colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Tabs */}
-            <View style={styles.tabsContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
-                {TABS.map((tab) => {
-                  const isActive = activeTab === tab.key;
-                  // Has un-claimed completed mission in this category?
-                  const hasClaimable = Object.values(slots).some(
-                    (s) => s.definition?.category === tab.key && s.status === 'completed'
-                  );
-                  
-                  const isStoryTab = tab.key === 'story';
-                  const tabColor = isActive ? Colors.brand.primary : Colors.text.secondary;
-                  const activeColor = isStoryTab ? careerTheme.color : Colors.brand.primary;
-
-                  return (
-                    <TouchableOpacity
-                      key={tab.key}
-                      style={[
-                        styles.tab, 
-                        isActive && styles.tabActive,
-                        isStoryTab && { borderColor: careerTheme.color, borderWidth: 1 }
-                      ]}
-                      onPress={() => {
-                        setActiveTab(tab.key);
-                        GameAudio.playTap();
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      {isStoryTab ? (
-                        <Text style={{ fontSize: 16 }}>{careerTheme.icon}</Text>
-                      ) : (
-                        <Ionicons
-                          name={isActive ? tab.icon : (`${tab.icon}-outline` as any)}
-                          size={18}
-                          color={isActive ? activeColor : Colors.text.secondary}
-                        />
-                      )}
-                      <Text
-                        variant="body"
-                        weight={isActive ? 'bold' : 'medium'}
-                        color={isActive ? 'brand' : 'secondary'}
-                        style={isStoryTab && isActive ? { color: careerTheme.color } : {}}
-                      >
-                        {(fa.missions.tabs as any)[tab.key]}
-                      </Text>
-                      {hasClaimable && <View style={styles.tabBadgeDot} />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* List */}
-            <ScrollView
-              style={styles.list}
-              contentContainerStyle={styles.listContent}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  tintColor={Colors.brand.primary}
-                  colors={[Colors.brand.primary]}
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title={fa.missions.title}
+      subtitle={isEmpty ? undefined : summary}
+      maxHeight={0.85}
+    >
+      <ScrollView
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={c.brass[400]}
+            colors={[c.brass[400]]}
+          />
+        }
+      >
+        {isLoading && !refreshing && isEmpty ? (
+          <View style={styles.centerBox}>
+            <ActivityIndicator size="large" color={c.brass[400]} />
+            <Text variant="body" color="secondary" style={styles.loadingText}>
+              {fa.missions.loading}
+            </Text>
+          </View>
+        ) : isEmpty ? (
+          <EmptyState
+            icon="flag"
+            tone="brass"
+            title="ماموریتی در دسترس نیست"
+            body={fa.missions.pullToRefresh}
+          />
+        ) : (
+          SECTION_ORDER.filter((key) => sections[key].length > 0).map((key) => (
+            <View key={key} style={styles.section}>
+              <SectionTitle
+                title={SECTION_TITLE[key]}
+                trailing={
+                  <Text variant="caption" color="muted" style={styles.sectionCount}>
+                    {sections[key].length.toLocaleString('fa-IR')}
+                  </Text>
+                }
+              />
+              {sections[key].map((slot) => (
+                <MissionCard
+                  key={slot.id}
+                  slot={slot}
+                  index={staggerIndex[slot.id] ?? 0}
+                  onClaim={handleClaim}
+                  isClaiming={claimingIds.has(slot.id)}
                 />
-              }
-            >
-              {isLoading && !refreshing && tabSlots.length === 0 ? (
-                <View style={styles.centerBox}>
-                  <ActivityIndicator size="large" color={Colors.brand.primary} />
-                  <Text variant="body" color="secondary" style={{ marginTop: Spacing.md }}>
-                    {fa.missions.loading}
-                  </Text>
-                </View>
-              ) : tabSlots.length === 0 ? (
-                <View style={styles.centerBox}>
-                  <Ionicons name="leaf-outline" size={48} color={Colors.text.muted} />
-                  <Text variant="body" color="muted" style={{ marginTop: Spacing.md, textAlign: 'center' }}>
-                    {fa.missions.empty}
-                  </Text>
-                  {activeTab === 'daily' && (
-                    <Text variant="caption" color="muted" style={{ marginTop: Spacing.sm, textAlign: 'center' }}>
-                      {fa.missions.emptyDaily}
-                    </Text>
-                  )}
-                  {activeTab === 'weekly' && (
-                    <Text variant="caption" color="muted" style={{ marginTop: Spacing.sm, textAlign: 'center' }}>
-                      {fa.missions.emptyWeekly}
-                    </Text>
-                  )}
-                </View>
-              ) : (
-                tabSlots.map((slot, i) => (
-                  <MissionCard
-                    key={slot.id}
-                    slot={slot}
-                    index={i}
-                    onClaim={handleClaim}
-                    isClaiming={claimingIds.has(slot.id)}
-                  />
-                ))
-              )}
-            </ScrollView>
-          </LinearGradient>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
+              ))}
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: Colors.bg.overlay,
-    justifyContent: 'flex-end',
-  },
-  container: {
-    height: SCREEN_H * 0.85,
-    borderTopLeftRadius: Radii.xl,
-    borderTopRightRadius: Radii.xl,
-    overflow: 'hidden',
-  },
-  gradientBg: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.subtle,
-  },
-  headerTitle: {
-    flex: 1,
-  },
-  closeBtn: {
-    padding: Spacing.xs,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: Radii.full,
-  },
-  tabsContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.subtle,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-  },
-  tabsScroll: {
+  list: {
     flexGrow: 0,
   },
-  tabsContent: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.xs,
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  tabActive: {
-    backgroundColor: 'rgba(212,160,23,0.1)',
-    borderColor: 'rgba(212,160,23,0.3)',
-  },
-  tabBadgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.semantic.error,
-    position: 'absolute',
-    top: 6,
-    right: 8,
-  },
-  list: {
-    flex: 1,
-  },
   listContent: {
-    padding: Spacing.md,
-    paddingBottom: Spacing['4xl'],
+    gap: Spacing.xl,
+    paddingBottom: Spacing.xs,
+  },
+  section: {
+    gap: Spacing.sm,
+  },
+  sectionCount: {
+    fontVariant: ['tabular-nums'],
   },
   centerBox: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing['4xl'],
-    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing['3xl'],
+  },
+  loadingText: {
+    marginTop: Spacing.md,
   },
 });
+
+export default MissionsPanel;

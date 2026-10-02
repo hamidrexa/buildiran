@@ -1,92 +1,97 @@
 /**
- * BuildIran — Login Screen (redesigned)
+ * BuildIran — Login Screen («Gentleman Neon» v2)
+ * Mode-aware ink/ivory canvas, blueprint dot-grid, one soft brass glow
+ * and the architect's arch mark. All auth logic unchanged.
  */
 
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
 import { Text } from "@/components/ui/Text";
 import { showAlert } from "@/lib/alert";
 import { GameAudio } from "@/lib/audio";
-import {
-    useFloatIn,
-    useGlowPulse,
-    useParticle,
-    useScalePop,
-    useShake,
-} from "@/lib/effects";
+import { useGlowPulse, useScalePop, useShake } from "@/lib/effects";
 import { supabase } from "@/lib/supabase";
+import { Motion, Spacing } from "@/theme";
+import { useTheme } from "@/theme/ThemeProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
-    ActivityIndicator,
     Dimensions,
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
-    TextInput,
-    TouchableOpacity,
     View,
 } from "react-native";
-import Animated, {
-    FadeIn,
-    FadeInDown,
-    FadeInUp,
-} from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
-const Particle: React.FC<{
-  index: number;
-  x: number;
-  size: number;
-  color: string;
-}> = ({ index, x, size, color }) => {
-  const { style } = useParticle(index);
+// ── Blueprint backdrop — sparse dot lattice + one soft brass glow ────────────
+const GRID_COLS = 8;
+const GRID_ROWS = 7;
+const GRID_DOTS = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => ({
+  start: ((i % GRID_COLS) + 0.5) * (SCREEN_W / GRID_COLS),
+  top: (Math.floor(i / GRID_COLS) + 0.5) * (SCREEN_H / GRID_ROWS),
+}));
+
+const AuthBackdrop: React.FC = () => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   return (
-    <Animated.View
-      style={[
-        particleStyles.particle,
-        {
-          left: x,
-          bottom: 0,
-          width: size,
-          height: size,
-          backgroundColor: color,
-          borderRadius: size / 2,
-        },
-        style,
-      ]}
-    />
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LinearGradient
+        colors={[`${c.brass[400]}0F`, "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.glow}
+      />
+      {GRID_DOTS.map((dot, i) => (
+        <View
+          key={i}
+          style={[styles.gridDot, { start: dot.start - 1, top: dot.top - 1 }]}
+        />
+      ))}
+    </View>
   );
 };
 
-const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
-  index: i,
-  x: Math.floor(Math.random() * (SCREEN_W - 10)),
-  size: Math.floor(2 + Math.random() * 6),
-  color: ["#6C63FF", "#FF6B6B", "#FFD93D", "#4ECDC4", "#A78BFA"][i % 5],
-}));
+// ── The architect's arch mark (same construction as LoadingScreen) ───────────
+const ArchMark: React.FC = () => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
+  return (
+    <View style={styles.markWrap}>
+      <View style={styles.markRing} />
+      <View style={styles.mark}>
+        <View style={styles.markLeftLeg} />
+        <View style={styles.markRightLeg} />
+        <View style={styles.markArch} />
+      </View>
+    </View>
+  );
+};
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState<"email" | "password" | null>(
-    null,
-  );
 
-  const passwordRef = useRef<TextInput>(null);
-
-  const logoGlow = useGlowPulse(0.6, 1.0);
-  const formFloat = useFloatIn(150);
+  // The ONE looping animation on this screen — subtle arch-mark glow.
+  const markGlow = useGlowPulse(0.7, 1.0);
   const buttonScale = useScalePop();
   const formShake = useShake();
 
@@ -137,7 +142,7 @@ export default function LoginScreen() {
       const { error: profileError } = await supabase
         .from("profiles")
         .upsert(
-          { id: user.id, username, avatar_color: "#6C63FF" },
+          { id: user.id, username, avatar_color: c.brass[400] },
           { onConflict: "id", ignoreDuplicates: true },
         );
       if (profileError) throw profileError;
@@ -201,7 +206,7 @@ export default function LoginScreen() {
                   await supabase.from("profiles").insert({
                     id: user.id,
                     username,
-                    avatar_color: "#6C63FF",
+                    avatar_color: c.brass[400],
                   });
                 }
               }
@@ -224,35 +229,30 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={["#080C1A", "#0D1533", "#110A2E"]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      <View style={[styles.orb, styles.orbTopLeft]} />
-      <View style={[styles.orb, styles.orbBottomRight]} />
-      <View style={[styles.orb, styles.orbCenter]} />
-      {PARTICLES.map((p) => (
-        <Particle key={p.index} {...p} />
-      ))}
+      <AuthBackdrop />
 
-      {/* Always-visible register CTA — new users see this immediately, no scrolling */}
+      {/* Quiet register switch — top corner */}
       <Animated.View
-        entering={FadeIn.duration(400)}
-        style={[styles.registerBar, { top: insets.top + 10 }]}
+        entering={FadeIn.duration(Motion.durations.normal)}
+        style={[styles.topBar, { top: insets.top + Spacing.sm + 2 }]}
       >
-        <Text variant="body" color="secondary">حساب ندارید؟</Text>
-        <TouchableOpacity
-          style={styles.registerBarBtn}
+        <Text variant="caption" color="secondary">حساب ندارید؟</Text>
+        <Button
+          label="ثبت‌نام رایگان"
+          variant="secondary"
+          size="sm"
           onPress={() => {
             GameAudio.playTap();
             router.push("/auth/register" as any);
           }}
-          activeOpacity={0.85}
-        >
-          <Text variant="body" weight="semibold" color="inverse">🚀 ثبت‌نام رایگان</Text>
-        </TouchableOpacity>
+          icon={
+            <Ionicons
+              name="person-add-outline"
+              size={13}
+              color={c.brass[400]}
+            />
+          }
+        />
       </Animated.View>
 
       <KeyboardAvoidingView
@@ -262,167 +262,163 @@ export default function LoginScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 64 },
+            {
+              paddingTop: insets.top + 64,
+              paddingBottom: insets.bottom + Spacing.xl,
+            },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Hero — the architect's mark */}
           <Animated.View
-            entering={FadeInDown.duration(600).springify()}
-            style={styles.logoSection}
+            entering={FadeInDown.duration(Motion.durations.slow)}
+            style={styles.hero}
           >
-            <Animated.View style={[styles.logoRing, logoGlow.style]}>
-              <LinearGradient
-                colors={["#6C63FF", "#A78BFA", "#EC4899"]}
-                style={styles.logoGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Text variant="display" color="brand">🏰</Text>
-              </LinearGradient>
+            <Animated.View style={markGlow.style}>
+              <ArchMark />
             </Animated.View>
-            <Animated.View entering={FadeInUp.delay(200).duration(600)}>
-              <Text variant="heading" weight="bold" color="primary">بیلد ایران</Text>
-              <Text variant="body" color="secondary">قلمرو خود را بسازید</Text>
-            </Animated.View>
+            <Text variant="heading" weight="extrabold" color="primary" center>
+              بیلد ایران
+            </Text>
+            <Text variant="body" color="secondary" center>
+              قلمرو خود را بسازید
+            </Text>
           </Animated.View>
 
+          {/* Form card */}
           <Animated.View
-            style={[styles.card, formFloat.style, formShake.style]}
+            entering={FadeInDown.delay(Motion.stagger(3)).duration(
+              Motion.durations.slow,
+            )}
+            style={[styles.cardWrapper, formShake.style]}
           >
-            <LinearGradient
-              colors={["rgba(255,255,255,0.08)", "rgba(255,255,255,0.03)"]}
-              style={StyleSheet.absoluteFill}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-            <Text variant="title" weight="semibold" color="primary">ورود به بازی</Text>
+            <Card cornerTicks elevated style={styles.card}>
+              <View style={styles.form}>
+                <Text variant="title" weight="semibold" color="primary" center>
+                  ورود به بازی
+                </Text>
 
-            <View style={styles.fieldGroup}>
-              <Text variant="label" color="secondary">ایمیل</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  focusedField === "email" && styles.inputWrapperFocused,
-                ]}
-              >
-                <Ionicons
-                  name="mail-outline"
-                  size={18}
-                  color="#6C63FF"
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
+                <Input
+                  label="ایمیل"
+                  icon="mail-outline"
                   placeholder="you@example.com"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
                   value={email}
                   onChangeText={setEmail}
-                  onFocus={() => setFocusedField("email")}
-                  onBlur={() => setFocusedField(null)}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
                   returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  textAlign="right"
                 />
-              </View>
-            </View>
 
-            <View style={styles.fieldGroup}>
-              <View style={styles.fieldLabelRow}>
-                <TouchableOpacity
-                  onPress={() => router.push("/auth/forgot-password" as any)}
-                >
-                  <Text variant="caption" color="brand">فراموشی رمز؟</Text>
-                </TouchableOpacity>
-                <Text variant="label" color="secondary">رمز عبور</Text>
-              </View>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  focusedField === "password" && styles.inputWrapperFocused,
-                ]}
-              >
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.inputIcon}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={18}
-                    color="#6C63FF"
+                <View style={styles.fieldGroup}>
+                  <View style={styles.fieldLabelRow}>
+                    <Pressable
+                      onPress={() =>
+                        router.push("/auth/forgot-password" as any)
+                      }
+                      hitSlop={{ top: 14, bottom: 14, left: 8, right: 8 }}
+                    >
+                      <Text variant="caption" color="brand">
+                        فراموشی رمز؟
+                      </Text>
+                    </Pressable>
+                    <Text variant="label" color="secondary">رمز عبور</Text>
+                  </View>
+                  <Input
+                    icon="lock-closed-outline"
+                    placeholder="••••••••"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoComplete="password"
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                    trailing={
+                      <Pressable
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          showPassword ? "پنهان کردن رمز" : "نمایش رمز"
+                        }
+                      >
+                        <Ionicons
+                          name={showPassword ? "eye-off-outline" : "eye-outline"}
+                          size={18}
+                          color={c.text.muted}
+                        />
+                      </Pressable>
+                    }
                   />
-                </TouchableOpacity>
-                <TextInput
-                  ref={passwordRef}
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => setFocusedField("password")}
-                  onBlur={() => setFocusedField(null)}
-                  secureTextEntry={!showPassword}
-                  autoComplete="password"
-                  returnKeyType="done"
-                  onSubmitEditing={handleLogin}
-                  textAlign="right"
+                </View>
+
+                <Animated.View style={buttonScale.style}>
+                  <Button
+                    label="وارد شوید"
+                    onPress={handleLogin}
+                    loading={loading}
+                    size="lg"
+                    fullWidth
+                  />
+                </Animated.View>
+
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text variant="caption" color="secondary">یا</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <Button
+                  label="ورود با حساب گوگل"
+                  onPress={handleGoogleLogin}
+                  disabled={loading}
+                  variant="secondary"
+                  fullWidth
+                  icon={
+                    <Ionicons
+                      name="logo-google"
+                      size={15}
+                      color={c.brass[400]}
+                    />
+                  }
                 />
+
+                <Button
+                  label="ورود به عنوان مهمان"
+                  onPress={handleGuestLogin}
+                  disabled={loading}
+                  variant="ghost"
+                  fullWidth
+                  icon={
+                    <Ionicons
+                      name="person-outline"
+                      size={15}
+                      color={c.text.secondary}
+                    />
+                  }
+                />
+
+                <View style={styles.registerRow}>
+                  <Pressable
+                    onPress={() => router.push("/auth/register" as any)}
+                    hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }}
+                  >
+                    <Text variant="body" weight="medium" color="brand">
+                      ثبت نام کنید
+                    </Text>
+                  </Pressable>
+                  <Text variant="body" color="secondary">حساب ندارید؟ </Text>
+                </View>
               </View>
-            </View>
-
-            <Animated.View style={buttonScale.style}>
-              <TouchableOpacity
-                style={styles.loginBtn}
-                onPress={handleLogin}
-                disabled={loading}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={["#6C63FF", "#A78BFA"]}
-                  style={styles.loginBtnGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text weight="semibold" color="inverse">⚔️ وارد شوید</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animated.View>
-
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text variant="caption" color="secondary">یا</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.googleBtn}
-              onPress={handleGoogleLogin}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="logo-google" size={18} color="#EA4335" />
-              <Text variant="body" weight="medium" color="primary">ورود با حساب گوگل</Text>
-            </TouchableOpacity>
-
-            <View style={styles.registerRow}>
-              <TouchableOpacity
-                onPress={() => router.push("/auth/register" as any)}
-              >
-                <Text variant="body" weight="medium" color="brand">ثبت نام کنید</Text>
-              </TouchableOpacity>
-              <Text variant="body" color="secondary">حساب ندارید؟ </Text>
-            </View>
+            </Card>
           </Animated.View>
 
-          <Animated.View entering={FadeIn.delay(800)} style={styles.footer}>
-            <Text variant="caption" color="muted">
+          <Animated.View
+            entering={FadeIn.delay(Motion.stagger(6))}
+            style={styles.footer}
+          >
+            <Text variant="caption" color="muted" center style={styles.footerText}>
               © 2026 BuildIran · تمام حقوق محفوظ است
             </Text>
           </Animated.View>
@@ -432,238 +428,158 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#080C1A", overflow: "hidden" }, // <-- fixes whitespace/scroll bug
-  flex: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    gap: 24,
-  },
+const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg.primary,
+      overflow: "hidden",
+    },
+    flex: { flex: 1 },
+    scrollContent: {
+      flexGrow: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: Spacing.xl,
+      gap: Spacing.xl,
+    },
 
-  registerBar: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    zIndex: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 10,
-  },
-  registerBarText: { color: "rgba(255,255,255,0.5)", fontSize: 12 },
-  registerBarBtn: {
-    borderRadius: 999,
-    overflow: "hidden",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: "rgba(236,72,153,0.18)",
-    borderWidth: 1,
-    borderColor: "#EC4899",
-  },
-  registerBarBtnText: { color: "#F9A8D4", fontSize: 13, fontWeight: "800" },
+    // Backdrop
+    glow: {
+      position: "absolute",
+      top: -140,
+      start: 0,
+      end: 0,
+      height: 460,
+    },
+    gridDot: {
+      position: "absolute",
+      width: 2,
+      height: 2,
+      borderRadius: 1,
+      backgroundColor: c.border.strong,
+      opacity: 0.35,
+    },
 
-  orb: { position: "absolute", borderRadius: 999, opacity: 0.18 },
-  orbTopLeft: {
-    width: 280,
-    height: 280,
-    backgroundColor: "#6C63FF",
-    top: -80,
-    left: -80,
-  },
-  orbBottomRight: {
-    width: 240,
-    height: 240,
-    backgroundColor: "#EC4899",
-    bottom: -60,
-    right: -60,
-  },
-  orbCenter: {
-    width: 180,
-    height: 180,
-    backgroundColor: "#FFD93D",
-    top: "40%",
-    left: "25%",
-    opacity: 0.08,
-  },
+    // Top corner switch
+    topBar: {
+      position: "absolute",
+      start: Spacing.lg,
+      end: Spacing.lg,
+      zIndex: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-start",
+      gap: Spacing.sm,
+    },
 
-  logoSection: { alignItems: "center", gap: 16 },
-  logoRing: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 2,
-    borderColor: "rgba(108, 99, 255, 0.6)",
-    shadowColor: "#6C63FF",
-    shadowRadius: 24,
-    shadowOpacity: 0.9,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 12,
-  },
-  logoGradient: {
-    flex: 1,
-    borderRadius: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoEmoji: { fontSize: 42 },
-  appName: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    textAlign: "center",
-    letterSpacing: 1,
-    textShadowColor: "#6C63FF",
-    textShadowRadius: 12,
-    textShadowOffset: { width: 0, height: 0 },
-  },
-  tagline: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.55)",
-    textAlign: "center",
-    marginTop: 4,
-  },
+    // Hero — arch mark
+    hero: {
+      alignItems: "center",
+      gap: Spacing.sm + 4,
+    },
+    markWrap: {
+      width: 92,
+      height: 92,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: Spacing.sm,
+    },
+    markRing: {
+      position: "absolute",
+      width: 92,
+      height: 92,
+      borderRadius: 46,
+      borderWidth: 1.5,
+      borderColor: c.brass[600],
+    },
+    mark: {
+      width: 52,
+      height: 56,
+      alignItems: "center",
+      justifyContent: "flex-end",
+    },
+    markLeftLeg: {
+      position: "absolute",
+      start: 5,
+      bottom: 0,
+      width: 8,
+      height: 34,
+      borderTopLeftRadius: 4,
+      backgroundColor: c.brass[400],
+      transform: [{ skewY: "-6deg" }],
+    },
+    markRightLeg: {
+      position: "absolute",
+      end: 5,
+      bottom: 0,
+      width: 8,
+      height: 34,
+      borderTopRightRadius: 4,
+      backgroundColor: c.brass[400],
+      transform: [{ skewY: "6deg" }],
+    },
+    markArch: {
+      position: "absolute",
+      top: 3,
+      alignSelf: "center",
+      width: 28,
+      height: 23,
+      borderTopLeftRadius: 14,
+      borderTopRightRadius: 14,
+      borderWidth: 5,
+      borderBottomWidth: 0,
+      borderColor: c.brass[300],
+    },
 
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "rgba(108, 99, 255, 0.25)",
-    padding: 24,
-    gap: 12,
-    overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    shadowColor: "#6C63FF",
-    shadowRadius: 30,
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
-  },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    textAlign: "center",
-    marginBottom: 6,
-  },
+    // Card
+    cardWrapper: {
+      width: "100%",
+      maxWidth: 420,
+    },
+    card: {
+      overflow: "hidden",
+    },
+    form: {
+      gap: Spacing.lg,
+    },
 
-  fieldGroup: { gap: 6 },
-  fieldLabel: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 12,
-    fontWeight: "600",
-    textAlign: "right",
-  },
-  fieldLabelRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  forgotText: { color: "#A78BFA", fontSize: 12 },
+    // Fields
+    fieldGroup: { gap: Spacing.xs + 2 },
+    fieldLabelRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    eyeBtn: {
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      marginStart: Spacing.xs,
+    },
 
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "rgba(108, 99, 255, 0.25)",
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === "ios" ? 14 : 10,
-    gap: 10,
-  },
-  inputWrapperFocused: {
-    borderColor: "#8B5CF6",
-    backgroundColor: "rgba(108,99,255,0.1)",
-  },
-  inputIcon: { width: 24, alignItems: "center" },
-  input: {
-    flex: 1,
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontFamily: "VazirmatnMedium",
-  },
+    // Divider
+    divider: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.md,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: c.border.default,
+    },
 
-  loginBtn: {
-    borderRadius: 14,
-    overflow: "hidden",
-    marginTop: 6,
-    shadowColor: "#6C63FF",
-    shadowRadius: 16,
-    shadowOpacity: 0.7,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  loginBtnGradient: {
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loginBtnText: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
+    registerRow: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: Spacing.xxs,
+    },
 
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 4,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.12)",
-  },
-  dividerText: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
-
-  googleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-    paddingVertical: 14,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  googleBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
-
-  guestBtn: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 14,
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  guestBtnText: { color: "rgba(255,255,255,0.7)", fontSize: 15 },
-
-  registerRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 4,
-  },
-  registerPrompt: { color: "rgba(255,255,255,0.45)", fontSize: 14 },
-  registerLink: {
-    color: "#A78BFA",
-    fontSize: 14,
-    fontWeight: "700",
-    textDecorationLine: "underline",
-  },
-
-  footer: { alignItems: "center" },
-  footerText: { color: "rgba(255,255,255,0.2)", fontSize: 11 },
-});
-
-const particleStyles = StyleSheet.create({
-  particle: { position: "absolute" },
-});
+    footer: { alignItems: "center" },
+    footerText: {
+      fontVariant: ["tabular-nums"],
+    },
+  });

@@ -1,5 +1,6 @@
 import { Text } from "@/components/ui/Text";
 import { supabase } from "@/lib/supabase";
+import { useTheme } from "@/theme/ThemeProvider";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -27,7 +28,7 @@ export default function AuthCallback() {
         await supabase
           .from("profiles")
           .upsert(
-            { id: user.id, username, avatar_color: "#6C63FF" },
+            { id: user.id, username, avatar_color: "#E2B64F" },
             { onConflict: "id", ignoreDuplicates: true },
           );
       }
@@ -78,9 +79,11 @@ export default function AuthCallback() {
     };
   }, []);
 
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color="#6C63FF" />
+    <View style={[styles.container, { backgroundColor: colors.bg.primary }]}>
+      <ActivityIndicator size="large" color={colors.brass[400]} />
       <Text variant="body" color="secondary">{errorMsg ?? "در حال ورود به بازی..."}</Text>
     </View>
   );
@@ -91,8 +94,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#080C1A",
     gap: 16,
   },
-  text: { color: "rgba(255,255,255,0.6)", fontSize: 13 },
 });

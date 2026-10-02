@@ -1,32 +1,44 @@
 /**
- * BuildIran — Player Profile Screen (redesigned)
- * Two clear concerns: Game (stats/resources) and Account (auth/security).
+ * BuildIran — Player Profile Screen («Gentleman Neon» v2)
+ * Two clear concerns: بازی (progression / stats / resources) and حساب کاربری (auth).
+ * Dual-theme via useTheme, motion spec, mobile-first thumb zone.
+ * All game logic, store calls and auth flows are unchanged — UI only.
  */
 
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Chip } from "@/components/ui/Chip";
+import { IconPlate } from "@/components/ui/IconPlate";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import { StatBar } from "@/components/ui/StatBar";
 import { Text } from "@/components/ui/Text";
 import { useAuth } from "@/hooks/useAuth";
 import t from "@/i18n";
 import { showAlert, showConfirm } from "@/lib/alert";
 import { GameAudio } from "@/lib/audio";
+import { getPlayerTier } from "@/lib/constants";
 import { supabase } from "@/lib/supabase";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { useAssetStore } from "@/store/useAssetStore";
-import { getPlayerTier } from "@/lib/constants";
-import { Colors, Radii, Spacing } from "@/theme";
+import { Motion, Radii, Spacing } from "@/theme";
+import { useTheme } from "@/theme/ThemeProvider";
+import type { Palette, ThemeMode } from "@/theme/palettes";
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
-    TouchableOpacity,
+    TextStyle,
     View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const lang = t();
@@ -34,8 +46,41 @@ WebBrowser.maybeCompleteAuthSession();
 
 type Tab = "game" | "account";
 
+/** fa-IR numerals — every number is a first-class citizen. */
+const fa = (n: number) => n.toLocaleString("fa-IR");
+const TABULAR: TextStyle = { fontVariant: ["tabular-nums"] };
+
+/** Tier ladder → IconPlate tone (tier hex comes from the palette). */
+const TIER_TONE: Record<number, "neutral" | "steel" | "jade" | "brass" | "crimson"> = {
+    1: "neutral",
+    2: "steel",
+    3: "jade",
+    4: "brass",
+    5: "crimson",
+    6: "brass",
+};
+
+const TABS: { key: Tab; label: string }[] = [
+    { key: "game", label: "بازی" },
+    { key: "account", label: "حساب کاربری" },
+];
+
+/** Theme switcher (account tab) — wired to setPreference. */
+const THEME_TABS: { key: ThemeMode; label: string }[] = [
+    { key: "dark", label: "تیره" },
+    { key: "light", label: "روشن" },
+    { key: "system", label: "سیستم" },
+];
+const PREF_LABEL: Record<ThemeMode, string> = {
+    dark: "تیره",
+    light: "روشن",
+    system: "سیستم",
+};
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { colors: c, isDark, preference, setPreference } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const player = usePlayerStore((s) => s.player);
   const { session, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -52,6 +97,8 @@ export default function ProfileScreen() {
   const nextTierXp = tier.xpRequired;
   const currentXp = player?.powerXp ?? 0;
   const xpPercent = nextTierXp === Infinity ? 100 : Math.min(100, Math.floor((currentXp / nextTierXp) * 100));
+  const isMaxTier = nextTierXp === Infinity;
+  const tierColor = c.tier[tier.tier];
 
   const handleLogout = () => {
     showConfirm(
@@ -92,7 +139,7 @@ export default function ProfileScreen() {
             const refresh_token = parsed.queryParams?.refresh_token as string;
             if (access_token && refresh_token) {
               await supabase.auth.setSession({ access_token, refresh_token });
-              showAlert("✅", "حساب گوگل با موفقیت متصل شد.");
+              showAlert("موفقیت", "حساب گوگل با موفقیت متصل شد.");
             }
           }
         }
@@ -109,6 +156,11 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleThemeChange = (mode: ThemeMode) => {
+    setPreference(mode);
+    GameAudio.playTap();
+  };
+
   if (!player) {
     return (
       <View style={styles.empty}>
@@ -121,299 +173,299 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header — always visible */}
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-        <View style={styles.avatar}>
-          <Text variant="heading" weight="bold" color="brand" center>
-            {player.username.charAt(0).toUpperCase()}
-          </Text>
+      {/* ─── Identity header — always visible, one entrance ─── */}
+      <Animated.View
+        entering={FadeInDown.duration(Motion.durations.slow)}
+        style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}
+      >
+        <View style={styles.avatarBlock}>
+          <View style={styles.avatar}>
+            <Text variant="heading" weight="extrabold" color="brand" center>
+              {player.username.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          {/* XP ring, faked as a thin brass fill under the plate */}
+          <ProgressBar percent={xpPercent} height={4} tone="brass" style={styles.avatarXp} />
         </View>
-        <Text variant="title" weight="bold">
+
+        <Text variant="title" weight="extrabold">
           {player.username}
         </Text>
-        <Text variant="caption" color="secondary">
-          {lang.player.level} {player.level} · {lang.player.rank} #{player.rank}
-        </Text>
 
-        {/* Segmented control — the actual "separate concerns" split */}
-        <View style={styles.tabBar}>
-          <TouchableOpacity
-            style={[styles.tabBtn, tab === "game" && styles.tabBtnActive]}
-            onPress={() => {
-              setTab("game");
-              GameAudio.playTap();
-            }}
-          >
-            <Ionicons
-              name="game-controller-outline"
-              size={16}
-              color={tab === "game" ? "#0D0F14" : Colors.text.secondary}
-            />
-            <Text
-              style={[
-                styles.tabBtnText,
-                tab === "game" && styles.tabBtnTextActive,
-              ]}
-            >
-              بازی
+        <View style={styles.tierLine}>
+          <View style={[styles.tierDot, { backgroundColor: tierColor }]} />
+          <Text variant="caption" color="secondary">
+            رده {fa(tier.tier)} · {tier.nameFa}
+          </Text>
+          <View style={styles.rankChip}>
+            <Text variant="label" weight="semibold" color="brand" style={[styles.rankText, TABULAR]}>
+              #{fa(player.rank)}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabBtn, tab === "account" && styles.tabBtnActive]}
-            onPress={() => {
-              setTab("account");
-              GameAudio.playTap();
-            }}
-          >
-            <Ionicons
-              name="person-circle-outline"
-              size={16}
-              color={tab === "account" ? "#0D0F14" : Colors.text.secondary}
-            />
-            <Text
-              style={[
-                styles.tabBtnText,
-                tab === "account" && styles.tabBtnTextActive,
-              ]}
-            >
-              حساب کاربری
-            </Text>
-          </TouchableOpacity>
+          </View>
         </View>
-      </View>
+
+        <SegmentedTabs<Tab>
+          items={TABS}
+          value={tab}
+          onChange={(key) => {
+            setTab(key);
+            GameAudio.playTap();
+          }}
+          style={styles.tabs}
+        />
+      </Animated.View>
 
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 110 }]}
       >
         {tab === "game" ? (
           <>
-            {/* 6-Tier Power Progression Card */}
-            <Card style={[styles.card, { borderColor: 'rgba(167,139,250,0.35)', borderWidth: 1 }]}>
-              <View style={tierStyles.headerRow}>
-                <View>
-                  <Text variant="title" weight="bold" style={{ color: '#A78BFA' }}>
-                    ⚔️ رده {tier.tier}: {tier.nameFa}
-                  </Text>
-                  <Text variant="caption" color="secondary" style={{ marginTop: 2 }}>
-                    قدرت فعلی: {(player.power ?? 0).toLocaleString('fa-IR')} {tier.maxPower === Infinity ? 'به بالا' : `از ${tier.maxPower.toLocaleString('fa-IR')}`}
-                  </Text>
-                </View>
-                {totalDailyPowerDrip > 0 && (
-                  <View style={tierStyles.dripBadge}>
-                    <Text variant="caption" weight="bold" style={{ color: '#34D399' }}>
-                      +{totalDailyPowerDrip.toLocaleString('fa-IR')} قدرت/روز
+            {/* ─── Hero: tier progression ─── */}
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(0))}>
+              <Card cornerTicks style={styles.card}>
+                <Text variant="label" color="brand">
+                  مسیر قدرت
+                </Text>
+                <View style={styles.tierHead}>
+                  <View style={styles.tierId}>
+                    <IconPlate name="shield" size="md" tone={TIER_TONE[tier.tier] ?? "neutral"} />
+                    <Text variant="title" weight="extrabold" style={{ color: tierColor }} numberOfLines={1}>
+                      رده {fa(tier.tier)} · {tier.nameFa}
                     </Text>
                   </View>
-                )}
-              </View>
+                  {totalDailyPowerDrip > 0 && (
+                    <Chip
+                      icon="sparkles"
+                      tone="jade"
+                      value={"\u200E+" + fa(totalDailyPowerDrip)}
+                      label="قدرت/روز"
+                    />
+                  )}
+                </View>
 
-              {/* XP Progress Bar to next Tier */}
-              <View style={{ marginTop: 12 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text variant="caption" color="secondary">پیشرفت آنلاک رده بعدی (XP)</Text>
-                  <Text variant="caption" weight="bold" style={{ color: '#A78BFA' }}>
-                    {tier.xpRequired === Infinity ? 'حداکثر رده 👑' : `${currentXp.toLocaleString('fa-IR')} / ${tier.xpRequired.toLocaleString('fa-IR')} XP (${xpPercent}٪)`}
+                <View style={styles.powerRow}>
+                  <Text variant="display" weight="extrabold" style={TABULAR}>
+                    {fa(player.power ?? 0)}
+                  </Text>
+                  <Text variant="caption" color="secondary">
+                    قدرت فعلی
                   </Text>
                 </View>
-                <View style={styles.xpBarBg}>
-                  <View style={[styles.xpBarFill, { width: `${xpPercent}%`, backgroundColor: '#A78BFA' }]} />
+
+                <View style={styles.xpBlock}>
+                  <View style={styles.xpLabels}>
+                    <Text variant="caption" color="secondary">
+                      پیشرفت رده بعدی
+                    </Text>
+                    <Text variant="caption" weight="semibold" style={TABULAR}>
+                      {isMaxTier
+                        ? "بالاترین رده"
+                        : `${fa(currentXp)} / ${fa(nextTierXp)} (${fa(xpPercent)}٪)`}
+                    </Text>
+                  </View>
+                  <ProgressBar percent={xpPercent} height={8} tone="brass" delay={200} />
                 </View>
-              </View>
-            </Card>
+              </Card>
+            </Animated.View>
 
-            <Card style={styles.card}>
-              <Text variant="label" color="secondary" style={styles.cardTitle}>
-                آمار ۴ گانه اقتصاد
-              </Text>
-              <View style={styles.statGrid}>
-                <StatChip icon="⚔️" label="قدرت" value={player.power} />
-                <StatChip
-                  icon="💰"
-                  label="ثروت"
-                  value={Math.min(player.wealth, 999999)}
-                />
-                <StatChip icon="🔥" label="فعالیت" value={player.activity} />
-                <StatChip icon="⭐" label="محبوبیت" value={player.popularity} />
-              </View>
-            </Card>
+            {/* ─── Four-factor stats ─── */}
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(1))}>
+              <Card style={styles.card}>
+                <Text variant="label" color="brand">
+                  آمار ۴ گانه اقتصاد
+                </Text>
+                <View style={styles.statList}>
+                  <StatBar
+                    icon="flash"
+                    label="قدرت"
+                    value={player.power ?? 0}
+                    maxValue={500}
+                    tone="terracotta"
+                    delay={100}
+                  />
+                  <StatBar
+                    icon="cash"
+                    label="ثروت"
+                    value={Math.min(player.wealth, 999999)}
+                    maxValue={100000}
+                    tone="brass"
+                    delay={180}
+                  />
+                  <StatBar
+                    icon="flame"
+                    label="فعالیت"
+                    value={player.activity}
+                    maxValue={100}
+                    tone="ember"
+                    delay={260}
+                  />
+                  <StatBar
+                    icon="star"
+                    label="محبوبیت"
+                    value={player.popularity}
+                    maxValue={200}
+                    tone="jade"
+                    delay={340}
+                  />
+                </View>
+              </Card>
+            </Animated.View>
 
-            <Card style={styles.card}>
-              <Text variant="label" color="secondary" style={styles.cardTitle}>
-                {lang.hud.resources}
-              </Text>
-              <View style={styles.resourceGrid}>
-                <ResourceRow
-                  icon="🪙"
-                  label={lang.resources.gold}
-                  value={player.resources.gold}
-                />
-                <ResourceRow
-                  icon="🌾"
-                  label={lang.resources.food}
-                  value={player.resources.food}
-                />
-                <ResourceRow
-                  icon="🪵"
-                  label={lang.resources.wood}
-                  value={player.resources.wood}
-                />
-                <ResourceRow
-                  icon="🪨"
-                  label={lang.resources.stone}
-                  value={player.resources.stone}
-                />
-                <ResourceRow
-                  icon="👥"
-                  label={lang.resources.population}
-                  value={player.resources.population}
-                />
-              </View>
-            </Card>
+            {/* ─── Resources ─── */}
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(2))}>
+              <Card style={styles.card}>
+                <Text variant="label" color="brand">
+                  {lang.hud.resources}
+                </Text>
+                <View style={styles.resourceGrid}>
+                  <ResourceTile icon="cash" tone="brass" label={lang.resources.gold} value={player.resources.gold} />
+                  <ResourceTile icon="nutrition" tone="jade" label={lang.resources.food} value={player.resources.food} />
+                  <ResourceTile icon="layers" tone="ember" label={lang.resources.wood} value={player.resources.wood} />
+                  <ResourceTile icon="cube" tone="steel" label={lang.resources.stone} value={player.resources.stone} />
+                  <ResourceTile icon="people" tone="neutral" label={lang.resources.population} value={player.resources.population} />
+                </View>
+              </Card>
+            </Animated.View>
 
-            <Card style={styles.card}>
-              <Text variant="label" color="secondary" style={styles.cardTitle}>
-                خلاصه پیشرفت
-              </Text>
-              <StatRow
-                label={lang.player.territory}
-                value={`${player.ownedTileIds.length} قطعه`}
-              />
-              <StatRow
-                label={lang.player.buildings}
-                value={`${player.buildingIds.length} سازه`}
-              />
-              <StatRow
-                label="امتیاز کل"
-                value={player.score.toLocaleString("fa-IR")}
-              />
-            </Card>
+            {/* ─── Progress summary ─── */}
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(3))}>
+              <Card style={styles.card}>
+                <Text variant="label" color="brand">
+                  خلاصه پیشرفت
+                </Text>
+                <StatRow label={lang.player.territory} value={`${fa(player.ownedTileIds.length)} قطعه`} />
+                <StatRow label={lang.player.buildings} value={`${fa(player.buildingIds.length)} سازه`} />
+                <StatRow label="امتیاز کل" value={fa(player.score)} last />
+              </Card>
+            </Animated.View>
           </>
         ) : (
           <>
-            <Card style={styles.card}>
-              <View style={styles.accountRow}>
-                <Ionicons
-                  name="mail-outline"
-                  size={18}
-                  color={Colors.text.secondary}
+            {/* ─── Account & security ─── */}
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(0))}>
+              <Card style={styles.card}>
+                <View style={styles.infoRow}>
+                  <IconPlate name="mail" size="sm" tone="steel" />
+                  <View style={styles.infoTexts}>
+                    <Text variant="caption" color="secondary">
+                      ایمیل
+                    </Text>
+                    <Text variant="body" weight="medium" numberOfLines={1}>
+                      {session?.user?.email ?? "نامشخص"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <IconPlate
+                    name={isGoogleUser ? "checkmark-circle" : "link"}
+                    size="sm"
+                    tone={isGoogleUser ? "jade" : "steel"}
+                  />
+                  <View style={styles.infoTexts}>
+                    <Text variant="caption" color="secondary">
+                      گوگل
+                    </Text>
+                    <Text variant="body" weight="medium">
+                      {isGoogleUser ? "حساب گوگل متصل شده" : "حساب گوگل متصل نیست"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                {!isGoogleUser && (
+                  <Button
+                    label="اتصال حساب گوگل"
+                    onPress={handleLinkGoogle}
+                    variant="secondary"
+                    fullWidth
+                    loading={loading}
+                    style={styles.actionBtn}
+                  />
+                )}
+                <Button
+                  label={isGoogleUser ? "تنظیم رمز عبور" : "فراموشی رمز عبور"}
+                  onPress={() => router.push("/auth/forgot-password" as any)}
+                  variant="secondary"
+                  fullWidth
+                  disabled={loading}
+                  style={styles.actionBtn}
                 />
-                <Text variant="body" color="secondary">
-                  {session?.user?.email ?? "نامشخص"}
-                </Text>
-              </View>
-              <View style={styles.accountRow}>
-                <Ionicons
-                  name={isGoogleUser ? "checkmark-circle" : "link-outline"}
-                  size={18}
-                  color={
-                    isGoogleUser
-                      ? Colors.semantic.success
-                      : Colors.text.secondary
+
+                <Pressable
+                  onPress={handleLogout}
+                  disabled={loading}
+                  style={({ pressed }) => [styles.logoutRow, pressed && styles.logoutPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="خروج از حساب"
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color={c.crimson} />
+                  ) : (
+                    <>
+                      <Ionicons name="log-out" size={18} color={c.crimson} />
+                      <Text variant="body" weight="semibold" style={{ color: c.crimson }}>
+                        خروج از حساب
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              </Card>
+            </Animated.View>
+
+            {/* ─── Membership ─── */}
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(1))}>
+              <Card style={styles.card}>
+                <StatRow
+                  label={lang.player.joined}
+                  value={
+                    player.joinedAt
+                      ? new Date(player.joinedAt).toLocaleDateString("fa-IR")
+                      : "—"
                   }
                 />
-                <Text variant="body" color="secondary">
-                  {isGoogleUser ? "حساب گوگل متصل شده" : "حساب گوگل متصل نیست"}
-                </Text>
-              </View>
-
-              <View style={styles.divider} />
-
-              {!isGoogleUser && (
-                <TouchableOpacity
-                  style={styles.accountBtn}
-                  onPress={handleLinkGoogle}
-                  disabled={loading}
-                >
-                  <View style={styles.accountBtnContent}>
-                    <Ionicons name="logo-google" size={20} color="#EA4335" />
-                    <Text variant="body" weight="medium">
-                      اتصال حساب گوگل
-                    </Text>
-                  </View>
-                  {loading ? (
-                    <ActivityIndicator size="small" color={Colors.text.muted} />
-                  ) : (
-                    <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color={Colors.text.muted}
-                    />
-                  )}
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={styles.accountBtn}
-                onPress={() => router.push("/auth/forgot-password" as any)}
-                disabled={loading}
-              >
-                <View style={styles.accountBtnContent}>
-                  <Ionicons
-                    name={isGoogleUser ? "key-outline" : "refresh-outline"}
-                    size={20}
-                    color={Colors.brand.primary}
-                  />
-                  <Text variant="body" weight="medium">
-                    {isGoogleUser ? "تنظیم رمز عبور" : "فراموشی رمز عبور"}
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={Colors.text.muted}
+                <StatRow
+                  label="وضعیت"
+                  value={
+                    player.status === "in_game"
+                      ? "در حال بازی"
+                      : player.status === "online"
+                        ? lang.player.online
+                        : lang.player.offline
+                  }
+                  last
                 />
-              </TouchableOpacity>
+              </Card>
+            </Animated.View>
 
-              <TouchableOpacity
-                style={[styles.accountBtn, styles.logoutBtn]}
-                onPress={handleLogout}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={Colors.semantic.error}
+            {/* ─── Appearance — theme switcher (§6) ─── */}
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(2))}>
+              <Card style={styles.card}>
+                <View style={styles.infoRow}>
+                  <IconPlate
+                    name={isDark ? "moon" : "sunny"}
+                    size="sm"
+                    tone={isDark ? "steel" : "brass"}
                   />
-                ) : (
-                  <View style={styles.accountBtnContent}>
-                    <Ionicons
-                      name="log-out-outline"
-                      size={20}
-                      color={Colors.semantic.error}
-                    />
-                    <Text
-                      variant="body"
-                      weight="medium"
-                      style={{ color: Colors.semantic.error }}
-                    >
-                      خروج از حساب
+                  <View style={styles.infoTexts}>
+                    <Text variant="body" weight="medium">
+                      حالت نمایش
+                    </Text>
+                    <Text variant="caption" color="secondary">
+                      {PREF_LABEL[preference]}
                     </Text>
                   </View>
-                )}
-              </TouchableOpacity>
-            </Card>
-
-            <Card style={styles.card}>
-              <StatRow
-                label="تاریخ عضویت"
-                value={
-                  player.joinedAt
-                    ? new Date(player.joinedAt).toLocaleDateString("fa-IR")
-                    : "—"
-                }
-              />
-              <StatRow
-                label="وضعیت"
-                value={
-                  player.status === "in_game"
-                    ? "در حال بازی"
-                    : player.status === "online"
-                      ? lang.player.online
-                      : lang.player.offline
-                }
-              />
-            </Card>
+                </View>
+                <SegmentedTabs<ThemeMode>
+                  items={THEME_TABS}
+                  value={preference}
+                  onChange={handleThemeChange}
+                  style={styles.themeTabs}
+                />
+              </Card>
+            </Animated.View>
           </>
         )}
       </ScrollView>
@@ -421,192 +473,230 @@ export default function ProfileScreen() {
   );
 }
 
-const ResourceRow: React.FC<{ icon: string; label: string; value: number }> = ({
-  icon,
+// ─── Local pieces ─────────────────────────────────────────────────────────────
+
+const ResourceTile: React.FC<{
+  icon: React.ComponentProps<typeof IconPlate>["name"];
+  tone: React.ComponentProps<typeof IconPlate>["tone"];
+  label: string;
+  value: number;
+}> = ({ icon, tone, label, value }) => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
+  return (
+    <View style={styles.tile}>
+      <IconPlate name={icon} size="sm" tone={tone} />
+      <View style={styles.tileTexts}>
+        <Text variant="body" weight="bold" style={TABULAR}>
+          {fa(value)}
+        </Text>
+        <Text variant="caption" color="secondary" numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+const StatRow: React.FC<{ label: string; value: string; last?: boolean }> = ({
   label,
   value,
-}) => (
-  <View style={rowStyles.row}>
-    <Text variant="body">{value.toLocaleString("fa-IR")}</Text>
-    <View style={rowStyles.labelGroup}>
+  last,
+}) => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
+  return (
+    <View style={[styles.row, last && styles.rowLast]}>
+      <Text variant="body" weight="bold" style={TABULAR}>
+        {value}
+      </Text>
       <Text variant="body" color="secondary">
         {label}
       </Text>
-      <Text variant="body" color="primary">{icon}</Text>
     </View>
-  </View>
-);
+  );
+};
 
-const StatRow: React.FC<{ label: string; value: string }> = ({
-  label,
-  value,
-}) => (
-  <View style={rowStyles.row}>
-    <Text variant="body" weight="semibold">
-      {value}
-    </Text>
-    <Text variant="body" color="secondary">
-      {label}
-    </Text>
-  </View>
-);
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
-const StatChip: React.FC<{ icon: string; label: string; value: number }> = ({
-  icon,
-  label,
-  value,
-}) => (
-  <View style={chipStyles.chip}>
-    <Text variant="body" color="primary">{icon}</Text>
-    <Text variant="body" weight="medium" color="primary">{value.toLocaleString("fa-IR")}</Text>
-    <Text variant="caption" color="secondary">{label}</Text>
-  </View>
-);
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: c.bg.primary,
+    },
+    scroll: {
+      flex: 1,
+    },
+    content: {
+      padding: Spacing.lg,
+      gap: Spacing.lg,
+    },
+    empty: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.bg.primary,
+    },
 
-const rowStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.subtle,
-  },
-  labelGroup: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
-  icon: { fontSize: 16 },
-});
+    // Identity header
+    header: {
+      alignItems: "center",
+      gap: Spacing.sm,
+      paddingBottom: Spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border.subtle,
+    },
+    avatarBlock: {
+      alignItems: "center",
+      gap: Spacing.sm,
+    },
+    avatar: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: c.ink[600],
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: c.brass[400],
+    },
+    avatarXp: {
+      width: 96,
+    },
+    tierLine: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.xs + 2,
+    },
+    tierDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    rankChip: {
+      backgroundColor: c.ink[600],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      borderRadius: Radii.full,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 2,
+    },
+    rankText: {
+      writingDirection: "ltr",
+      textAlign: "center",
+    },
+    tabs: {
+      alignSelf: "stretch",
+      marginTop: Spacing.sm,
+    },
 
-const chipStyles = StyleSheet.create({
-  chip: {
-    flexBasis: "48%",
-    backgroundColor: Colors.bg.tertiary,
-    borderRadius: Radii.md,
-    padding: Spacing.sm,
-    alignItems: "center",
-    gap: 2,
-  },
-  icon: { fontSize: 18 },
-  value: { color: Colors.text.primary, fontWeight: "800", fontSize: 15 },
-  label: { color: Colors.text.muted, fontSize: 11 },
-});
+    // Cards
+    card: {
+      gap: Spacing.md,
+    },
+    tierHead: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: Spacing.sm,
+    },
+    tierId: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+    },
+    powerRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      gap: Spacing.sm,
+    },
+    xpBlock: {
+      gap: Spacing.xs + 2,
+    },
+    xpLabels: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: Spacing.sm,
+    },
+    statList: {
+      gap: Spacing.md + 2,
+    },
+    resourceGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: Spacing.sm,
+    },
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg.primary },
-  content: {
-    padding: Spacing.lg,
-    gap: Spacing.lg,
-    paddingBottom: Spacing["3xl"],
-  },
-  empty: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.bg.primary,
-  },
-  header: {
-    alignItems: "center",
-    gap: Spacing.sm,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.subtle,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.bg.tertiary,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: Colors.brand.primary,
-  },
+    // Resource tiles
+    tile: {
+      flexGrow: 1,
+      flexBasis: "45%",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      backgroundColor: c.ink[600],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      borderRadius: Radii.md,
+      padding: Spacing.sm + 2,
+    },
+    tileTexts: {
+      flexShrink: 1,
+      gap: 1,
+    },
 
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: Colors.bg.tertiary,
-    borderRadius: Radii.full,
-    padding: 4,
-    marginTop: Spacing.sm,
-    gap: 4,
-  },
-  tabBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: Radii.full,
-  },
-  tabBtnActive: { backgroundColor: Colors.brand.primary },
-  tabBtnText: { color: Colors.text.secondary, fontSize: 13, fontWeight: "700" },
-  tabBtnTextActive: { color: "#0D0F14" },
+    // Summary rows
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: Spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border.subtle,
+    },
+    rowLast: {
+      borderBottomWidth: 0,
+    },
 
-  card: { gap: Spacing.sm },
-  cardTitle: { marginBottom: Spacing.xs },
-  resourceGrid: { gap: Spacing.sm },
-  statGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-    justifyContent: "space-between",
-  },
-  xpBarBg: {
-    height: 6,
-    backgroundColor: Colors.bg.tertiary,
-    borderRadius: Radii.full,
-    overflow: "hidden",
-    marginVertical: Spacing.xs,
-  },
-  xpBarFill: {
-    height: "100%",
-    backgroundColor: Colors.brand.primary,
-    borderRadius: Radii.full,
-  },
-
-  accountRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    paddingVertical: Spacing.xs,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border.subtle,
-    marginVertical: Spacing.sm,
-  },
-  accountBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.bg.tertiary,
-    marginTop: Spacing.xs,
-  },
-  accountBtnContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-  },
-  logoutBtn: {
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    marginTop: Spacing.md,
-  },
-});
-
-const tierStyles = StyleSheet.create({
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dripBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: 'rgba(52, 211, 153, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.4)',
-  },
-});
+    // Account
+    infoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      paddingVertical: Spacing.xs + 2,
+    },
+    infoTexts: {
+      flex: 1,
+      gap: 1,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: c.border.subtle,
+      marginVertical: Spacing.xs,
+    },
+    actionBtn: {
+      marginTop: Spacing.xs,
+    },
+    themeTabs: {
+      minHeight: 44,
+      alignSelf: "stretch",
+    },
+    logoutRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: Spacing.sm,
+      marginTop: Spacing.md,
+      paddingVertical: Spacing.sm + 4,
+      borderRadius: Radii.md,
+      backgroundColor: `${c.crimson}1A`,
+      borderWidth: 1,
+      borderColor: `${c.crimson}59`,
+    },
+    logoutPressed: {
+      opacity: 0.8,
+    },
+  });

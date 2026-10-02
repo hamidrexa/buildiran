@@ -1,9 +1,9 @@
 /**
- * BuildIran — Loading Screen
- * Full-screen branded loader with animated gold ring.
+ * BuildIran — Loading Screen (theme-reactive)
+ * Ink canvas, brass hairline ring, the architect's arch mark and wordmark.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -12,7 +12,8 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { Colors, Spacing } from '@/theme';
+import { Spacing } from '@/theme';
+import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from './Text';
 
 interface Props {
@@ -20,18 +21,20 @@ interface Props {
 }
 
 export const LoadingScreen: React.FC<Props> = ({
-  message = 'در حال بارگذاری...',
+  message = 'در حال آماده‌سازی شهر...',
 }) => {
+  const { colors: c } = useTheme();
+  const styles = useMemo(() => makeStyles(c), [c]);
   const rotation = useSharedValue(0);
   const pulse = useSharedValue(1);
 
   useEffect(() => {
     rotation.value = withRepeat(
-      withTiming(360, { duration: 1200, easing: Easing.linear }),
+      withTiming(360, { duration: 1400, easing: Easing.linear }),
       -1,
     );
     pulse.value = withRepeat(
-      withTiming(1.1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+      withTiming(1.06, { duration: 900, easing: Easing.inOut(Easing.ease) }),
       -1,
       true,
     );
@@ -41,72 +44,108 @@ export const LoadingScreen: React.FC<Props> = ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
-  const logoStyle = useAnimatedStyle(() => ({
+  const markStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulse.value }],
   }));
 
   return (
     <View style={styles.container}>
-      {/* Spinning ring */}
       <View style={styles.ringWrapper}>
         <Animated.View style={[styles.ring, ringStyle]} />
-        {/* Logo center */}
-        <Animated.View style={[styles.logoCircle, logoStyle]}>
-          <Text variant="heading" weight="bold" color="brand" center>
-            ب
-          </Text>
+        <Animated.View style={[styles.mark, markStyle]}>
+          {/* The arch — BuildIran's mark */}
+          <View style={[styles.leg, styles.legStart]} />
+          <View style={[styles.leg, styles.legEnd]} />
+          <View style={styles.arch} />
         </Animated.View>
       </View>
 
-      <Text
-        variant="caption"
-        color="secondary"
-        center
-        style={styles.message}
-      >
+      <View style={styles.wordmark}>
+        <Text variant="title" weight="bold" color="primary" center>
+          بیلد ایران
+        </Text>
+        <Text variant="label" color="muted" center style={styles.wordmarkSub}>
+          BUILD IRAN
+        </Text>
+      </View>
+
+      <Text variant="caption" color="muted" center style={styles.message}>
         {message}
       </Text>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xl,
-  },
-  ringWrapper: {
-    width: 80,
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ring: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: Colors.brand.primary,
-    borderTopColor: 'transparent',
-    borderLeftColor: 'transparent',
-  },
-  logoCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.bg.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border.brand,
-  },
-  message: {
-    marginTop: Spacing.md,
-  },
-});
+const makeStyles = (c: ReturnType<typeof useTheme>['colors']) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: c.bg.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.xl,
+    },
+    ringWrapper: {
+      width: 84,
+      height: 84,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ring: {
+      position: 'absolute',
+      width: 84,
+      height: 84,
+      borderRadius: 42,
+      borderWidth: 1.5,
+      borderColor: c.brass[600],
+      borderTopColor: 'transparent',
+      borderLeftColor: 'transparent',
+    },
+    mark: {
+      width: 40,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+    },
+    leg: {
+      position: 'absolute',
+      bottom: 0,
+      width: 6,
+      height: 26,
+      borderTopLeftRadius: 3,
+      borderTopRightRadius: 3,
+      backgroundColor: c.brass[400],
+    },
+    legStart: {
+      start: 4,
+      transform: [{ skewY: '-6deg' }],
+    },
+    legEnd: {
+      end: 4,
+      transform: [{ skewY: '6deg' }],
+    },
+    arch: {
+      position: 'absolute',
+      top: 2,
+      alignSelf: 'center',
+      width: 22,
+      height: 18,
+      borderTopLeftRadius: 11,
+      borderTopRightRadius: 11,
+      borderWidth: 4,
+      borderBottomWidth: 0,
+      borderColor: c.brass[300],
+    },
+    wordmark: {
+      alignItems: 'center',
+      gap: 2,
+    },
+    wordmarkSub: {
+      letterSpacing: 2,
+    },
+    message: {
+      marginTop: Spacing.lg,
+    },
+  });
 
 export default LoadingScreen;

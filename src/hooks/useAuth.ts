@@ -14,7 +14,7 @@ function dbProfileToPlayer(row: Record<string, any>): Player {
     id: row.id,
     username: row.username ?? "بازیکن",
     avatarUrl: row.avatar_url ?? null,
-    avatarColor: row.avatar_color ?? "#6C63FF",
+    avatarColor: row.avatar_color ?? "#E2B64F",
     level: row.level ?? 1,
     experience: row.experience ?? 0,
     cash: row.cash ?? 5000,
@@ -40,6 +40,8 @@ function dbProfileToPlayer(row: Record<string, any>): Player {
     subsidyResetAt: row.subsidy_reset_at ?? new Date().toISOString(),
     joinedAt: row.joined_at ?? new Date().toISOString(),
     lastSeenAt: row.last_seen_at ?? new Date().toISOString(),
+    lastNeighborhoodDripAt: row.last_neighborhood_drip_at ?? null,
+    careerPath: row.career_path ?? "citizen",
   };
 }
 
