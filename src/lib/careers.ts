@@ -36,7 +36,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'تاجر و دلال',
     descriptionFa: 'متخصص در خرید و فروش املاک در بازار آزاد.',
     icon: '🤝',
-    color: '#7FA3C0', // Azure
+    color: '#4FB3C9', // Azure
     buffFa: 'تخفیف در مالیات خرید و فروش',
   },
   industrialist: {
@@ -68,7 +68,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'مدیر منابع انسانی',
     descriptionFa: 'متخصص در استخدام، آموزش و مدیریت کارگران.',
     icon: '👔',
-    color: '#8FB0CC', // Indigo
+    color: '#5A8FD0', // Indigo
     buffFa: 'هزینه آموزش کارگران ۲۰٪ کمتر است',
   },
   famous: {
@@ -76,7 +76,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'چهره مشهور',
     descriptionFa: 'تمرکز بر خدمات عمومی، پارک‌ها و محبوبیت در محله.',
     icon: '⭐',
-    color: '#E2B64F', // Amber
+    color: '#C2649A', // Amber
     buffFa: 'پارک‌ها و بیمارستان‌ها محبوبیت بیشتری تولید می‌کنند',
   },
   real_estate: {
@@ -84,7 +84,7 @@ export const CAREER_PATHS: Record<CareerPathId, CareerDef> = {
     nameFa: 'انبوه‌ساز مسکن',
     descriptionFa: 'پیمانکار بزرگ برج‌ها و مجتمع‌های مسکونی.',
     icon: '🏗️',
-    color: '#A9AFBC', // Slate
+    color: '#8B7BD8', // Slate
     buffFa: '۱۰٪ تخفیف در هزینه ساخت فوری (Fast Build)',
   },
 };

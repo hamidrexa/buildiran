@@ -1,10 +1,10 @@
 /**
  * BuildIran — Loading Screen (theme-reactive)
- * Ink canvas, brass hairline ring, the architect's arch mark and wordmark.
+ * Ink canvas, brass hairline ring, the Shahryar crown mark and wordmark.
  */
 
 import React, { useEffect, useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Image, View, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -53,19 +53,21 @@ export const LoadingScreen: React.FC<Props> = ({
       <View style={styles.ringWrapper}>
         <Animated.View style={[styles.ring, ringStyle]} />
         <Animated.View style={[styles.mark, markStyle]}>
-          {/* The arch — BuildIran's mark */}
-          <View style={[styles.leg, styles.legStart]} />
-          <View style={[styles.leg, styles.legEnd]} />
-          <View style={styles.arch} />
+          {/* The crown — Shahryar's mark */}
+          <Image
+            source={require("../../../assets/images/splash-icon.png")}
+            style={styles.markImage}
+            resizeMode="contain"
+          />
         </Animated.View>
       </View>
 
       <View style={styles.wordmark}>
         <Text variant="title" weight="bold" color="primary" center>
-          بیلد ایران
+          شهریار
         </Text>
         <Text variant="label" color="muted" center style={styles.wordmarkSub}>
-          BUILD IRAN
+          SHAHRAYAR
         </Text>
       </View>
 
@@ -106,6 +108,10 @@ const makeStyles = (c: ReturnType<typeof useTheme>['colors']) =>
       height: 44,
       alignItems: 'center',
       justifyContent: 'flex-end',
+    },
+    markImage: {
+      width: 54,
+      height: 54,
     },
     leg: {
       position: 'absolute',

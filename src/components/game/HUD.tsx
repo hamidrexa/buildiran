@@ -1,11 +1,16 @@
 /**
- * BuildIran — HUD (Heads-Up Display) — «Gentleman Neon» (v2)
- * Floating map chrome on mode-aware glass: neighborhood pill + action plates
- * (career / missions / neon drip claim / editor), the 4-factor StatBar panel
- * and the selected-tile status bar.
+ * BuildIran — HUD (Heads-Up Display) — «Gentleman Neon» (v2.1)
+ * Non-overlapping map chrome, arranged for thumb reach:
+ *
+ *   Row 1 (top)   [محله pill · amenity]        [career plate][missions plate]
+ *   Row 2         [amenity card]               [4-factor stats panel]
+ *   Bottom stack  [پاداش محله (neon) · editor]  ← live actions, thumb zone
+ *                 [selected-tile bar]
+ *                 [floating dock]
+ *
  * Design: dual-theme glass recipe (§2), neon mint reserved for the one live
- * signal — the claimable «پاداش محله» pill (§1). Press springs on every
- * touchable (§4). All game logic, store wiring and modal contracts unchanged.
+ * signal (§1). Press springs on every touchable (§4). All game logic, store
+ * wiring and modal contracts unchanged.
  */
 
 import { Badge } from "@/components/ui/Badge";
@@ -197,43 +202,39 @@ export const HUD: React.FC = () => {
         ? { icon: "shield", color: c.brass[400], text: "قلمرو شما" }
         : { icon: "close-circle", color: c.crimson, text: "قلمرو بازیکن دیگر" };
 
+  const hasBottomPills = canClaimDrip || isEditor;
+
   return (
     <>
-      {/* Top chrome: neighborhood pill (start) + action plates (end) */}
-      <View style={[styles.subBar, { top: insets.top + 68 }]}>
-        <View style={styles.subBarStart}>
-          <TouchableScale
-            style={styles.hoodPill}
-            onPress={() => {
-              GameAudio.playTap();
-              if (viewedNeighborhood) {
-                // Sync the detail modal with the viewed neighborhood
-                useNeighborhoodStore.getState().setCurrentNeighborhood(viewedNeighborhood);
-              }
-              setShowDetailModal(true);
-            }}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="جزئیات محله در حال نمایش"
-          >
-            <IconPlate name="map" tone="jade" size="xs" />
-            <View style={styles.hoodTexts}>
-              <Text variant="caption" color="muted" style={styles.hoodKicker}>
-                محله در حال نمایش
-              </Text>
-              <Text variant="body" weight="semibold" numberOfLines={1}>
-                {viewedNeighborhood?.nameFa ?? "نقشه آزاد"}
-              </Text>
-            </View>
-            <Ionicons name="chevron-down" size={14} color={c.text.muted} />
-          </TouchableScale>
+      {/* Row 1 — neighborhood pill (start) · career + missions plates (end) */}
+      <View style={[styles.rowOne, { top: insets.top + 8 }]}>
+        <TouchableScale
+          style={styles.hoodPill}
+          onPress={() => {
+            GameAudio.playTap();
+            if (viewedNeighborhood) {
+              // Sync the detail modal with the viewed neighborhood
+              useNeighborhoodStore.getState().setCurrentNeighborhood(viewedNeighborhood);
+            }
+            setShowDetailModal(true);
+          }}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="جزئیات محله در حال نمایش"
+        >
+          <IconPlate name="map" tone="jade" size="xs" />
+          <View style={styles.hoodTexts}>
+            <Text variant="caption" color="muted" style={styles.hoodKicker}>
+              محله در حال نمایش
+            </Text>
+            <Text variant="body" weight="semibold" numberOfLines={1}>
+              {viewedNeighborhood?.nameFa ?? "نقشه آزاد"}
+            </Text>
+          </View>
+          <Ionicons name="chevron-down" size={14} color={c.text.muted} />
+        </TouchableScale>
 
-          {viewedNeighborhood && viewedNeighborhood.amenityTier !== undefined && viewedNeighborhood.amenityTier > 0 && (
-            <NeighborhoodAmenityCard neighborhood={viewedNeighborhood} compact />
-          )}
-        </View>
-
-        <View style={styles.subBarEnd}>
+        <View style={styles.plates}>
           {/* Career path plate — tinted with the career color from careers.ts */}
           <TouchableScale
             style={styles.iconBtn}
@@ -262,46 +263,15 @@ export const HUD: React.FC = () => {
             <IconPlate name="flag" tone="brass" size="sm" />
             <Badge count={claimableCount} style={styles.plateBadge} />
           </TouchableScale>
-
-          {/* §1 — THE one neon moment: claimable daily neighborhood drip */}
-          {canClaimDrip && (
-            <Animated.View style={claimPulse.style}>
-              <Button
-                label="پاداش محله"
-                variant="neon"
-                size="sm"
-                icon={<Ionicons name="flash" size={13} color={c.text.inverse} />}
-                onPress={handleClaimDrip}
-                disabled={isClaimingDrip}
-                loading={isClaimingDrip}
-              />
-            </Animated.View>
-          )}
-
-          {/* Conditional editor access — brass-bordered secondary pill */}
-          {isEditor && (
-            <TouchableScale
-              style={[styles.pill, styles.pillBrass]}
-              onPress={() => {
-                GameAudio.playTap();
-                setShowEditorModal(true);
-              }}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="پنل ویرایشگر محله"
-            >
-              <Ionicons name="shield" size={14} color={c.brass[400]} />
-              <Text variant="caption" weight="semibold" style={styles.pillTextBrass}>
-                ویرایشگر
-              </Text>
-            </TouchableScale>
-          )}
         </View>
       </View>
 
-      {/* Side panel: 4-factor stats */}
-      <View style={[styles.statsPanel, { top: insets.top + 112 }]}>
-        <View style={styles.statsPanelInner}>
+      {/* Row 2 — amenity card (start) · 4-factor stats panel (end) */}
+      <View pointerEvents="box-none" style={[styles.rowTwo, { top: insets.top + 62 }]}>
+        {viewedNeighborhood && viewedNeighborhood.amenityTier !== undefined && viewedNeighborhood.amenityTier > 0 && (
+          <NeighborhoodAmenityCard neighborhood={viewedNeighborhood} compact />
+        )}
+        <View style={styles.statsPanel}>
           <StatBar
             icon="flash"
             label="قدرت"
@@ -341,24 +311,68 @@ export const HUD: React.FC = () => {
         </View>
       </View>
 
-      {/* Bottom: Selected Tile Info */}
-      {selectedTile && (
-        <Animated.View
-          entering={FadeInDown.springify().damping(18)}
-          style={[styles.tilePanel, { bottom: insets.bottom + 76 }]}
+      {/* Bottom stack — live action pills above the selected-tile bar,
+          both clear of the floating dock */}
+      {(selectedTile || hasBottomPills) && (
+        <View
+          pointerEvents="box-none"
+          style={[styles.bottomStack, { bottom: insets.bottom + 78 }]}
         >
-          <View style={styles.tilePanelInner}>
-            <View style={styles.tileStatusRow}>
-              <Ionicons name={tileStatus.icon} size={15} color={tileStatus.color} />
-              <Text variant="body" weight="semibold" numberOfLines={1}>
-                {tileStatus.text}
-              </Text>
+          {hasBottomPills && (
+            <View style={styles.pillRow}>
+              {/* §1 — THE one neon moment: claimable daily neighborhood drip */}
+              {canClaimDrip && (
+                <Animated.View style={claimPulse.style}>
+                  <Button
+                    label="پاداش محله"
+                    variant="neon"
+                    size="sm"
+                    icon={<Ionicons name="flash" size={13} color={c.text.inverse} />}
+                    onPress={handleClaimDrip}
+                    disabled={isClaimingDrip}
+                    loading={isClaimingDrip}
+                  />
+                </Animated.View>
+              )}
+
+              {/* Conditional editor access — brass-bordered secondary pill */}
+              {isEditor && (
+                <TouchableScale
+                  style={[styles.pill, styles.pillBrass]}
+                  onPress={() => {
+                    GameAudio.playTap();
+                    setShowEditorModal(true);
+                  }}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="پنل ویرایشگر محله"
+                >
+                  <Ionicons name="shield" size={14} color={c.brass[400]} />
+                  <Text variant="caption" weight="semibold" style={styles.pillTextBrass}>
+                    ویرایشگر
+                  </Text>
+                </TouchableScale>
+              )}
             </View>
-            <Text variant="caption" color="muted" numberOfLines={1} style={styles.tileId}>
-              {selectedTile.id}
-            </Text>
-          </View>
-        </Animated.View>
+          )}
+
+          {selectedTile && (
+            <Animated.View
+              entering={FadeInDown.springify().damping(18)}
+              style={styles.tilePanelInner}
+            >
+              <View style={styles.tileStatusRow}>
+                <Ionicons name={tileStatus.icon} size={15} color={tileStatus.color} />
+                <Text variant="body" weight="semibold" numberOfLines={1}>
+                  {tileStatus.text}
+                </Text>
+              </View>
+              <Text variant="caption" color="muted" numberOfLines={1} style={styles.tileId}>
+                {selectedTile.id}
+              </Text>
+            </Animated.View>
+          )}
+        </View>
       )}
 
       {/* Neighborhood Detail Modal */}
@@ -397,29 +411,17 @@ const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) => {
   };
 
   return StyleSheet.create({
-    // Top chrome
-    subBar: {
+    // Row 1 — pill start · plates end
+    rowOne: {
       position: "absolute",
-      left: Spacing.md,
-      right: Spacing.md,
+      start: Spacing.md,
+      end: Spacing.md,
       zIndex: 9,
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "center",
+      alignItems: "flex-start",
       gap: Spacing.sm,
     },
-    subBarStart: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: Spacing.sm,
-      flex: 1,
-    },
-    subBarEnd: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: Spacing.sm,
-    },
-
     hoodPill: {
       ...glass,
       flexDirection: "row",
@@ -427,8 +429,9 @@ const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) => {
       gap: Spacing.sm,
       paddingHorizontal: Spacing.md,
       paddingVertical: Spacing.sm,
-      alignSelf: "flex-start",
-      maxWidth: 220,
+      flexShrink: 1,
+      maxWidth: 230,
+      ...Shadows.md,
     },
     hoodTexts: {
       flexShrink: 1,
@@ -437,20 +440,59 @@ const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) => {
     hoodKicker: {
       fontSize: Typography.sizes.xs,
     },
-
+    plates: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+    },
     iconBtn: {
       ...glass,
       width: 44,
       height: 44,
       alignItems: "center",
       justifyContent: "center",
+      ...Shadows.md,
     },
     plateBadge: {
       position: "absolute",
       top: -4,
-      right: -4,
+      end: -4,
     },
 
+    // Row 2 — amenity (start) · stats panel (end)
+    rowTwo: {
+      position: "absolute",
+      start: Spacing.md,
+      end: Spacing.md,
+      zIndex: 9,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: Spacing.sm,
+      pointerEvents: "box-none",
+    },
+    statsPanel: {
+      width: 152,
+      ...glass,
+      padding: Spacing.md,
+      gap: Spacing.sm + 2,
+      ...Shadows.md,
+    },
+
+    // Bottom stack — pills row + tile bar, above the dock
+    bottomStack: {
+      position: "absolute",
+      start: Spacing.md,
+      end: Spacing.md,
+      zIndex: 10,
+      gap: Spacing.sm,
+      pointerEvents: "box-none",
+    },
+    pillRow: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: Spacing.sm,
+    },
     pill: {
       ...glass,
       borderRadius: Radii.full,
@@ -467,27 +509,7 @@ const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) => {
       color: c.brass[400],
     },
 
-    // Stats panel
-    statsPanel: {
-      position: "absolute",
-      right: Spacing.md,
-      zIndex: 10,
-      width: 148,
-    },
-    statsPanelInner: {
-      ...glass,
-      padding: Spacing.md,
-      gap: Spacing.sm + 2,
-      ...Shadows.md,
-    },
-
     // Selected tile bar
-    tilePanel: {
-      position: "absolute",
-      left: Spacing.md,
-      right: Spacing.md,
-      zIndex: 10,
-    },
     tilePanelInner: {
       ...glass,
       paddingHorizontal: Spacing.lg,

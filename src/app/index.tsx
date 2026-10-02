@@ -10,7 +10,7 @@ import { Spacing } from '@/theme';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Redirect } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 
 export default function Index() {
   const { colors: c } = useTheme();
@@ -31,17 +31,17 @@ export default function Index() {
   if (checking) {
     return (
       <View style={styles.splash}>
-        {/* The arch mark — same construction as LoadingScreen */}
-        <View style={styles.mark}>
-          <View style={[styles.leg, { start: 4 }]} />
-          <View style={[styles.leg, { end: 4 }]} />
-          <View style={styles.arch} />
-        </View>
+        {/* The crown — Shahryar's mark */}
+        <Image
+          source={require("../../assets/images/splash-icon.png")}
+          style={styles.markImage}
+          resizeMode="contain"
+        />
         <Text variant="title" weight="bold" color="primary">
-          بیلد ایران
+          شهریار
         </Text>
         <Text variant="label" color="muted" style={styles.kicker}>
-          BUILD IRAN
+          SHAHRAYAR
         </Text>
         <ActivityIndicator color={c.brass[400]} size="small" style={styles.spinner} />
       </View>
@@ -66,6 +66,10 @@ const makeStyles = (c: ReturnType<typeof useTheme>['colors']) =>
       alignItems: 'center',
       justifyContent: 'flex-end',
       marginBottom: Spacing.md,
+    },
+    markImage: {
+      width: 48,
+      height: 48,
     },
     leg: {
       position: 'absolute',

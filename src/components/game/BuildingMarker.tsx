@@ -77,6 +77,42 @@ const INSTITUTION_ICONS: Record<string, IconName> = {
 
 const tabular: TextStyle = { fontVariant: ["tabular-nums"] };
 
+/** DESIGN.md §4 — building type → marker icon + tone, shared with map clusters */
+export const getBuildingStyle = (
+  type: string,
+): { icon: IconName; tone: "steel" | "brass" | "ember" | "jade" | "crimson" } => {
+  switch (type) {
+    case "house":
+    case "villa":
+    case "main_house":
+    case "resident_house":
+    case "tower":
+      return { icon: BUILDING_ICONS[type] ?? "home", tone: "steel" };
+    case "shop":
+    case "market":
+    case "mall":
+    case "cafe":
+    case "gym":
+    case "restaurant":
+    case "exchange":
+    case "office":
+    case "warehouse":
+      return { icon: BUILDING_ICONS[type] ?? "storefront", tone: "brass" };
+    case "farm":
+    case "factory":
+      return { icon: BUILDING_ICONS[type] ?? "construct", tone: "ember" };
+    case "hospital":
+    case "park":
+    case "university":
+    case "bank":
+      return { icon: BUILDING_ICONS[type] ?? "medkit", tone: "jade" };
+    case "barracks":
+      return { icon: "shield", tone: "crimson" };
+    default:
+      return { icon: "business", tone: "steel" };
+  }
+};
+
 interface Props {
   asset?: Asset;
   building?: Building;

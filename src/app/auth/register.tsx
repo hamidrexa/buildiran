@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 import {
     Alert,
     Dimensions,
+    Image,
     KeyboardAvoidingView,
     Platform,
     Pressable,
@@ -62,18 +63,18 @@ const AuthBackdrop: React.FC = () => {
   );
 };
 
-// ── The architect's arch mark (same construction as LoadingScreen) ───────────
+// ── The Shahryar crown mark ──────────────────────────────────────────────────
 const ArchMark: React.FC = () => {
   const { colors: c } = useTheme();
   const styles = useMemo(() => makeStyles(c), [c]);
   return (
     <View style={styles.markWrap}>
       <View style={styles.markRing} />
-      <View style={styles.mark}>
-        <View style={styles.markLeftLeg} />
-        <View style={styles.markRightLeg} />
-        <View style={styles.markArch} />
-      </View>
+      <Image
+        source={require("../../../assets/images/splash-icon.png")}
+        style={styles.markImage}
+        resizeMode="contain"
+      />
     </View>
   );
 };
@@ -187,7 +188,7 @@ export default function RegisterScreen() {
           await GameAudio.playLevelUp();
           Alert.alert(
             "ثبت نام موفق!",
-            "به بیلد ایران خوش آمدید. اکنون می‌توانید وارد شوید.",
+            "به شهریار خوش آمدید. اکنون می‌توانید وارد شوید.",
             [
               {
                 text: "ورود",
@@ -206,7 +207,7 @@ export default function RegisterScreen() {
         await GameAudio.playLevelUp();
         Alert.alert(
           "ثبت نام موفق!",
-          "به بیلد ایران خوش آمدید. اکنون می‌توانید وارد شوید.",
+          "به شهریار خوش آمدید. اکنون می‌توانید وارد شوید.",
           [
             {
               text: "ورود",
@@ -285,7 +286,7 @@ export default function RegisterScreen() {
               ثبت نام فرمانده
             </Text>
             <Text variant="body" color="secondary" center>
-              به قلمرو بیلد ایران بپیوندید
+              به قلمرو شهریار بپیوندید
             </Text>
           </Animated.View>
 
@@ -426,7 +427,7 @@ export default function RegisterScreen() {
             style={styles.footer}
           >
             <Text variant="caption" color="muted" center style={styles.footerText}>
-              © 2026 BuildIran · تمام حقوق محفوظ است
+              © 2026 Shahryar · تمام حقوق محفوظ است
             </Text>
           </Animated.View>
         </ScrollView>
@@ -498,6 +499,10 @@ const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) =>
       borderRadius: 46,
       borderWidth: 1.5,
       borderColor: c.brass[600],
+    },
+    markImage: {
+      width: 48,
+      height: 48,
     },
     mark: {
       width: 52,

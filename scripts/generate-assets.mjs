@@ -1,7 +1,7 @@
 /**
- * BuildIran — Asset Generator «Ink & Brass»
+ * BuildIran — Asset Generator «Shahryar Crown» (v3 brand)
  * Renders the app icon, splash mark and Android adaptive icons
- * as pure-pixel PNGs (pngjs): a brass Persian pointed-arch mark (iwan).
+ * as pure-pixel PNGs (pngjs): a brass geometric crown — the Shahryar mark.
  *
  * Usage: node scripts/generate-assets.mjs
  */
@@ -29,32 +29,69 @@ const mix = (c1, c2, t) => [
   Math.round(lerp(c1[2], c2[2], t)),
 ];
 
-// ─── Pointed-arch geometry (Persian iwan) ─────────────────────────────────────
-// Equilateral two-centered pointed arch: opening spans [cx-w, cx+w] at the
-// springing line ys, apex at ys - w*sqrt(3), solid legs down to yb.
-// t = band thickness (0 = solid fill).
+// ─── Crown geometry (Shahryar mark) ───────────────────────────────────────────
+// Minimal geometric crown in a 1000×1000 design space:
+//   base band + three spikes (center tallest) + three tip pearls.
+// `inside(x, y)` returns true inside the silhouette.
 
-const SQRT3 = Math.sqrt(3);
-
-function iwan(x, y, cx, w, ys, yb, t) {
-  if (y < ys - w * SQRT3 || y > yb) return false;
-  if (y >= ys) {
-    if (t <= 0) return Math.abs(x - cx) <= w;
-    const d = Math.abs(x - cx);
-    return d <= w && d >= w - t;
+function crownInside(x, y) {
+  // Design space: mark spans x 250–750, y 400–800
+  // Base band: two rails with a gap (crown base)
+  if (y >= 760 && y <= 800) {
+    return x >= 250 && x <= 750;
   }
-  const R = 2 * w;
-  const inOuter = x <= cx
-    ? Math.hypot(x - (cx + w), y - ys) <= R
-    : Math.hypot(x - (cx - w), y - ys) <= R;
-  if (!inOuter) return false;
-  if (t <= 0) return true;
-  const wi = w - t;
-  const ri = 2 * wi;
-  const inInner = x <= cx
-    ? Math.hypot(x - (cx + wi), y - ys) <= ri
-    : Math.hypot(x - (cx - wi), y - ys) <= ri;
-  return !inInner;
+  if (y > 806 && y <= 838) {
+    return x >= 278 && x <= 722;
+  }
+  if (y > 800 && y <= 806) return false; // hairline gap between band and rail
+
+  // Crown body: main silhouette up to the spikes
+  if (y < 400 || y > 760) return false;
+  const bodyPoly = [
+    [278, 760],
+    [302, 500],
+    [402, 640],
+    [500, 448],
+    [598, 640],
+    [698, 500],
+    [722, 760],
+  ];
+  if (!pointInPolygon(x, y, bodyPoly)) return false;
+
+  // Cut an arch out of the base center (negative space, echoes the old iwan)
+  if (y >= 640) {
+    const dx = x - 500;
+    const dy = 760 - y;
+    // arch: circle centered below base, radius 120
+    if (Math.abs(dx) <= 110 && Math.hypot(dx, dy - 40) <= 118) return false;
+  }
+  return true;
+}
+
+function pointInPolygon(px, py, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function pearlInside(x, y) {
+  // Tip pearls above each spike (design space)
+  const pearls = [
+    [302, 468, 26],
+    [500, 416, 28],
+    [698, 468, 26],
+  ];
+  return pearls.some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) <= r);
+}
+
+function markInside(x, y) {
+  return crownInside(x, y) || pearlInside(x, y);
 }
 
 // ─── Canvas helpers ───────────────────────────────────────────────────────────
@@ -80,23 +117,20 @@ function blend(c, x, y, rgb, a) {
  * Render options:
  *  size, ss (supersample), bg 'ink'|'transparent', frame (hairline), scale (mark height fraction), markColor 'brass'|'white'
  */
-function render({ size, ss = 3, bg = 'transparent', frame = false, markColor = 'brass', scale = 0.52 }) {
+function render({ size, ss = 3, bg = 'transparent', frame = false, markColor = 'brass', scale = 0.5 }) {
   const c = makeCanvas(size);
   const S = size * ss;
 
-  // Mark geometry (supersampled units)
-  const markH = S * scale;
-  const legH = markH * 0.42;
-  const archH = markH - legH;
-  const w = archH / SQRT3;
-  const t = w * 0.30;
-  const cx = S / 2;
-  const yb = S / 2 + markH / 2;
-  const ys = yb - legH;
-  const archTop = ys - archH;
+  // Map design space (1000) into supersampled canvas, centered
+  const markSpan = S * scale * 2;       // design 1000 → markSpan px
+  const k = markSpan / 1000;            // design → px scale
+  const offX = S / 2 - 500 * k;
+  const offY = S / 2 - 620 * k;         // design y-center of the crown (~620)
 
   const colTop = markColor === 'white' ? WHITE : BRASS_TOP;
   const colBot = markColor === 'white' ? [214, 214, 214] : BRASS_BOTTOM;
+  const markTop = 400;
+  const markBottom = 838;
 
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {
@@ -113,16 +147,16 @@ function render({ size, ss = 3, bg = 'transparent', frame = false, markColor = '
       if (scale > 0) {
         let cov = 0;
         for (let sy = 0; sy < ss; sy++) {
-          const y = py * ss + sy + 0.5;
+          const y = (py * ss + sy + 0.5 - offY) / k;
           for (let sx = 0; sx < ss; sx++) {
-            const x = px * ss + sx + 0.5;
-            if (iwan(x, y, cx, w, ys, yb, t)) cov++;
+            const x = (px * ss + sx + 0.5 - offX) / k;
+            if (x >= 0 && x <= 1000 && markInside(x, y)) cov++;
           }
         }
         const covA = cov / (ss * ss);
         if (covA > 0) {
-          const yCenter = py * ss + ss / 2;
-          const yNorm = Math.min(Math.max((yCenter - archTop) / markH, 0), 1);
+          const yCenter = (py * ss + ss / 2 - offY) / k;
+          const yNorm = Math.min(Math.max((yCenter - markTop) / (markBottom - markTop), 0), 1);
           const mc = mix(colTop, colBot, yNorm);
           r = Math.round(lerp(r, mc[0], covA));
           g = Math.round(lerp(g, mc[1], covA));
@@ -141,15 +175,15 @@ function render({ size, ss = 3, bg = 'transparent', frame = false, markColor = '
     const thick = Math.max(2, Math.round(size * 0.003));
     const fc = BRASS_TOP;
     for (let y = inset; y < size - inset; y++) {
-      for (let k = 0; k < thick; k++) {
-        blend(c, inset + k, y, fc, 0.2);
-        blend(c, size - inset - 1 - k, y, fc, 0.2);
+      for (let k2 = 0; k2 < thick; k2++) {
+        blend(c, inset + k2, y, fc, 0.2);
+        blend(c, size - inset - 1 - k2, y, fc, 0.2);
       }
     }
     for (let x = inset; x < size - inset; x++) {
-      for (let k = 0; k < thick; k++) {
-        blend(c, x, inset + k, fc, 0.2);
-        blend(c, x, size - inset - 1 - k, fc, 0.2);
+      for (let k2 = 0; k2 < thick; k2++) {
+        blend(c, x, inset + k2, fc, 0.2);
+        blend(c, x, size - inset - 1 - k2, fc, 0.2);
       }
     }
   }
@@ -166,13 +200,13 @@ function save(name, canvas) {
 
 // ─── Generate ─────────────────────────────────────────────────────────────────
 
-console.log('Rendering BuildIran «Ink & Brass» assets…');
+console.log('Rendering Shahryar «Ink & Brass» brand assets…');
 
-save('icon.png', render({ size: 1024, ss: 3, bg: 'ink', frame: true, scale: 0.5 }));
-save('splash-icon.png', render({ size: 1024, ss: 3, bg: 'transparent', scale: 0.5 }));
-save('android-icon-foreground.png', render({ size: 1024, ss: 3, bg: 'transparent', scale: 0.4 }));
+save('icon.png', render({ size: 1024, ss: 3, bg: 'ink', frame: true, scale: 0.42 }));
+save('splash-icon.png', render({ size: 1024, ss: 3, bg: 'transparent', scale: 0.42 }));
+save('android-icon-foreground.png', render({ size: 1024, ss: 3, bg: 'transparent', scale: 0.34 }));
 save('android-icon-background.png', render({ size: 1024, ss: 1, bg: 'ink', scale: 0 }));
-save('android-icon-monochrome.png', render({ size: 1024, ss: 3, bg: 'transparent', markColor: 'white', scale: 0.4 }));
-save('favicon.png', render({ size: 64, ss: 4, bg: 'ink', scale: 0.56 }));
+save('android-icon-monochrome.png', render({ size: 1024, ss: 3, bg: 'transparent', markColor: 'white', scale: 0.34 }));
+save('favicon.png', render({ size: 64, ss: 4, bg: 'ink', scale: 0.46 }));
 
 console.log('Done.');

@@ -25,6 +25,7 @@ import {
     Pressable,
     StyleSheet,
     View,
+  Image,
 } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -67,11 +68,11 @@ const ArchMark: React.FC = () => {
   return (
     <View style={styles.markWrap}>
       <View style={styles.markRing} />
-      <View style={styles.mark}>
-        <View style={styles.markLeftLeg} />
-        <View style={styles.markRightLeg} />
-        <View style={styles.markArch} />
-      </View>
+      <Image
+        source={require("../../../assets/images/splash-icon.png")}
+        style={styles.markImage}
+        resizeMode="contain"
+      />
     </View>
   );
 };
@@ -214,7 +215,7 @@ export default function ForgotPasswordScreen() {
             style={styles.footer}
           >
             <Text variant="caption" color="muted" center style={styles.footerText}>
-              © 2026 BuildIran · تمام حقوق محفوظ است
+              © 2026 Shahryar · تمام حقوق محفوظ است
             </Text>
           </Animated.View>
         </View>
@@ -285,6 +286,10 @@ const makeStyles = (c: ReturnType<typeof useTheme>["colors"]) =>
       borderRadius: 46,
       borderWidth: 1.5,
       borderColor: c.brass[600],
+    },
+    markImage: {
+      width: 48,
+      height: 48,
     },
     mark: {
       width: 52,
