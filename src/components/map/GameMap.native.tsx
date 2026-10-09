@@ -1,6 +1,10 @@
 /**
  * BuildIran — GameMap (Native: iOS + Android)
- * Uses MapLibre React Native with OpenFreeMap vector tiles (no API key).
+ * Uses MapLibre React Native with local offline tiles.
+ *
+ * On first launch the OfflineTileManager downloads Tehran raster tiles
+ * (zoom 10–16) into MapLibre's internal SQLite store. Subsequent sessions
+ * are fully offline for the base map — zero network round-trips.
  *
  * Runs in Custom Dev Client or Prebuild (EAS Build / local native build).
  *
@@ -18,6 +22,9 @@ import {
   MAP_STYLE,
   TEHRAN_BOUNDS,
 } from "@/lib/constants";
+import { offlineTileManager } from "@/lib/offlineTileManager";
+import { useOfflineTiles } from "@/hooks/useOfflineTiles";
+import { OfflineMapBanner } from "./OfflineMapBanner";
 import { useMapStore } from "@/store/useMapStore";
 import type { LatLng } from "@/types/game.types";
 import type { GameMapProps } from "@/types/map.types";
@@ -66,8 +73,26 @@ export const GameMap: React.FC<GameMapProps> = ({
   const resolvedStyle = mapStyle ?? colors.mapStyle ?? MAP_STYLE;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const cameraRef = useRef<CameraRef>(null);
+  const mapMode = useMapStore((s) => s.mapMode);
   const showDistrictsOverlay = useMapStore((s) => s.showDistrictsOverlay);
   const showOtherPlayersAssets = useMapStore((s) => s.showOtherPlayersAssets);
+
+  // ─── Offline tile bootstrap ─────────────────────────────────────────────────
+  // Only bootstrap when user has enabled offline map mode. Default is online.
+  useEffect(() => {
+    if (mapMode !== 'offline') return;
+
+    // Derive a string style URL. If resolvedStyle is an object (inline style)
+    // we need any valid URL that uses the same tile source for OfflineManager.
+    // Fall back to the OSM raster URL as the cacheable source identifier.
+    const styleUrl =
+      typeof resolvedStyle === 'string'
+        ? resolvedStyle
+        : 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png';
+    offlineTileManager.bootstrap(styleUrl);
+  }, [mapMode, resolvedStyle]);
+
+  const offlineTiles = useOfflineTiles();
 
   // Imperative fly-to camera control
   useEffect(() => {
@@ -173,6 +198,14 @@ export const GameMap: React.FC<GameMapProps> = ({
 
   return (
     <View style={[styles.container, style]}>
+      {/* Offline tile download banner — only shown in offline mode or during active download */}
+      {(mapMode === 'offline' || offlineTiles.status === 'downloading') && (
+        <OfflineMapBanner
+          status={offlineTiles.status}
+          progress={offlineTiles.progress}
+          error={offlineTiles.error}
+        />
+      )}
       <Map
         style={styles.map}
         mapStyle={resolvedStyle as any}

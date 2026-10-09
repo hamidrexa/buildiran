@@ -11,6 +11,7 @@ import Map, {
 } from "react-map-gl/maplibre";
 import { Ionicons } from "@expo/vector-icons";
 import { View, StyleSheet, Pressable } from "react-native";
+import { OfflineMapBanner, useWebOnline } from "./OfflineMapBanner";
 
 import { BuildingMarker, getBuildingStyle } from "@/components/game/BuildingMarker";
 import {
@@ -117,6 +118,9 @@ export const GameMap: React.FC<GameMapProps> = ({
   const mapRef = useRef<MapRef>(null);
   const showDistrictsOverlay = useMapStore((s) => s.showDistrictsOverlay);
   const showOtherPlayersAssets = useMapStore((s) => s.showOtherPlayersAssets);
+
+  // ─── Network status (web-only) ────────────────────────────────────────────
+  const isOnline = useWebOnline();
 
   // Live camera state (drives aggregation + neon hero district)
   const [zoom, setZoom] = useState(initialZoom);
@@ -305,8 +309,15 @@ export const GameMap: React.FC<GameMapProps> = ({
         ...flatStyle,
       }}
     >
-      <Map
-        ref={mapRef}
+      {/* Web offline banner — shown instead of a broken map */}
+      <OfflineMapBanner
+        status={isOnline ? 'ready' : 'web_offline'}
+      />
+
+      {/* Only mount the map when actually online — avoids pointless tile requests */}
+      {isOnline && (
+        <Map
+          ref={mapRef}
         initialViewState={{
           longitude: initialCenter.longitude,
           latitude: initialCenter.latitude,
@@ -688,8 +699,10 @@ export const GameMap: React.FC<GameMapProps> = ({
             );
           })}
       </Map>
+      )}
 
       {/* Custom glass zoom controls — end side, clear of HUD rows and the dock */}
+      {isOnline && (
       <View style={styles.zoomPill} pointerEvents="box-none">
         <Pressable
           onPress={zoomIn}
@@ -709,6 +722,7 @@ export const GameMap: React.FC<GameMapProps> = ({
           <Ionicons name="remove" size={20} color={colors.text.primary} />
         </Pressable>
       </View>
+      )}
     </div>
   );
 };

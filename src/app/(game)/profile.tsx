@@ -21,6 +21,9 @@ import { getPlayerTier } from "@/lib/constants";
 import { supabase } from "@/lib/supabase";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { useAssetStore } from "@/store/useAssetStore";
+import { useMapStore, type MapMode } from "@/store/useMapStore";
+import { useOfflineTiles } from "@/hooks/useOfflineTiles";
+import { offlineTileManager } from "@/lib/offlineTileManager";
 import { Motion, Radii, Spacing } from "@/theme";
 import { useTheme } from "@/theme/ThemeProvider";
 import type { Palette, ThemeMode } from "@/theme/palettes";
@@ -44,7 +47,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const lang = t();
 WebBrowser.maybeCompleteAuthSession();
 
-type Tab = "game" | "account";
+type Tab = "game" | "account" | "settings";
 
 /** fa-IR numerals — every number is a first-class citizen. */
 const fa = (n: number) => n.toLocaleString("fa-IR");
@@ -63,9 +66,10 @@ const TIER_TONE: Record<number, "neutral" | "steel" | "jade" | "brass" | "crimso
 const TABS: { key: Tab; label: string }[] = [
     { key: "game", label: "بازی" },
     { key: "account", label: "حساب کاربری" },
+    { key: "settings", label: "تنظیمات" },
 ];
 
-/** Theme switcher (account tab) — wired to setPreference. */
+/** Theme switcher (settings tab) — wired to setPreference. */
 const THEME_TABS: { key: ThemeMode; label: string }[] = [
     { key: "dark", label: "تیره" },
     { key: "light", label: "روشن" },
@@ -76,6 +80,11 @@ const PREF_LABEL: Record<ThemeMode, string> = {
     light: "روشن",
     system: "سیستم",
 };
+
+const MAP_MODE_TABS: { key: MapMode; label: string }[] = [
+    { key: "online", label: "آنلاین (پیش‌فرض)" },
+    { key: "offline", label: "آفلاین" },
+];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -159,6 +168,37 @@ export default function ProfileScreen() {
   const handleThemeChange = (mode: ThemeMode) => {
     setPreference(mode);
     GameAudio.playTap();
+  };
+
+  const mapMode = useMapStore((s) => s.mapMode);
+  const setMapMode = useMapStore((s) => s.setMapMode);
+  const showDistrictsOverlay = useMapStore((s) => s.showDistrictsOverlay);
+  const setShowDistrictsOverlay = useMapStore((s) => s.setShowDistrictsOverlay);
+  const showOtherPlayersAssets = useMapStore((s) => s.showOtherPlayersAssets);
+  const setShowOtherPlayersAssets = useMapStore((s) => s.setShowOtherPlayersAssets);
+  const offlineTiles = useOfflineTiles();
+
+  const handleMapModeChange = (mode: MapMode) => {
+    setMapMode(mode);
+    GameAudio.playTap();
+    if (mode === "offline" && Platform.OS !== "web") {
+      const styleUrl =
+        typeof c.mapStyle === "string"
+          ? c.mapStyle
+          : "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png";
+      offlineTileManager.bootstrap(styleUrl);
+    }
+  };
+
+  const handleRefreshOfflineMap = () => {
+    GameAudio.playTap();
+    if (Platform.OS !== "web") {
+      const styleUrl =
+        typeof c.mapStyle === "string"
+          ? c.mapStyle
+          : "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png";
+      offlineTileManager.forceRefresh(styleUrl);
+    }
   };
 
   if (!player) {
@@ -340,7 +380,7 @@ export default function ProfileScreen() {
               </Card>
             </Animated.View>
           </>
-        ) : (
+        ) : tab === "account" ? (
           <>
             {/* ─── Account & security ─── */}
             <Animated.View entering={FadeInDown.delay(Motion.stagger(0))}>
@@ -439,8 +479,124 @@ export default function ProfileScreen() {
                 />
               </Card>
             </Animated.View>
+          </>
+        ) : (
+          <>
+            {/* ─── Map Mode (§Offline vs Online) ─── */}
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(0))}>
+              <Card style={styles.card}>
+                <View style={styles.infoRow}>
+                  <IconPlate
+                    name={mapMode === "offline" ? "download" : "cloud"}
+                    size="sm"
+                    tone={mapMode === "offline" ? "brass" : "jade"}
+                  />
+                  <View style={styles.infoTexts}>
+                    <Text variant="body" weight="medium">
+                      حالت دریافت نقشه
+                    </Text>
+                    <Text variant="caption" color="secondary">
+                      {mapMode === "offline" ? "آفلاین (ذخیره روی دستگاه)" : "آنلاین (پیش‌فرض)"}
+                    </Text>
+                  </View>
+                </View>
 
-            {/* ─── Appearance — theme switcher (§6) ─── */}
+                <SegmentedTabs<MapMode>
+                  items={MAP_MODE_TABS}
+                  value={mapMode}
+                  onChange={handleMapModeChange}
+                  style={styles.themeTabs}
+                />
+
+                <Text variant="caption" color="secondary" style={styles.settingDesc}>
+                  {mapMode === "offline"
+                    ? "کاشی‌های نقشه تهران روی حافظه دستگاه ذخیره می‌شوند تا بدون نیاز به اینترنت و با بیشترین سرعت بارگذاری شوند."
+                    : "کاشی‌ها به صورت برخط و آنلاین از اینترنت دریافت می‌شوند. حداقل مصرف حافظه دستگاه (پیش‌فرض)."}
+                </Text>
+
+                {Platform.OS !== "web" ? (
+                  mapMode === "offline" && (
+                    <View style={styles.offlineBox}>
+                      <View style={styles.offlineHeader}>
+                        <Text
+                          variant="caption"
+                          weight="medium"
+                          color={offlineTiles.status === "error" ? "error" : "brand"}
+                        >
+                          {offlineTiles.status === "ready"
+                            ? "✓ بسته آفلاین تهران آماده و ذخیره شده است"
+                            : offlineTiles.status === "downloading"
+                            ? `در حال دانلود نقشه آفلاین (${fa(offlineTiles.progress)}٪)...`
+                            : offlineTiles.status === "error"
+                            ? "خطا در دانلود نقشه آفلاین"
+                            : "در حال بررسی وضعیت بسته آفلاین..."}
+                        </Text>
+                      </View>
+
+                      {offlineTiles.status === "downloading" && (
+                        <ProgressBar percent={offlineTiles.progress} height={6} tone="neon" delay={0} />
+                      )}
+
+                      {offlineTiles.status === "error" && (
+                        <Text variant="caption" color="secondary" style={{ marginTop: 4 }}>
+                          {offlineTiles.error ?? "مشکلی در دریافت پیش آمد."}
+                        </Text>
+                      )}
+
+                      <Button
+                        label={
+                          offlineTiles.status === "downloading"
+                            ? "در حال دریافت..."
+                            : "دانلود مجدد / به‌روزرسانی بسته آفلاین"
+                        }
+                        onPress={handleRefreshOfflineMap}
+                        variant="secondary"
+                        fullWidth
+                        disabled={offlineTiles.status === "downloading"}
+                        style={styles.actionBtn}
+                      />
+                    </View>
+                  )
+                ) : (
+                  <View style={styles.webNote}>
+                    <Text variant="caption" color="secondary">
+                      ℹ️ در نسخه وب نقشه همواره به صورت آنلاین دریافت می‌شود.
+                    </Text>
+                  </View>
+                )}
+              </Card>
+            </Animated.View>
+
+            {/* ─── Map Visual Toggles ─── */}
+            <Animated.View entering={FadeInDown.delay(Motion.stagger(1))}>
+              <Card style={styles.card}>
+                <Text variant="label" color="brand">
+                  تنظیمات نمایش نقشه
+                </Text>
+
+                <ToggleRow
+                  icon="layers"
+                  label="نمایش مرزها و سایه محله‌ها"
+                  value={showDistrictsOverlay}
+                  onToggle={() => {
+                    setShowDistrictsOverlay(!showDistrictsOverlay);
+                    GameAudio.playTap();
+                  }}
+                />
+                <View style={styles.divider} />
+                <ToggleRow
+                  icon="people"
+                  label="نمایش املاک سایر بازیکنان"
+                  value={showOtherPlayersAssets}
+                  onToggle={() => {
+                    setShowOtherPlayersAssets(!showOtherPlayersAssets);
+                    GameAudio.playTap();
+                  }}
+                />
+              </Card>
+            </Animated.View>
+
+            {/* ─── Appearance (Theme switcher) ─── */}
             <Animated.View entering={FadeInDown.delay(Motion.stagger(2))}>
               <Card style={styles.card}>
                 <View style={styles.infoRow}>
@@ -514,6 +670,59 @@ const StatRow: React.FC<{ label: string; value: string; last?: boolean }> = ({
         {label}
       </Text>
     </View>
+  );
+};
+
+const ToggleRow: React.FC<{
+  icon: React.ComponentProps<typeof IconPlate>["name"];
+  label: string;
+  value: boolean;
+  onToggle: () => void;
+}> = ({ icon, label, value, onToggle }) => {
+  const { colors: c } = useTheme();
+  return (
+    <Pressable
+      onPress={onToggle}
+      accessibilityRole="switch"
+      accessibilityState={{ selected: value }}
+      accessibilityLabel={label}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: Spacing.md,
+        paddingVertical: Spacing.sm + 2,
+        minHeight: 44,
+      }}
+    >
+      <IconPlate name={icon} tone="steel" size="sm" />
+      <View style={{ flex: 1 }}>
+        <Text variant="body" weight="medium">
+          {label}
+        </Text>
+      </View>
+      <View
+        style={{
+          width: 44,
+          height: 24,
+          borderRadius: Radii.full,
+          backgroundColor: value ? `${c.jade}33` : c.ink[500],
+          borderWidth: 1,
+          borderColor: value ? `${c.jade}66` : c.border.default,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <View
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: Radii.full,
+            backgroundColor: value ? c.jade : c.text.muted,
+            transform: [{ translateX: value ? -10 : 10 }],
+          }}
+        />
+      </View>
+    </Pressable>
   );
 };
 
@@ -698,5 +907,29 @@ const makeStyles = (c: Palette) =>
     },
     logoutPressed: {
       opacity: 0.8,
+    },
+    settingDesc: {
+      marginTop: Spacing.sm,
+      lineHeight: 18,
+    },
+    offlineBox: {
+      marginTop: Spacing.md,
+      padding: Spacing.md,
+      borderRadius: Radii.md,
+      backgroundColor: c.ink[600],
+      borderWidth: 1,
+      borderColor: c.border.subtle,
+      gap: Spacing.sm,
+    },
+    offlineHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    webNote: {
+      marginTop: Spacing.sm,
+      padding: Spacing.sm,
+      borderRadius: Radii.sm,
+      backgroundColor: c.ink[600],
     },
   });

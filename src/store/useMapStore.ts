@@ -4,9 +4,13 @@
  */
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { MapViewport } from '@/types/map.types';
 import type { LatLng } from '@/types/game.types';
 import { MAP_DEFAULT_CENTER, MAP_DEFAULT_ZOOM } from '@/lib/constants';
+
+export type MapMode = 'online' | 'offline';
 
 interface MapState {
   // ─── Viewport ──────────────────────────────────────────────────────────────
@@ -15,9 +19,10 @@ interface MapState {
   isFollowingUser: boolean;
   flyToTarget: { center: LatLng; zoom: number; duration?: number } | null;
 
-  // ─── Visual Settings ───────────────────────────────────────────────────────
+  // ─── Visual & Mode Settings ────────────────────────────────────────────────
   showDistrictsOverlay: boolean;
   showOtherPlayersAssets: boolean;
+  mapMode: MapMode;
 
   // ─── Actions ───────────────────────────────────────────────────────────────
   setViewport: (viewport: Partial<MapViewport>) => void;
@@ -27,6 +32,7 @@ interface MapState {
   setFollowUser: (follow: boolean) => void;
   setShowDistrictsOverlay: (show: boolean) => void;
   setShowOtherPlayersAssets: (show: boolean) => void;
+  setMapMode: (mode: MapMode) => void;
   resetViewport: () => void;
 }
 
@@ -37,38 +43,54 @@ const defaultViewport: MapViewport = {
   pitch: 0,
 };
 
-export const useMapStore = create<MapState>()((set) => ({
-  viewport: defaultViewport,
-  pressedCoordinate: null,
-  isFollowingUser: false,
-  flyToTarget: null,
-  showDistrictsOverlay: true,
-  showOtherPlayersAssets: true,
-
-  setViewport: (partial) =>
-    set((state) => ({
-      viewport: { ...state.viewport, ...partial },
-    })),
-
-  setPressedCoordinate: (pressedCoordinate) => set({ pressedCoordinate }),
-
-  flyTo: (center, zoom) =>
-    set((state) => ({
-      viewport: {
-        ...state.viewport,
-        center,
-        zoom: zoom ?? state.viewport.zoom,
-      },
+export const useMapStore = create<MapState>()(
+  persist(
+    (set) => ({
+      viewport: defaultViewport,
+      pressedCoordinate: null,
       isFollowingUser: false,
-    })),
+      flyToTarget: null,
+      showDistrictsOverlay: true,
+      showOtherPlayersAssets: true,
+      mapMode: 'online',
 
-  triggerFlyTo: (flyToTarget) => set({ flyToTarget }),
+      setViewport: (partial) =>
+        set((state) => ({
+          viewport: { ...state.viewport, ...partial },
+        })),
 
-  setFollowUser: (isFollowingUser) => set({ isFollowingUser }),
+      setPressedCoordinate: (pressedCoordinate) => set({ pressedCoordinate }),
 
-  setShowDistrictsOverlay: (showDistrictsOverlay) => set({ showDistrictsOverlay }),
-  
-  setShowOtherPlayersAssets: (showOtherPlayersAssets) => set({ showOtherPlayersAssets }),
+      flyTo: (center, zoom) =>
+        set((state) => ({
+          viewport: {
+            ...state.viewport,
+            center,
+            zoom: zoom ?? state.viewport.zoom,
+          },
+          isFollowingUser: false,
+        })),
 
-  resetViewport: () => set({ viewport: defaultViewport }),
-}));
+      triggerFlyTo: (flyToTarget) => set({ flyToTarget }),
+
+      setFollowUser: (isFollowingUser) => set({ isFollowingUser }),
+
+      setShowDistrictsOverlay: (showDistrictsOverlay) => set({ showDistrictsOverlay }),
+      
+      setShowOtherPlayersAssets: (showOtherPlayersAssets) => set({ showOtherPlayersAssets }),
+
+      setMapMode: (mapMode) => set({ mapMode }),
+
+      resetViewport: () => set({ viewport: defaultViewport }),
+    }),
+    {
+      name: 'buildiran:map_settings',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        mapMode: state.mapMode,
+        showDistrictsOverlay: state.showDistrictsOverlay,
+        showOtherPlayersAssets: state.showOtherPlayersAssets,
+      }),
+    },
+  ),
+);

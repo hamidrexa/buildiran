@@ -19,6 +19,8 @@ import { useFonts } from 'expo-font';
 // Keep splash screen visible while loading initial state
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// Offline map ambient cache setup moved to offlineTileManager.ts
+
 // Web needs the document direction set before first render — I18nManager
 // flags alone don't flip CSS layout there. Native handles RTL via
 // I18nManager.forceRTL in the effect below.
